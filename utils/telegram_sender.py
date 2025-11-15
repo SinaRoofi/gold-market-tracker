@@ -205,7 +205,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
     caption = f"""📅 {current_time}
 
 💵 آخرین معامله دلار: {dollar_prices['last_trade']:,} ({dollar_change:+.2f}%)
-🟢 خرید: {dollar_prices['bid']:,} |🔴 فروش: {dollar_prices['ask']:,}
+🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
 
 🔆 اونس جهانی: ${gold_price:,.2f} ({gold_change:+.2f}%)
 
@@ -225,6 +225,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
   تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%"""
 
     return caption
+
 
 
 
