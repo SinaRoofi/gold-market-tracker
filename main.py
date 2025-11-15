@@ -60,7 +60,7 @@ async def main():
             gold_today, gold_today_time = await fetch_gold_price_today(client)
             if gold_today is None:
                 logger.warning("⚠️ قیمت طلای امروز موجود نیست، مقدار پیش‌فرض استفاده می‌شود")
-                gold_today = 4085.06
+                gold_today = 4000
             logger.info(f"✅ قیمت طلای امروز: ${gold_today:,.2f}")
 
             # 2. دریافت قیمت طلای دیروز
@@ -68,7 +68,7 @@ async def main():
             gold_yesterday = await fetch_gold_price_yesterday(client)
             if gold_yesterday is None:
                 logger.warning("⚠️ نتوانستیم قیمت دیروز را بگیریم، از مقدار پیش‌فرض استفاده می‌کنیم")
-                gold_yesterday = 4085.06
+                gold_yesterday = 4169
             else:
                 logger.info(f"✅ قیمت طلای دیروز: ${gold_yesterday:,.2f}")
 
@@ -77,7 +77,7 @@ async def main():
             dollar_prices = await fetch_dollar_prices(client)
             if dollar_prices is None:
                 logger.warning("⚠️ قیمت دلار موجود نیست، مقادیر پیش‌فرض استفاده می‌شود")
-                dollar_prices = {'last_trade': 113000, 'bid': 112950, 'ask': 113000}
+                dollar_prices = {'last_trade': 1130000, 'bid': 1129050, 'ask': 1130000}
             else:
                 # اطمینان از عدد بودن last_trade
                 if dollar_prices.get('last_trade') is None:
@@ -96,7 +96,7 @@ async def main():
             yesterday_close = await fetch_yesterday_close(client)
             if yesterday_close is None:
                 logger.warning("⚠️ قیمت بسته دیروز موجود نیست")
-                yesterday_close = 113000
+                yesterday_close = 1130000
             else:
                 logger.info(f"✅ قیمت بسته دیروز: {yesterday_close:,} تومان")
 
@@ -154,4 +154,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
