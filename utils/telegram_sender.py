@@ -112,7 +112,8 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
             values=df_sorted["value"],
             text=df_sorted["display_text"],
             textposition="middle center",
-            textfont=dict(size=12, family="Arial", color="white"),
+            textinfo="text",  # فقط متن سفارشی نمایش داده شود
+            textfont=dict(size=13, family="Arial", color="white"),  # فونت بزرگ‌تر
             hoverinfo="skip",
             marker=dict(
                 colors=df_sorted["color_value"],
@@ -150,12 +151,12 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
             return '#1C2733'
     
     cell_colors = [
-        ['#1C2733'] * len(top_10_funds),  # نماد
-        ['#1C2733'] * len(top_10_funds),  # قیمت
-        ['#1C2733'] * len(top_10_funds),  # NAV
-        [get_color(x) for x in table_cells[3]],  # تغییر%
-        [get_color(x) for x in table_cells[4]],  # حباب%
-        ['#1C2733'] * len(top_10_funds),  # ارزش
+        ['#1C2733'] * len(top_10_funds),
+        ['#1C2733'] * len(top_10_funds),
+        ['#1C2733'] * len(top_10_funds),
+        [get_color(x) for x in table_cells[3]],
+        [get_color(x) for x in table_cells[4]],
+        ['#1C2733'] * len(top_10_funds),
     ]
     
     fig.add_trace(
@@ -178,7 +179,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         row=2, col=1
     )
     
-    # تنظیمات کلی با عنوان جدید در بالای نقشه
+    # تنظیمات کلی با عنوان جدید بالای نقشه
     fig.update_layout(
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
@@ -190,7 +191,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
             font=dict(size=22, color='#FFD700', family='Arial'),
             x=0.5,
             xanchor='center',
-            y=1.0,
+            y=1.0,  # بالای نقشه
             yanchor='top'
         ),
         showlegend=False
@@ -203,7 +204,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yesterday_close):
     """کپشن بهبود یافته با ساعت تهران و فرمت بهتر"""
     
-    # استفاده از timezone تهران
     tehran_tz = pytz.timezone('Asia/Tehran')
     now = JalaliDateTime.now(tehran_tz)
     current_time = now.strftime("%Y/%m/%d - %H:%M:%S")
@@ -211,17 +211,14 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
     total_value = data['Fund_df']['value'].sum()
     total_pol = data['Fund_df']['pol_hagigi'].sum()
     
-    # محاسبه تغییرات دلار
     dollar_change = 0
     if yesterday_close and yesterday_close > 0:
         dollar_change = ((dollar_prices['last_trade'] - yesterday_close) / yesterday_close) * 100
     
-    # محاسبه تغییرات طلا
     gold_change = 0
     if gold_yesterday and gold_yesterday > 0:
         gold_change = ((gold_price - gold_yesterday) / gold_yesterday) * 100
     
-    # دریافت اطلاعات از dfp
     try:
         gold_18 = data['dfp'].loc['طلا-گرم-18-عیار']
         gold_24 = data['dfp'].loc['طلا-گرم-24-عیار']
@@ -231,7 +228,6 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
         logger.warning("⚠️ برخی داده‌های dfp موجود نیست")
         return f"📊 {current_time}\n💵 دلار: {dollar_prices['last_trade']:,}\n🏆 طلا: ${gold_price:,.2f}"
     
-    # کپشن با فرمت بهبود یافته - اطلاعات طلا در خطوط جداگانه
     caption = f"""📅 {current_time}
 
 💵 آخرین معامله: {dollar_prices['last_trade']:,} ({dollar_change:+.2f}%)
