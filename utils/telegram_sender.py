@@ -116,7 +116,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 
     top_10 = df_sorted.head(10)
 
-    table_header = ['نماد', 'قیمت', 'NAV', 'تغییر%', 'حباب%', 'ارزش معاملات(میلیارد تومان)']
+    table_header = ['نماد', 'قیمت', 'NAV', 'تغییر %', 'حباب %', 'ارزش معاملات(م.ت)']
     
     table_cells = [
         top_10['symbol'].tolist(),
@@ -149,8 +149,8 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 values=[f"<b>{h}</b>" for h in table_header],
                 fill_color='#242F3D',
                 align='center',
-                font=dict(color='white', size=FONT_BIG+1, family="Vazirmatn, Arial"),
-                height=35
+                font=dict(color='white', size=FONT_BIG, family="Vazirmatn, Arial"),
+                height=32
             ),
             cells=dict(
                 values=table_cells,
@@ -171,7 +171,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         width=1400,
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
-            text="<b>📊 نقشه بازار و ۱۰ صندوق با ارزش معاملات بالای امروز</b>",
+            text="<b>📊 نقشه بازار و ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
             font=dict(size=32, color='#FFD700', family="Vazirmatn, Arial"),  # بزرگ‌تر شده
             x=0.5,
             y=1.0,
@@ -205,9 +205,9 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
     caption = f"""📅 {current_time}
 
 💵 آخرین معامله دلار: {dollar_prices['last_trade']:,} ({dollar_change:+.2f}%)
-💵 خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}
+🟢 خرید: {dollar_prices['bid']:,} |🔴 فروش: {dollar_prices['ask']:,}
 
-🪙 اونس جهانی: ${gold_price:,.2f} ({gold_change:+.2f}%)
+🔆 اونس جهانی: ${gold_price:,.2f} ({gold_change:+.2f}%)
 
 💰 ارزش معاملات: {total_value:,.0f}  میلیارد تومان
 💸 ورود پول حقیقی: {total_pol:+,.0f} میلیارد تومان
@@ -225,5 +225,6 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
   تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%"""
 
     return caption
+
 
 
