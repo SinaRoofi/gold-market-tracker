@@ -15,6 +15,12 @@ logger = logging.getLogger(__name__)
 
 def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_yesterday, gold_time, yesterday_close):
     """ارسال یک تصویر بزرگ + کپشن به تلگرام"""
+    
+    # FIXED: بررسی امنیتی برای جلوگیری از خطای NoneType
+    if data is None:
+        logger.error("❌ داده‌های پردازش‌شده (data) مقدار None دارد. ارسال متوقف شد.")
+        return False
+        
     try:
         # 1. ایجاد تصویر بزرگ (نمودار همه صندوق‌ها + جدول)
         logger.info("🎨 در حال ساخت تصویر با همه صندوق‌ها...")
@@ -85,13 +91,13 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         # برای صندوق‌های بزرگ‌تر، متن بیشتر نمایش بده
         if row['value'] > 100:  # بیشتر از 100 میلیارد
             return (f"<b style='font-size:16px'>{row['symbol']}</b><br>"
-                   f"<span style='font-size:13px'>{row['close_price']:,}</span><br>"
-                   f"<span style='font-size:12px'>{row['close_price_change_percent']:+.2f}%</span><br>"
-                   f"<span style='font-size:11px'>حباب: {row['nominal_bubble']:+.2f}%</span>")
+                    f"<span style='font-size:13px'>{row['close_price']:,}</span><br>"
+                    f"<span style='font-size:12px'>{row['close_price_change_percent']:+.2f}%</span><br>"
+                    f"<span style='font-size:11px'>حباب: {row['nominal_bubble']:+.2f}%</span>")
         elif row['value'] > 50:  # 50 تا 100 میلیارد
             return (f"<b style='font-size:14px'>{row['symbol']}</b><br>"
-                   f"<span style='font-size:12px'>{row['close_price']:,}</span><br>"
-                   f"<span style='font-size:11px'>{row['close_price_change_percent']:+.2f}%</span>")
+                    f"<span style='font-size:12px'>{row['close_price']:,}</span><br>"
+                    f"<span style='font-size:11px'>{row['close_price_change_percent']:+.2f}%</span>")
         else:  # کوچک‌تر از 50 میلیارد
             return f"<b style='font-size:13px'>{row['symbol']}</b><br><span style='font-size:11px'>{row['close_price_change_percent']:+.2f}%</span>"
     
@@ -236,7 +242,7 @@ def create_caption(data, dollar_prices, gold_price, gold_yesterday, gold_time, y
 ━━━━━━━━━━━━━━━━━━━━
 
 💵 <b>دلار:</b> {dollar_prices['last_trade']:,} تومان {dollar_change_emoji} ({dollar_change:+.2f}%)
-   خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}
+    خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}
 
 🏆 <b>اونس طلا:</b> ${gold_price:,.2f} {gold_change_emoji} ({gold_change:+.2f}%)
 
@@ -249,7 +255,7 @@ def create_caption(data, dollar_prices, gold_price, gold_yesterday, gold_time, y
 ━━━━━━━━━━━━━━━━━━━━
 
 ✨ <b>شمش طلا:</b>
-   قیمت: {shams_data['close_price']:,} ({shams_data['close_price_change_percent']:+.2f}%)
-   حباب: {shams_data['Bubble']:+.2f}%"""
+    قیمت: {shams_data['close_price']:,} ({shams_data['close_price_change_percent']:+.2f}%)
+    حباب: {shams_data['Bubble']:+.2f}%"""
     
     return caption
