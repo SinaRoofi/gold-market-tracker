@@ -81,12 +81,12 @@ async def main():
             else:
                 # اطمینان از عدد بودن last_trade
                 if dollar_prices.get('last_trade') is None:
-                    dollar_prices['last_trade'] = 113000
+                    dollar_prices['last_trade'] = 116000
                     logger.warning("⚠️ قیمت آخرین معامله دلار موجود نیست، مقدار پیش‌فرض استفاده شد")
                 if dollar_prices.get('bid') is None:
-                    dollar_prices['bid'] = 112950
+                    dollar_prices['bid'] = 115050
                 if dollar_prices.get('ask') is None:
-                    dollar_prices['ask'] = 113000
+                    dollar_prices['ask'] = 118000
 
             logger.info(f"✅ آخرین معامله دلار: {dollar_prices['last_trade']:,} تومان")
             logger.info(f"💰 خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}")
@@ -154,3 +154,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
