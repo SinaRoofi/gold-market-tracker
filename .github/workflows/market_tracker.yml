@@ -40,7 +40,7 @@ jobs:
       run: mkdir -p sessions
     
     - name: Restore Telethon session
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: sessions/
         key: telethon-session-${{ github.run_id }}
@@ -59,7 +59,7 @@ jobs:
     
     - name: Upload logs on failure
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: logs
         path: gold_tracker.log
