@@ -314,7 +314,8 @@ def calculate_values(dfp, Gold, last_trade):
     # تبدیل به int
     cols = ["Value", "close_price", "pricing_dollar", "pricing_Gold"]
     dfp = dfp.copy()
-    dfp[cols] = dfp[cols].astype(int)
+    # FIXED: پر کردن NaN با صفر قبل از تبدیل به int
+    dfp[cols] = dfp[cols].fillna(0).astype(int)
 
     dfp = dfp[
         [
