@@ -1,0 +1,66 @@
+name: Gold Market Tracker
+
+on:
+  schedule:
+    # شنبه تا چهارشنبه، از ساعت 12 تا 18، هر 10 دقیقه
+    # زمان UTC است (تهران UTC+3:30)
+    # ساعت 12 تهران = 08:30 UTC
+    # ساعت 18 تهران = 14:30 UTC
+    - cron: '30,40,50 8 * * 6,0,1,2,3'    # 12:00-12:50
+    - cron: '0,10,20,30,40,50 9 * * 6,0,1,2,3'    # 13:00-13:50
+    - cron: '0,10,20,30,40,50 10 * * 6,0,1,2,3'   # 14:00-14:50
+    - cron: '0,10,20,30,40,50 11 * * 6,0,1,2,3'   # 15:00-15:50
+    - cron: '0,10,20,30,40,50 12 * * 6,0,1,2,3'   # 16:00-16:50
+    - cron: '0,10,20,30,40,50 13 * * 6,0,1,2,3'   # 17:00-17:50
+    - cron: '0,10,20,30 14 * * 6,0,1,2,3'   # 18:00-18:30
+  
+  # امکان اجرای دستی
+  workflow_dispatch:
+
+jobs:
+  track-market:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Create session directory
+      run: mkdir -p sessions
+    
+    - name: Restore Telethon session
+      uses: actions/cache@v3
+      with:
+        path: sessions/
+        key: telethon-session-${{ github.run_id }}
+        restore-keys: |
+          telethon-session-
+    
+    - name: Run market tracker
+      env:
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELETHON_API_ID: ${{ secrets.TELETHON_API_ID }}
+        TELETHON_API_HASH: ${{ secrets.TELETHON_API_HASH }}
+        TELETHON_PHONE: ${{ secrets.TELETHON_PHONE }}
+      run: |
+        python main.py
+    
+    - name: Upload logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v3
+      with:
+        name: logs
+        path: gold_tracker.log
+        retention-days: 7
