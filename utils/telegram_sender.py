@@ -1,6 +1,6 @@
 """
 ماژول ارسال داده‌ها به تلگرام
-یک تصویر بزرگ شامل نمودار همه صندوق‌ها + جدول + کپشن خلاصه
+یک تصویر بزرگ: نقشه بازار + جدول کامل + کپشن ساده
 """
 
 import io
@@ -14,16 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_yesterday, gold_time, yesterday_close):
-    """ارسال یک تصویر بزرگ + کپشن به تلگرام"""
+    """ارسال یک تصویر بزرگ + کپشن ساده به تلگرام"""
     
-    # FIXED: بررسی امنیتی برای جلوگیری از خطای NoneType
     if data is None:
         logger.error("❌ داده‌های پردازش‌شده (data) مقدار None دارد. ارسال متوقف شد.")
         return False
         
     try:
-        # 1. ایجاد تصویر بزرگ (نمودار همه صندوق‌ها + جدول)
-        logger.info("🎨 در حال ساخت تصویر با همه صندوق‌ها...")
+        # 1. ایجاد تصویر بزرگ
+        logger.info("🎨 در حال ساخت تصویر...")
         img_bytes = create_combined_image(
             data['Fund_df'],
             dollar_prices['last_trade'],
@@ -33,14 +32,13 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_y
             yesterday_close
         )
         
-        # 2. ایجاد کپشن خلاصه
+        # 2. ایجاد کپشن ساده
         logger.info("📝 در حال ساخت کپشن...")
-        caption = create_caption(
+        caption = create_simple_caption(
             data,
             dollar_prices,
             gold_price,
             gold_yesterday,
-            gold_time,
             yesterday_close
         )
         
@@ -69,42 +67,36 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_y
 
 
 def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
-    """ایجاد یک تصویر بزرگ با نمودار همه صندوق‌ها بالا و جدول 10 تای برتر پایین"""
+    """ایجاد تصویر: نقشه بازار بالا + جدول کامل (با NAV) پایین"""
     
-    from plotly.subplots import make_subplots
-    import plotly.graph_objects as go
-    
-    # ایجاد subplot: ردیف بالا نمودار، ردیف پایین جدول
     fig = make_subplots(
         rows=2, cols=1,
-        row_heights=[0.68, 0.32],
+        row_heights=[0.65, 0.35],
         vertical_spacing=0.02,
         specs=[[{"type": "treemap"}], [{"type": "table"}]]
     )
     
-    # --- بخش 1: نمودار TreeMap با همه صندوق‌ها ---
+    # --- بخش 1: نقشه بازار (TreeMap) ---
     df_reset = Fund_df.reset_index()
     df_reset["color_value"] = df_reset["close_price_change_percent"]
     
-    # متن داخل مربع‌ها (فقط برای صندوق‌های بزرگ)
+    # متن داخل مربع‌ها - بدون تکرار نام
     def create_text(row):
-        # برای صندوق‌های بزرگ‌تر، متن بیشتر نمایش بده
-        if row['value'] > 100:  # بیشتر از 100 میلیارد
+        if row['value'] > 100:
             return (f"<b style='font-size:16px'>{row['symbol']}</b><br>"
-                    f"<span style='font-size:13px'>{row['close_price']:,}</span><br>"
-                    f"<span style='font-size:12px'>{row['close_price_change_percent']:+.2f}%</span><br>"
-                    f"<span style='font-size:11px'>حباب: {row['nominal_bubble']:+.2f}%</span>")
-        elif row['value'] > 50:  # 50 تا 100 میلیارد
+                   f"<span style='font-size:13px'>{row['close_price']:,}</span><br>"
+                   f"<span style='font-size:12px'>{row['close_price_change_percent']:+.2f}%</span><br>"
+                   f"<span style='font-size:11px'>حباب: {row['nominal_bubble']:+.2f}%</span>")
+        elif row['value'] > 50:
             return (f"<b style='font-size:14px'>{row['symbol']}</b><br>"
-                    f"<span style='font-size:12px'>{row['close_price']:,}</span><br>"
-                    f"<span style='font-size:11px'>{row['close_price_change_percent']:+.2f}%</span>")
-        else:  # کوچک‌تر از 50 میلیارد
+                   f"<span style='font-size:12px'>{row['close_price']:,}</span><br>"
+                   f"<span style='font-size:11px'>{row['close_price_change_percent']:+.2f}%</span>")
+        else:
             return f"<b style='font-size:13px'>{row['symbol']}</b><br><span style='font-size:11px'>{row['close_price_change_percent']:+.2f}%</span>"
     
     df_reset["display_text"] = df_reset.apply(create_text, axis=1)
     df_sorted = df_reset.sort_values("value", ascending=False)
     
-    # رنگ‌بندی
     colorscale = [
         [0.0, "#E57373"], [0.1, "#D85C5C"], [0.2, "#C94444"],
         [0.3, "#A52A2A"], [0.4, "#6B1A1A"], [0.5, "#2C2C2C"],
@@ -112,7 +104,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         [0.9, "#5CB860"], [1.0, "#66BB6A"]
     ]
     
-    # اضافه کردن نمودار TreeMap با همه صندوق‌ها
     fig.add_trace(
         go.Treemap(
             labels=df_sorted["symbol"],
@@ -132,19 +123,20 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         row=1, col=1
     )
     
-    # --- بخش 2: جدول 10 صندوق برتر ---
-    top_10 = df_sorted.head(10)
+    # --- بخش 2: جدول کامل با NAV ---
+    # نمایش همه صندوق‌ها (نه فقط 10 تا)
+    all_funds = df_sorted
     
-    table_header = ['نماد', 'قیمت', 'تغییر%', 'حباب%', 'ارزش(میلیارد)']
+    table_header = ['نماد', 'قیمت', 'NAV', 'تغییر%', 'حباب%', 'ارزش(میلیارد)']
     table_cells = [
-        top_10['symbol'].tolist(),
-        [f"{x:,}" for x in top_10['close_price']],
-        [f"{x:+.2f}%" for x in top_10['close_price_change_percent']],
-        [f"{x:+.2f}%" for x in top_10['nominal_bubble']],
-        [f"{x:,.0f}" for x in top_10['value']]
+        all_funds['symbol'].tolist(),
+        [f"{x:,}" for x in all_funds['close_price']],
+        [f"{x:,}" for x in all_funds['NAV']],
+        [f"{x:+.2f}%" for x in all_funds['close_price_change_percent']],
+        [f"{x:+.2f}%" for x in all_funds['nominal_bubble']],
+        [f"{x:,.0f}" for x in all_funds['value']]
     ]
     
-    # رنگ‌بندی سلول‌ها
     def get_color(val):
         try:
             v = float(val.replace('%', '').replace('+', '').replace(',', ''))
@@ -158,11 +150,12 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
             return '#1C2733'
     
     cell_colors = [
-        ['#1C2733'] * len(top_10),
-        ['#1C2733'] * len(top_10),
-        [get_color(x) for x in table_cells[2]],
-        [get_color(x) for x in table_cells[3]],
-        ['#1C2733'] * len(top_10),
+        ['#1C2733'] * len(all_funds),  # نماد
+        ['#1C2733'] * len(all_funds),  # قیمت
+        ['#1C2733'] * len(all_funds),  # NAV
+        [get_color(x) for x in table_cells[3]],  # تغییر%
+        [get_color(x) for x in table_cells[4]],  # حباب%
+        ['#1C2733'] * len(all_funds),  # ارزش
     ]
     
     fig.add_trace(
@@ -171,15 +164,15 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 values=[f'<b>{h}</b>' for h in table_header],
                 fill_color='#242F3D',
                 align='center',
-                font=dict(color='white', size=15, family='Arial'),
-                height=40
+                font=dict(color='white', size=14, family='Arial'),
+                height=35
             ),
             cells=dict(
                 values=table_cells,
                 fill_color=cell_colors,
                 align='center',
-                font=dict(color='white', size=14, family='Arial'),
-                height=32
+                font=dict(color='white', size=12, family='Arial'),
+                height=28
             )
         ),
         row=2, col=1
@@ -189,73 +182,66 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     fig.update_layout(
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
-        height=1200,
+        height=1400,
         width=1400,
-        margin=dict(t=90, l=10, r=10, b=10),
+        margin=dict(t=80, l=10, r=10, b=10),
         title=dict(
-            text=f"<b>📊 نمودار بازار ({len(df_sorted)} صندوق) | 🔝 برترین صندوق‌ها</b>",
+            text=f"<b>📊 نقشه بازار ({len(df_sorted)} صندوق)</b>",
             font=dict(size=22, color='#FFD700', family='Arial'),
             x=0.5,
             xanchor='center',
-            y=0.325,
+            y=0.32,
             yanchor='top'
         ),
         showlegend=False
     )
     
-    # تبدیل به تصویر
-    img_bytes = fig.to_image(format="png", width=1400, height=1200)
+    img_bytes = fig.to_image(format="png", width=1400, height=1400)
     return img_bytes
 
 
-def create_caption(data, dollar_prices, gold_price, gold_yesterday, gold_time, yesterday_close):
-    """ایجاد کپشن خلاصه"""
+def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yesterday_close):
+    """کپشن ساده و کوچک - فقط اطلاعات مهم"""
+    
     now = JalaliDateTime.now()
     current_time = now.strftime("%Y/%m/%d - %H:%M:%S")
     
     total_value = data['Fund_df']['value'].sum()
     total_pol = data['Fund_df']['pol_hagigi'].sum()
     
-    # تعداد صندوق‌ها
-    num_funds = len(data['Fund_df'])
-    
-    # محاسبه تغییرات
+    # محاسبه تغییرات دلار
     dollar_change = 0
-    dollar_change_emoji = "➖"
     if yesterday_close and yesterday_close > 0:
         dollar_change = ((dollar_prices['last_trade'] - yesterday_close) / yesterday_close) * 100
-        dollar_change_emoji = "📈" if dollar_change > 0 else "📉" if dollar_change < 0 else "➖"
     
+    # محاسبه تغییرات طلا
     gold_change = 0
-    gold_change_emoji = "➖"
     if gold_yesterday and gold_yesterday > 0:
         gold_change = ((gold_price - gold_yesterday) / gold_yesterday) * 100
-        gold_change_emoji = "📈" if gold_change > 0 else "📉" if gold_change < 0 else "➖"
     
-    pol_emoji = "✅" if total_pol > 0 else "❌"
+    # دریافت اطلاعات از dfp
+    try:
+        gold_18 = data['dfp'].loc['طلا-گرم-18-عیار']
+        gold_24 = data['dfp'].loc['طلا-گرم-24-عیار']
+        shams = data['dfp'].loc['شمش-طلا']
+        sekeh = data['dfp'].loc['سکه-امامی-طرح-جدید']
+    except:
+        # اگر داده‌ها موجود نبود، مقادیر پیش‌فرض
+        logger.warning("⚠️ برخی داده‌های dfp موجود نیست")
+        return f"📊 {current_time}\n💵 دلار: {dollar_prices['last_trade']:,}\n🏆 طلا: ${gold_price:,.2f}"
     
-    # شمش طلا
-    shams_data = data['dfp'].loc['شمش-طلا']
-    
-    caption = f"""📊 <b>گزارش لحظه‌ای بازار طلا و ارز</b>
-🕐 {current_time}
-━━━━━━━━━━━━━━━━━━━━
+    caption = f"""📅 {current_time}
 
-💵 <b>دلار:</b> {dollar_prices['last_trade']:,} تومان {dollar_change_emoji} ({dollar_change:+.2f}%)
-    خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}
+💵 آخرین معامله: {dollar_prices['last_trade']:,} ({dollar_change:+.2f}%)
+💵 خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}
+🏆 اونس طلا: ${gold_price:,.2f} ({gold_change:+.2f}%)
 
-🏆 <b>اونس طلا:</b> ${gold_price:,.2f} {gold_change_emoji} ({gold_change:+.2f}%)
+💰 ارزش معاملات: {total_value:,.0f} میلیارد
+💸 ورود پول حقیقی: {total_pol:+,.0f} میلیارد
 
-━━━━━━━━━━━━━━━━━━━━
-
-📈 <b>تعداد صندوق‌ها:</b> {num_funds} صندوق
-💰 <b>ارزش معاملات:</b> {total_value:,.0f} میلیارد تومان
-{pol_emoji} <b>پول حقیقی:</b> {total_pol:+,.0f} میلیارد تومان
-
-━━━━━━━━━━━━━━━━━━━━
-
-✨ <b>شمش طلا:</b>
-    قیمت: {shams_data['close_price']:,} ({shams_data['close_price_change_percent']:+.2f}%)
-    حباب: {shams_data['Bubble']:+.2f}%"""
+🔸 طلا ۱۸ عیار: {gold_18['close_price']:,} ({gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%)
+🔸 طلا ۲۴ عیار: {gold_24['close_price']:,} ({gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%)
+🪙 سکه امامی: {sekeh['close_price']:,} ({sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%)
+✨ شمش طلا: {shams['close_price']:,} ({shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%)"""
     
     return caption
