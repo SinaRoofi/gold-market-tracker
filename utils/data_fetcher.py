@@ -30,41 +30,56 @@ async def fetch_gold_price_today(client: TelegramClient):
         return None, None
 
 async def fetch_gold_price_yesterday(client: TelegramClient):
-    """دریافت قیمت طلای دیروز با جستجوی گسترده‌تر بر اساس تاریخ"""
+    """
+    دریافت قیمت طلای دیروز با استفاده از تاریخ آخرین پیام به عنوان مرجع (offset_date)
+    و محدود کردن جستجو برای افزایش سرعت (limit=1000).
+    """
     try:
         channel_username = "XAUUSD_ONE"
         tehran_tz = pytz.timezone("Asia/Tehran")
-        now = datetime.now(tehran_tz)
         
-        # تعیین بازه زمانی دیروز
-        yesterday = now - timedelta(days=1)
+        # 1. پیدا کردن تاریخ آخرین پیام (امروز) برای تعیین offset
+        latest_message = await client.get_messages(channel_username, limit=1)
+        if not latest_message:
+            logger.warning("⚠️ کانال طلا پیام جدیدی ندارد. 0 برگردانده می‌شود.")
+            return 0
+            
+        # تاریخ آخرین پیام امروز را به عنوان مرجع می‌گیریم
+        today_ref_time = latest_message[0].date.astimezone(tehran_tz)
+        
+        # 2. تعیین بازه زمانی دیروز
+        yesterday = today_ref_time - timedelta(days=1)
         yesterday_start = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
         yesterday_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        # جستجوی پیام‌ها: limit=30000 و offset_date=now برای جستجوی پیام‌های قبل از لحظه فعلی
+        # 3. جستجو با limit کمتر و offset_date (تاریخ امروز)
         messages = await client.get_messages(
             channel_username, 
-            limit=30000, 
-            offset_date=now 
+            limit=1000, 
+            offset_date=today_ref_time
         )
         
         yesterday_prices = []
-
+        pattern = r"XAUUSD\s*➡\s*\*\*([\d.,]+)\*\*"
+        
         for message in messages:
             if message.text and "XAUUSD" in message.text:
                 msg_time = message.date.astimezone(tehran_tz)
                 
                 # بررسی می‌کنیم که آیا پیام دقیقاً در بازه دیروز است یا خیر
                 if yesterday_start <= msg_time <= yesterday_end:
-                    pattern = r"XAUUSD\s*➡\s*\*\*([\d.,]+)\*\*"
                     match = re.search(pattern, message.text)
                     if match:
                         price_str = match.group(1).replace(",", ".")
                         price = float(price_str)
                         yesterday_prices.append((price, msg_time))
+                
+                # اگر پیام‌ها قدیمی‌تر از ابتدای روز گذشته شدند، جستجو را متوقف می‌کنیم.
+                if msg_time < yesterday_start:
+                    break 
         
         if yesterday_prices:
-            # آخرین قیمت دیروز را برمی‌گرداند
+            # آخرین قیمت دیروز را برمی‌گرداند (جدیدترین زمان ثبت شده)
             yesterday_prices.sort(key=lambda x: x[1], reverse=True)
             return yesterday_prices[0][0]
         
@@ -124,7 +139,7 @@ async def fetch_dollar_prices(client: TelegramClient):
         return None
 
 async def fetch_yesterday_close(client: TelegramClient):
-    """آخرین معامله دیروز"""
+    """آخرین معامله دیروز (با بازگشت 0 در صورت شکست)"""
     try:
         channel_username = "dollar_tehran3bze"
         tehran_tz = pytz.timezone("Asia/Tehran")
