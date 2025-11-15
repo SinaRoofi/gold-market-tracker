@@ -48,7 +48,7 @@ async def main():
         telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
         api_id = int(os.getenv('TELETHON_API_ID'))
         api_hash = os.getenv('TELETHON_API_HASH')
-        session_str = os.getenv('TELEGRAM_SESSION')
+        session_str = os.getenv('TELEGRAM_SESSION')  # فقط سشن استفاده می‌شود
 
         if not all([telegram_bot_token, telegram_chat_id, api_id, api_hash, session_str]):
             logger.error("❌ متغیرهای محیطی کامل نیست!")
