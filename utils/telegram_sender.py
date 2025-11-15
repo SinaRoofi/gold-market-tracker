@@ -9,6 +9,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from persiantools.jdatetime import JalaliDateTime
 import requests
+from datetime import datetime
+import pytz # اضافه شده برای مدیریت منطقه زمانی
 
 logger = logging.getLogger(__name__)
 
@@ -89,16 +91,16 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     # متن داخل مربع‌ها (فقط برای صندوق‌های بزرگ)
     def create_text(row):
         # برای صندوق‌های بزرگ‌تر، متن بیشتر نمایش بده
-        if row['value'] > 100:  # بیشتر از 100 میلیارد
+        if row['value'] > 100: # بیشتر از 100 میلیارد
             return (f"<b style='font-size:16px'>{row['symbol']}</b><br>"
                     f"<span style='font-size:13px'>{row['close_price']:,}</span><br>"
                     f"<span style='font-size:12px'>{row['close_price_change_percent']:+.2f}%</span><br>"
                     f"<span style='font-size:11px'>حباب: {row['nominal_bubble']:+.2f}%</span>")
-        elif row['value'] > 50:  # 50 تا 100 میلیارد
+        elif row['value'] > 50: # 50 تا 100 میلیارد
             return (f"<b style='font-size:14px'>{row['symbol']}</b><br>"
                     f"<span style='font-size:12px'>{row['close_price']:,}</span><br>"
                     f"<span style='font-size:11px'>{row['close_price_change_percent']:+.2f}%</span>")
-        else:  # کوچک‌تر از 50 میلیارد
+        else: # کوچک‌تر از 50 میلیارد
             return f"<b style='font-size:13px'>{row['symbol']}</b><br><span style='font-size:11px'>{row['close_price_change_percent']:+.2f}%</span>"
     
     df_reset["display_text"] = df_reset.apply(create_text, axis=1)
@@ -209,53 +211,74 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 
 
 def create_caption(data, dollar_prices, gold_price, gold_yesterday, gold_time, yesterday_close):
-    """ایجاد کپشن خلاصه"""
-    now = JalaliDateTime.now()
-    current_time = now.strftime("%Y/%m/%d - %H:%M:%S")
+    """ایجاد کپشن خلاصه با نرخ خرید و فروش دلار و زمان به‌روزرسانی (تهران)"""
     
+    # باید مطمئن شویم که pytz در ابتدای فایل ایمپورت شده باشد.
+    
+    tehran_tz = pytz.timezone("Asia/Tehran")
+    now_tehran = datetime.now(tehran_tz)
+    now_jalali = JalaliDateTime.fromgregorian(datetime=now_tehran)
+    
+    j_date = now_jalali.strftime("%Y/%m/%d")
+    current_time = now_jalali.strftime("%H:%M:%S")
+    
+    # تنظیم زمان اونس طلا (به وقت تهران)
+    gold_time_str = gold_time.astimezone(tehran_tz).strftime("%H:%M") if gold_time else "N/A"
+    
+    # تنظیم زمان آخرین معامله دلار (به وقت تهران)
+    dollar_time = dollar_prices.get('last_trade_time')
+    dollar_time_str = dollar_time.astimezone(tehran_tz).strftime("%H:%M") if dollar_time else "N/A"
+
     total_value = data['Fund_df']['value'].sum()
     total_pol = data['Fund_df']['pol_hagigi'].sum()
     
-    # تعداد صندوق‌ها
     num_funds = len(data['Fund_df'])
     
-    # محاسبه تغییرات
+    # محاسبه تغییرات دلار
     dollar_change = 0
-    dollar_change_emoji = "➖"
+    dollar_change_emoji = "⚫"
     if yesterday_close and yesterday_close > 0:
         dollar_change = ((dollar_prices['last_trade'] - yesterday_close) / yesterday_close) * 100
-        dollar_change_emoji = "📈" if dollar_change > 0 else "📉" if dollar_change < 0 else "➖"
+        dollar_change_emoji = "🟢" if dollar_change > 0 else "🔴" if dollar_change < 0 else "⚫"
     
+    # محاسبه تغییرات طلا
     gold_change = 0
-    gold_change_emoji = "➖"
+    gold_change_emoji = "⚫"
     if gold_yesterday and gold_yesterday > 0:
         gold_change = ((gold_price - gold_yesterday) / gold_yesterday) * 100
-        gold_change_emoji = "📈" if gold_change > 0 else "📉" if gold_change < 0 else "➖"
+        gold_change_emoji = "🟢" if gold_change > 0 else "🔴" if gold_change < 0 else "⚫"
     
-    pol_emoji = "✅" if total_pol > 0 else "❌"
+    pol_emoji = "💰" if total_pol > 0 else "💸"
     
     # شمش طلا
     shams_data = data['dfp'].loc['شمش-طلا']
     
-    caption = f"""📊 <b>گزارش لحظه‌ای بازار طلا و ارز</b>
-🕐 {current_time}
-━━━━━━━━━━━━━━━━━━━━
-
-💵 <b>دلار:</b> {dollar_prices['last_trade']:,} تومان {dollar_change_emoji} ({dollar_change:+.2f}%)
-    خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}
-
-🏆 <b>اونس طلا:</b> ${gold_price:,.2f} {gold_change_emoji} ({gold_change:+.2f}%)
-
-━━━━━━━━━━━━━━━━━━━━
-
-📈 <b>تعداد صندوق‌ها:</b> {num_funds} صندوق
-💰 <b>ارزش معاملات:</b> {total_value:,.0f} میلیارد تومان
-{pol_emoji} <b>پول حقیقی:</b> {total_pol:+,.0f} میلیارد تومان
-
-━━━━━━━━━━━━━━━━━━━━
-
-✨ <b>شمش طلا:</b>
+    caption = f"""
+    ✨ <b>گزارش لحظه‌ای بازار طلا و ارز</b> ✨
+    
+    🗓️ {j_date} | ⏰ {current_time} (تهران)
+    ━━━━━━━━━━━━━━━━━━━━
+    
+    💵 <b>دلار (فردایی)</b>
+    قیمت معامله: <b>{dollar_prices['last_trade']:,}</b> تومان {dollar_change_emoji} ({dollar_change:+.2f}%)
+    <small>⏰ {dollar_time_str} | خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}</small>
+    
+    🏆 <b>اونس طلا (XAUUSD)</b>
+    قیمت: <b>${gold_price:,.2f}</b> {gold_change_emoji} ({gold_change:+.2f}%)
+    <small>⏰ {gold_time_str}</small>
+    
+    ━━━━━━━━━━━━━━━━━━━━
+    
+    📊 <b>خلاصه صندوق‌های طلا ({num_funds} صندوق):</b>
+    🔹 ارزش کل معاملات: {total_value:,.0f} میلیارد تومان
+    {pol_emoji} ورود/خروج پول حقیقی: <b>{total_pol:+,.0f} میلیارد تومان</b>
+    
+    ━━━━━━━━━━━━━━━━━━━━
+    
+    ☀️ <b>وضعیت شمش طلا:</b>
     قیمت: {shams_data['close_price']:,} ({shams_data['close_price_change_percent']:+.2f}%)
-    حباب: {shams_data['Bubble']:+.2f}%"""
+    حباب: {shams_data['Bubble']:+.2f}%
+    
+    """
     
     return caption
