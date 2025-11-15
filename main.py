@@ -48,7 +48,7 @@ async def main():
         telegram_chat_id = os.getenv('TELEGRAM_CHAT_ID')
         api_id = int(os.getenv('TELETHON_API_ID'))
         api_hash = os.getenv('TELETHON_API_HASH')
-        session_str = os.getenv('TELEGRAM_SESSION')  # فقط سشن استفاده می‌شود
+        session_str = os.getenv('TELEGRAM_SESSION')
 
         if not all([telegram_bot_token, telegram_chat_id, api_id, api_hash, session_str]):
             logger.error("❌ متغیرهای محیطی کامل نیست!")
@@ -74,17 +74,42 @@ async def main():
 
             # 3. دریافت قیمت‌های دلار
             logger.info("💵 دریافت قیمت‌های دلار...")
-            dollar_prices = await fetch_dollar_prices(client)
-            if not dollar_prices:
-                logger.error("❌ خطا در دریافت قیمت دلار")
-                return
-            logger.info(f"✅ آخرین معامله دلار: {dollar_prices['last_trade']:,} تومان")
+            dollar_prices_raw = await fetch_dollar_prices(client)
+
+            def parse_int(value):
+                try:
+                    return int(str(value).replace(',', '').replace('،', '').strip())
+                except (ValueError, AttributeError):
+                    return None
+
+            dollar_prices = {
+                'last_trade': parse_int(dollar_prices_raw.get('last_trade')) if dollar_prices_raw else None,
+                'bid': parse_int(dollar_prices_raw.get('bid')) if dollar_prices_raw else None,
+                'ask': parse_int(dollar_prices_raw.get('ask')) if dollar_prices_raw else None,
+            }
+
+            if dollar_prices['last_trade'] is not None:
+                logger.info(f"✅ آخرین معامله دلار: {dollar_prices['last_trade']:,} تومان")
+            else:
+                logger.warning("⚠️ قیمت آخرین معامله دلار موجود نیست")
+
+            if dollar_prices['bid'] is not None and dollar_prices['ask'] is not None:
+                logger.info(f"💰 خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}")
+            else:
+                logger.warning("⚠️ قیمت خرید/فروش دلار موجود نیست")
 
             # 4. دریافت آخرین معامله دیروز
             logger.info("📈 دریافت قیمت بسته دیروز...")
-            yesterday_close = await fetch_yesterday_close(client)
-            if yesterday_close:
+            yesterday_close_raw = await fetch_yesterday_close(client)
+            try:
+                yesterday_close = parse_int(yesterday_close_raw)
+            except:
+                yesterday_close = None
+
+            if yesterday_close is not None:
                 logger.info(f"✅ قیمت بسته دیروز: {yesterday_close:,} تومان")
+            else:
+                logger.warning("⚠️ قیمت بسته دیروز موجود نیست")
 
             # 5. دریافت داده‌های بازار
             logger.info("🏦 دریافت داده‌های صندوق‌ها...")
