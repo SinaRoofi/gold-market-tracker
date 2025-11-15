@@ -202,7 +202,7 @@ async def fetch_yesterday_close(client: TelegramClient):
         batch_size = 100  
         offset_id = 0
         total_checked = 0
-        max_messages = 5000 
+        max_messages = 10000 
 
         for batch_num in range(max_messages // batch_size):
             messages = await client.get_messages(
@@ -251,3 +251,4 @@ async def fetch_market_data():
     except Exception as e:
         logger.error(f"خطا در دریافت داده‌های بازار: {e}")
         return None
+
