@@ -68,7 +68,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     df_reset["color_value"] = df_reset["close_price_change_percent"]
 
     # فونت ۲ واحد بزرگ‌تر
-    FONT_BIG = 15
+    FONT_BIG = 19
 
     def create_text(row):
         if row['value'] > 100:
@@ -148,15 +148,15 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 values=[f"<b>{h}</b>" for h in table_header],
                 fill_color='#242F3D',
                 align='center',
-                font=dict(color='white', size=FONT_BIG+1, family='Arial'),
-                height=35
+                font=dict(color='white', size=FONT_BIG+2, family='Arial'),
+                height=40
             ),
             cells=dict(
                 values=table_cells,
                 fill_color=cell_colors,
                 align='center',
                 font=dict(color='white', size=FONT_BIG, family='Arial'),
-                height=30
+                height=35
             )
         ),
         row=2, col=1
@@ -170,8 +170,8 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         width=1400,
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
-            text="<b>📊 نقشه بازار و ۱۰ صندوق با ارزش معاملات بالای روز</b>",
-            font=dict(size=26, color='#FFD700', family='Arial'),  # بزرگ‌تر شده
+            text="<b>📊 نقشه بازار و ۱۰ صندوق با ارزش معاملات بالای امروز</b>",
+            font=dict(size=32, color='#FFD700', family='Arial'),  # بزرگ‌تر شده
             x=0.5,
             y=1.0,
             xanchor="center",
@@ -224,3 +224,4 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
   تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%"""
 
     return caption
+
