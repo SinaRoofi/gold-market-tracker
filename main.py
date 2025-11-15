@@ -117,11 +117,18 @@ async def main():
                 yesterday_close=yesterday_close,
                 gold_yesterday=gold_yesterday
             )
+            
+            # FIXED: بررسی اینکه آیا پردازش موفقیت‌آمیز بوده و None برنگشته است.
+            if processed_data is None:
+                logger.error("❌ پردازش داده‌ها ناموفق بود، ارسال انجام نمی‌شود.")
+                return
+
             logger.info("✅ پردازش تکمیل شد")
 
             # 7. ارسال به تلگرام
             logger.info("📤 ارسال به تلگرام...")
-            success = await send_to_telegram(
+            # FIXED: حذف 'await' از تابع غیر async
+            success = send_to_telegram(
                 bot_token=telegram_bot_token,
                 chat_id=telegram_chat_id,
                 data=processed_data,
