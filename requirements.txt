@@ -1,0 +1,20 @@
+# کتابخانه‌های اصلی
+requests>=2.31.0
+pandas>=2.1.0
+numpy>=1.24.0
+
+# Telegram
+telethon>=1.34.0
+python-telegram-bot>=20.7
+
+# تاریخ و زمان
+pytz>=2023.3
+persiantools>=3.0.0
+jdatetime>=4.1.0
+
+# نمودارها
+plotly>=5.18.0
+kaleido>=0.2.1
+
+# دیگر ابزارها
+nest-asyncio>=1.5.8
