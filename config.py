@@ -51,8 +51,6 @@ ASSET_ORDER = [
     "سکه-1-گرمی",
 ]
 
-# قیمت پیش‌فرض طلای دیروز (در صورت عدم دسترسی)
-DEFAULT_GOLD_YESTERDAY = 4085.06
 
 # تنظیمات Retry
 MAX_RETRIES = 3
