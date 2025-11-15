@@ -30,20 +30,31 @@ async def fetch_gold_price_today(client: TelegramClient):
         return None, None
 
 async def fetch_gold_price_yesterday(client: TelegramClient):
-    """دریافت قیمت طلای دیروز"""
+    """دریافت قیمت طلای دیروز با جستجوی گسترده‌تر بر اساس تاریخ"""
     try:
         channel_username = "XAUUSD_ONE"
         tehran_tz = pytz.timezone("Asia/Tehran")
         now = datetime.now(tehran_tz)
-        yesterday_start = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0)
-        yesterday_end = (now - timedelta(days=1)).replace(hour=23, minute=59, second=59)
+        
+        # تعیین بازه زمانی دیروز
+        yesterday = now - timedelta(days=1)
+        yesterday_start = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+        yesterday_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-        messages = await client.get_messages(channel_username, limit=100)
+        # جستجوی پیام‌ها: limit=30000 و offset_date=now برای جستجوی پیام‌های قبل از لحظه فعلی
+        messages = await client.get_messages(
+            channel_username, 
+            limit=30000, 
+            offset_date=now 
+        )
+        
         yesterday_prices = []
 
         for message in messages:
             if message.text and "XAUUSD" in message.text:
                 msg_time = message.date.astimezone(tehran_tz)
+                
+                # بررسی می‌کنیم که آیا پیام دقیقاً در بازه دیروز است یا خیر
                 if yesterday_start <= msg_time <= yesterday_end:
                     pattern = r"XAUUSD\s*➡\s*\*\*([\d.,]+)\*\*"
                     match = re.search(pattern, message.text)
@@ -51,13 +62,17 @@ async def fetch_gold_price_yesterday(client: TelegramClient):
                         price_str = match.group(1).replace(",", ".")
                         price = float(price_str)
                         yesterday_prices.append((price, msg_time))
+        
         if yesterday_prices:
+            # آخرین قیمت دیروز را برمی‌گرداند
             yesterday_prices.sort(key=lambda x: x[1], reverse=True)
             return yesterday_prices[0][0]
-        return None
+        
+        logger.warning("⚠️ قیمت بسته شدن طلای دیروز پیدا نشد. 0 برگردانده می‌شود.")
+        return 0
     except Exception as e:
         logger.error(f"خطا در دریافت قیمت طلای دیروز: {e}")
-        return None
+        return 0
 
 async def fetch_dollar_prices(client: TelegramClient):
     """دریافت قیمت‌های دلار"""
@@ -138,10 +153,12 @@ async def fetch_yesterday_close(client: TelegramClient):
                 price = extract_last_trade(message.text)
                 if price:
                     return price
-        return None
+        
+        logger.warning("⚠️ قیمت بسته شدن دلار دیروز پیدا نشد. 0 برگردانده می‌شود.")
+        return 0
     except Exception as e:
         logger.error(f"خطا در دریافت قیمت بسته دیروز: {e}")
-        return None
+        return 0
 
 async def fetch_market_data():
     """دریافت داده‌های بازار"""
