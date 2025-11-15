@@ -99,7 +99,8 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
             values=df_sorted["value"],
             text=df_sorted["display_text"],
             textinfo="text",
-            textfont=dict(size=FONT_BIG, family="Arial", color="white"),
+            textposition="middle center", 
+            textfont=dict(size=FONT_BIG, family="Vazirmatn, Arial", color="white"),
             hoverinfo="skip",
             marker=dict(
                 colors=df_sorted["color_value"],
@@ -148,14 +149,14 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 values=[f"<b>{h}</b>" for h in table_header],
                 fill_color='#242F3D',
                 align='center',
-                font=dict(color='white', size=FONT_BIG+2, family='Arial'),
-                height=40
+                font=dict(color='white', size=FONT_BIG+1, family="Vazirmatn, Arial"),
+                height=35
             ),
             cells=dict(
                 values=table_cells,
                 fill_color=cell_colors,
                 align='center',
-                font=dict(color='white', size=FONT_BIG, family='Arial'),
+                font=dict(color='white', size=FONT_BIG, family="Vazirmatn, Arial"),
                 height=35
             )
         ),
@@ -171,7 +172,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
             text="<b>📊 نقشه بازار و ۱۰ صندوق با ارزش معاملات بالای امروز</b>",
-            font=dict(size=32, color='#FFD700', family='Arial'),  # بزرگ‌تر شده
+            font=dict(size=32, color='#FFD700', family="Vazirmatn, Arial"),  # بزرگ‌تر شده
             x=0.5,
             y=1.0,
             xanchor="center",
@@ -206,7 +207,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
 💵 آخرین معامله دلار: {dollar_prices['last_trade']:,} ({dollar_change:+.2f}%)
 💵 خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}
 
-🏆 اونس جهانی: ${gold_price:,.2f} ({gold_change:+.2f}%)
+🪙 اونس جهانی: ${gold_price:,.2f} ({gold_change:+.2f}%)
 
 💰 ارزش معاملات: {total_value:,.0f}  میلیارد تومان
 💸 ورود پول حقیقی: {total_pol:+,.0f} میلیارد تومان
@@ -224,4 +225,5 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
   تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%"""
 
     return caption
+
 
