@@ -58,8 +58,8 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         specs=[[{"type": "treemap"}], [{"type": "table"}]]
     )
 
-    df_reset = Fund_df.reset_index()
-    df_reset["color_value"] = df_reset["close_price_change_percent"]
+    df_sorted = Fund_df.copy()
+    df_sorted["color_value"] = df_sorted["close_price_change_percent"]
 
     FONT_BIG = 19
 
@@ -76,8 +76,8 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         else:
             return f"<b style='font-size:{FONT_BIG}px'>{row.name}</b><br><span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>"
 
-    df_reset["display_text"] = df_reset.apply(create_text, axis=1)
-    df_sorted = df_reset.sort_values("value", ascending=False)
+    df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
+    df_sorted = df_sorted.sort_values("value", ascending=False)
 
     colorscale = [
         [0.0, "#E57373"], [0.1, "#D85C5C"], [0.2, "#C94444"], [0.3, "#A52A2A"], 
@@ -87,7 +87,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     
     fig.add_trace(
         go.Treemap(
-            labels=df_sorted.index,
+            labels=df_sorted.index,  # استفاده از index اصلی (symbol)
             parents=[""] * len(df_sorted),
             values=df_sorted["value"],
             text=df_sorted["display_text"],
@@ -106,9 +106,10 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     )
 
     top_10 = df_sorted.head(10)
+    
     table_header = ['نماد', 'قیمت', 'NAV', 'تغییر %', 'حباب %', 'اختلاف سرانه', 'پول حقیقی(م.ت)', 'ارزش معاملات(م.ت)']
     table_cells = [
-        top_10.index.tolist(),
+        top_10.index.tolist(),  # استفاده از index اصلی (symbol)
         [f"{x:,}" for x in top_10['close_price']],
         [f"{x:,}" for x in top_10['NAV']],
         [f"{x:+.2f}%" for x in top_10['close_price_change_percent']],
@@ -273,15 +274,15 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
 
 🔸 <b style='font-size:18px'>طلا ۲۴ عیار</b>
 <b>قیمت:</b> {gold_24_price:,.0f}
-تغییر: {gold_24['close_price_change_percent'] :+.2f}% | حباب: {gold_24['Bubble'] :+.2f}%
+تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
 
 🔸 <b style='font-size:18px'>طلا ۱۸ عیار</b>
 <b>قیمت:</b> {gold_18_price:,.0f}
-تغییر: {gold_18['close_price_change_percent'] :+.2f}% | حباب: {gold_18['Bubble'] :+.2f}%
+تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
 
 🪙 <b style='font-size:18px'>سکه امامی طرح جدید</b>
 <b>قیمت:</b> {sekeh_price:,.0f}
-تغییر: {sekeh['close_price_change_percent'] :+.2f}% | حباب: {sekeh['Bubble'] :+.2f}%
+تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>"""
