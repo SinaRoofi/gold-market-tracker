@@ -107,7 +107,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 
     top_10 = df_sorted.head(10)
     
-    table_header = ['نماد', 'قیمت', 'NAV', 'تغییر %', 'حباب %', 'اختلاف سرانه', 'پول حقیقی(م.ت)', 'ارزش معاملات(م.ت)']
+    table_header = ['نماد', 'قیمت', 'NAV', 'تغییر %', 'حباب %', 'اختلاف سرانه', 'پول حقیقی', 'ارزش معاملات']
     table_cells = [
         top_10.index.tolist(),  # استفاده از index اصلی (symbol)
         [f"{x:,}" for x in top_10['close_price']],
@@ -288,3 +288,4 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>"""
 
     return caption
+
