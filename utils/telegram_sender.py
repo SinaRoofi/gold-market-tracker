@@ -164,7 +164,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         width=1400,
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
-            text="<b>📊 نقشه بازار و ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
+            text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
             font=dict(size=32, color='#FFD700', family="Vazirmatn, Arial"),
             x=0.5,
             y=1.0,
@@ -288,4 +288,5 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>"""
 
     return caption
+
 
