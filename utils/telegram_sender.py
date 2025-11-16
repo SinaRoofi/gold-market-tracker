@@ -1,8 +1,3 @@
-"""
-ماژول ارسال داده‌ها به تلگرام
-یک تصویر بزرگ: نقشه بازار + جدول 10 صندوق اول + کپشن بهبود یافته
-"""
-
 import io
 import logging
 import plotly.graph_objects as go
@@ -10,9 +5,9 @@ from plotly.subplots import make_subplots
 from persiantools.jdatetime import JalaliDateTime
 import pytz
 import requests
+from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
-
 
 def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_yesterday, gold_time, yesterday_close):
     if data is None:
@@ -54,7 +49,6 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_y
         return False
 
 
-
 def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
     fig = make_subplots(
         rows=2, cols=1,
@@ -67,7 +61,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     df_reset = Fund_df.reset_index()
     df_reset["color_value"] = df_reset["close_price_change_percent"]
 
-    # فونت ۲ واحد بزرگ‌تر
     FONT_BIG = 19
 
     def create_text(row):
@@ -113,11 +106,8 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     )
 
     # ------------- جدول 10 صندوق -------------
-
     top_10 = df_sorted.head(10)
-
     table_header = ['نماد', 'قیمت', 'NAV', 'تغییر %', 'حباب %', 'ارزش معاملات(م.ت)']
-    
     table_cells = [
         top_10['symbol'].tolist(),
         [f"{x:,}" for x in top_10['close_price']],
@@ -163,7 +153,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         row=2, col=1
     )
 
-    # -------- عنوان + بزرگ‌تر شدن ۴ واحد --------
     fig.update_layout(
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
@@ -172,7 +161,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
             text="<b>📊 نقشه بازار و ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
-            font=dict(size=32, color='#FFD700', family="Vazirmatn, Arial"),  # بزرگ‌تر شده
+            font=dict(size=32, color='#FFD700', family="Vazirmatn, Arial"),
             x=0.5,
             y=1.0,
             xanchor="center",
@@ -181,8 +170,26 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         showlegend=False
     )
 
-    return fig.to_image(format="png", width=1400, height=1400)
+    # ---------- تبدیل به تصویر و اضافه کردن واترمارک ----------
+    img_bytes = fig.to_image(format="png", width=1400, height=1400)
+    img = Image.open(io.BytesIO(img_bytes))
+    draw = ImageDraw.Draw(img)
 
+    font_size = 40
+    try:
+        font = ImageFont.truetype("Vazirmatn.ttf", font_size)
+    except:
+        font = ImageFont.load_default()
+
+    watermark_text = "Gold_Iran_Market"
+    textwidth, textheight = draw.textsize(watermark_text, font=font)
+    x = img.width - textwidth - 20
+    y = img.height - textheight - 20
+    draw.text((x, y), watermark_text, font=font, fill=(255,255,255,180))  # شفافیت برای واترمارک
+
+    output = io.BytesIO()
+    img.save(output, format="PNG")
+    return output.getvalue()
 
 
 def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yesterday_close):
@@ -196,7 +203,6 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
     dollar_change = ((dollar_prices['last_trade'] - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
     gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday else 0
 
-    # ترتیب جدید: شمش → ۲۴ → ۱۸ → سکه
     shams = data['dfp'].loc['شمش-طلا']
     gold_24 = data['dfp'].loc['طلا-گرم-24-عیار']
     gold_18 = data['dfp'].loc['طلا-گرم-18-عیار']
@@ -222,10 +228,8 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
   تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
 
 🪙 سکه امامی: {sekeh['close_price']:,}
-  تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%"""
+  تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
+
+🔗 <a href='https://t.me/Gold_Iran_Market'>Gold_Iran_Market</a>"""
 
     return caption
-
-
-
-
