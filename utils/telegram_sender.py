@@ -245,19 +245,17 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
     gold_18_price = gold_18['close_price'] / 10
     sekeh_price = sekeh['close_price'] / 10
 
-    caption = f"""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    caption = f"""
 📅 <b>{current_time}</b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 💵 <b>بازار ارز</b>
-
 💰 آخرین معامله: <b>{dollar_prices['last_trade']:,} تومان ({dollar_change:+.2f}%)</b> 
 🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔆 <b>اونس طلا</b>
 <b>قیمت:</b> ${gold_price:,.2f} ({gold_change:+.2f}%)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 <b>آمار صندوق‌های طلا</b>
 
 💰 ارزش معاملات: {total_value:,.0f} میلیارد تومان
@@ -265,7 +263,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
 📈 آخرین قیمت: {avg_price:,.0f} تومان
 📊 درصد آخرین قیمت: {avg_change_percent:+.2f}%
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📈 <b style='font-size:18px'>✨ شمش طلا</b>
 <b>قیمت:</b> {shams['close_price']:,}
 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
@@ -284,8 +282,9 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
 <b>قیمت:</b> {sekeh_price:,.0f}
 تغییر: {sekeh['close_price_change_percent'] :+.2f}% | حباب: {sekeh['Bubble'] :+.2f}%
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>"""
 
     return caption
+
 
