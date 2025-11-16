@@ -172,20 +172,23 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 
     # ---------- تبدیل به تصویر و اضافه کردن واترمارک ----------
     img_bytes = fig.to_image(format="png", width=1400, height=1400)
-    img = Image.open(io.BytesIO(img_bytes))
+    img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
     draw = ImageDraw.Draw(img)
 
     font_size = 40
     try:
         font = ImageFont.truetype("Vazirmatn.ttf", font_size)
-    except:
+    except Exception:
         font = ImageFont.load_default()
 
     watermark_text = "Gold_Iran_Market"
-    textwidth, textheight = draw.textsize(watermark_text, font=font)
+    bbox = draw.textbbox((0, 0), watermark_text, font=font)
+    textwidth = bbox[2] - bbox[0]
+    textheight = bbox[3] - bbox[1]
+
     x = img.width - textwidth - 20
     y = img.height - textheight - 20
-    draw.text((x, y), watermark_text, font=font, fill=(255,255,255,180))  # شفافیت برای واترمارک
+    draw.text((x, y), watermark_text, font=font, fill=(255, 255, 255, 180))
 
     output = io.BytesIO()
     img.save(output, format="PNG")
