@@ -247,7 +247,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
 
     caption = f"""
 📅 <b>{current_time}</b>
-
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💵 <b>بازار ارز</b>
 💰 آخرین معامله: <b>{dollar_prices['last_trade']:,} تومان ({dollar_change:+.2f}%)</b> 
 🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
@@ -286,5 +286,6 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>"""
 
     return caption
+
 
 
