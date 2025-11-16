@@ -58,25 +58,23 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         specs=[[{"type": "treemap"}], [{"type": "table"}]]
     )
 
-    # ------------- TreeMap ----------------
     df_reset = Fund_df.reset_index()
     df_reset["color_value"] = df_reset["close_price_change_percent"]
 
     FONT_BIG = 19
 
     def create_text(row):
-        symbol = row['symbol']
         if row['value'] > 100:
-            return (f"<b style='font-size:{FONT_BIG+3}px'>{symbol}</b><br>"
+            return (f"<b style='font-size:{FONT_BIG+3}px'>{row.name}</b><br>"
                     f"<span style='font-size:{FONT_BIG}px'>{row['close_price']:,}</span><br>"
                     f"<span style='font-size:{FONT_BIG-1}px'>{row['close_price_change_percent']:+.2f}%</span><br>"
                     f"<span style='font-size:{FONT_BIG-2}px'>حباب: {row['nominal_bubble']:+.2f}%</span>")
         elif row['value'] > 50:
-            return (f"<b style='font-size:{FONT_BIG+1}px'>{symbol}</b><br>"
+            return (f"<b style='font-size:{FONT_BIG+1}px'>{row.name}</b><br>"
                     f"<span style='font-size:{FONT_BIG-1}px'>{row['close_price']:,}</span><br>"
                     f"<span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>")
         else:
-            return f"<b style='font-size:{FONT_BIG}px'>{symbol}</b><br><span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>"
+            return f"<b style='font-size:{FONT_BIG}px'>{row.name}</b><br><span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>"
 
     df_reset["display_text"] = df_reset.apply(create_text, axis=1)
     df_sorted = df_reset.sort_values("value", ascending=False)
@@ -89,7 +87,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     
     fig.add_trace(
         go.Treemap(
-            labels=df_sorted["symbol"],
+            labels=df_sorted.index,
             parents=[""] * len(df_sorted),
             values=df_sorted["value"],
             text=df_sorted["display_text"],
@@ -107,9 +105,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         row=1, col=1
     )
 
-    # ------------- جدول 10 صندوق -------------
     top_10 = df_sorted.head(10)
-    
     table_header = ['نماد', 'قیمت', 'NAV', 'تغییر %', 'حباب %', 'اختلاف سرانه', 'پول حقیقی(م.ت)', 'ارزش معاملات(م.ت)']
     table_cells = [
         top_10.index.tolist(),
@@ -177,11 +173,9 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         showlegend=False
     )
 
-    # ---------- تبدیل به تصویر با کیفیت پایین‌تر و اضافه کردن واترمارک ----------
     img_bytes = fig.to_image(format="png", width=1200, height=1200)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
     
-    # واترمارک قطری در مرکز تصویر
     watermark_layer = Image.new('RGBA', img.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(watermark_layer)
 
@@ -192,23 +186,15 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         font = ImageFont.load_default()
 
     watermark_text = "Gold_Iran_Market"
-    
-    # محاسبه موقعیت مرکز
     bbox = draw.textbbox((0, 0), watermark_text, font=font)
     textwidth = bbox[2] - bbox[0]
     textheight = bbox[3] - bbox[1]
-    
-    # چرخاندن واترمارک
     txt_img = Image.new('RGBA', (textwidth + 40, textheight + 40), (255, 255, 255, 0))
     txt_draw = ImageDraw.Draw(txt_img)
     txt_draw.text((20, 20), watermark_text, font=font, fill=(255, 255, 255, 100))
-    
     rotated = txt_img.rotate(45, expand=True)
-    
-    # قرار دادن در مرکز
     x = (img.width - rotated.width) // 2
     y = (img.height - rotated.height) // 2
-    
     watermark_layer.paste(rotated, (x, y), rotated)
     img = Image.alpha_composite(img, watermark_layer)
 
@@ -222,7 +208,6 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
     now = JalaliDateTime.now(tehran_tz)
     current_time = now.strftime("%Y/%m/%d - %H:%M:%S")
     
-    # استخراج فقط ساعت از gold_time
     try:
         dollar_time = gold_time.strftime("%H:%M") if gold_time else "نامشخص"
     except:
@@ -231,75 +216,74 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
     total_value = data['Fund_df']['value'].sum()
     total_pol = data['Fund_df']['pol_hagigi'].sum()
     
-    # محاسبه میانگین قیمت و تغییر درصد صندوق‌ها
     avg_price = data['Fund_df']['close_price'].mean()
     avg_change_percent = data['Fund_df']['close_price_change_percent'].mean()
 
     dollar_change = ((dollar_prices['last_trade'] - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
     gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday else 0
 
-    # استخراج اطلاعات از دیتافریم
     shams = data['dfp'].loc['شمش-طلا']
     gold_24 = data['dfp'].loc['طلا-گرم-24-عیار']
     gold_18 = data['dfp'].loc['طلا-گرم-18-عیار']
     sekeh = data['dfp'].loc['سکه-امامی-طرح-جدید']
     
-    # دلار و اونس محاسباتی از دیتافریم
     try:
         dollar_calc = shams['pricing_dollar']
         dollar_diff = dollar_calc - dollar_prices['last_trade']
-        dollar_diff_percent = (dollar_diff / dollar_prices['last_trade']) * 100 if dollar_prices['last_trade'] != 0 else 0
     except:
         dollar_calc = 0
         dollar_diff = 0
-        dollar_diff_percent = 0
     
     try:
         ounce_calc = shams['pricing_Gold']
         ounce_diff = ounce_calc - gold_price
-        ounce_diff_percent = (ounce_diff / gold_price) * 100 if gold_price != 0 else 0
     except:
         ounce_calc = 0
         ounce_diff = 0
-        ounce_diff_percent = 0
 
-    caption = f"""━━━━━━━━━━━━━━━━━━━━━
+    gold_24_price = gold_24['close_price'] / 10
+    gold_18_price = gold_18['close_price'] / 10
+    sekeh_price = sekeh['close_price'] / 10
+
+    caption = f"""
 📅 <b>{current_time}</b>
-━━━━━━━━━━━━━━━━━━━━━
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💵 <b>بازار ارز</b>
-⏰ ساعت: {dollar_time}
-💰 آخرین معامله: <b>{dollar_prices['last_trade']:,}</b> تومان ({dollar_change:+.2f}%)
+💰 آخرین معامله: <b>{dollar_prices['last_trade']:,} تومان ({dollar_change:+.2f}%)</b> 
 🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔆 <b>اونس طلا</b>
+<b>قیمت:</b> ${gold_price:,.2f} ({gold_change:+.2f}%)
 
-🔆 <b>اونس جهانی طلا</b>
-💎 قیمت: ${gold_price:,.2f} ({gold_change:+.2f}%)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 <b>آمار صندوق‌های طلا</b>
 
-━━━━━━━━━━━━━━━━━━━━━
-📊 <b>آمار بازار صندوق‌های طلا</b>
 💰 ارزش معاملات: {total_value:,.0f} میلیارد تومان
 💸 ورود پول حقیقی: {total_pol:+,.0f} میلیارد تومان
-📈 میانگین قیمت صندوق‌ها: {avg_price:,.0f} تومان
-📊 میانگین تغییر صندوق‌ها: {avg_change_percent:+.2f}%
+📈 آخرین قیمت: {avg_price:,.0f} تومان
+📊 درصد آخرین قیمت: {avg_change_percent:+.2f}%
 
-━━━━━━━━━━━━━━━━━━━━━
-📈 <b>قیمت محصولات طلا</b>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📈 <b style='font-size:18px'>✨ شمش طلا</b>
+<b>قیمت:</b> {shams['close_price']:,}
+تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
+💵 دلار محاسباتی: {dollar_calc:,.0f} ({dollar_diff:+,.0f})
+🔆 اونس محاسباتی: ${ounce_calc:,.0f} ({ounce_diff:+.0f})
 
-✨ <b>شمش طلا</b>
-💰 قیمت: {shams['close_price']:,} | تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
-💵 دلار محاسباتی: {dollar_calc:,.0f} ({dollar_diff:+,.0f} | {dollar_diff_percent:+.2f}%)
-🔆 اونس محاسباتی: ${ounce_calc:,.2f} ({ounce_diff:+.2f} | {ounce_diff_percent:+.2f}%)
+🔸 <b style='font-size:18px'>طلا ۲۴ عیار</b>
+<b>قیمت:</b> {gold_24_price:,.0f}
+تغییر: {gold_24['close_price_change_percent'] :+.2f}% | حباب: {gold_24['Bubble'] :+.2f}%
 
-🔸 <b>طلا ۲۴ عیار</b>
-💰 قیمت: {gold_24['close_price']:,} | تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
+🔸 <b style='font-size:18px'>طلا ۱۸ عیار</b>
+<b>قیمت:</b> {gold_18_price:,.0f}
+تغییر: {gold_18['close_price_change_percent'] :+.2f}% | حباب: {gold_18['Bubble'] :+.2f}%
 
-🔸 <b>طلا ۱۸ عیار</b>
-💰 قیمت: {gold_18['close_price']:,} | تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
+🪙 <b style='font-size:18px'>سکه امامی طرح جدید</b>
+<b>قیمت:</b> {sekeh_price:,.0f}
+تغییر: {sekeh['close_price_change_percent'] :+.2f}% | حباب: {sekeh['Bubble'] :+.2f}%
 
-🪙 <b>سکه امامی طرح جدید</b>
-💰 قیمت: {sekeh['close_price']:,} | تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
-
-━━━━━━━━━━━━━━━━━━━━━
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>"""
 
     return caption
