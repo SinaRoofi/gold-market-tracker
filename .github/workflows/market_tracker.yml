@@ -1,6 +1,14 @@
 name: Gold Market Tracker
 
 on:
+  
+  schedule:
+    # 11:59 → 17:59 IR  (08:29 → 14:29 UTC), every 5 minutes
+    - cron: "29-59/5 8 * * 6,0,1,2,3"
+    - cron: "4-59/5 9-13 * * 6,0,1,2,3"
+    - cron: "4-29/5 14 * * 6,0,1,2,3"
+
+
   workflow_dispatch:
 
 jobs:
