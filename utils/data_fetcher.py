@@ -5,6 +5,7 @@ import pytz
 from datetime import datetime, timedelta
 from telethon import TelegramClient
 import requests
+from utils.gold_cache import get_gold_yesterday
 
 logger = logging.getLogger(__name__)
 
@@ -280,3 +281,4 @@ async def fetch_market_data():
     except Exception as e:
         logger.error(f"خطا در دریافت داده‌های بازار: {e}")
         return None
+
