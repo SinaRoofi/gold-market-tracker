@@ -1,6 +1,5 @@
 from .data_fetcher import (
     fetch_gold_price_today,
-    fetch_gold_price_yesterday,
     fetch_dollar_prices,
     fetch_yesterday_close,
     fetch_market_data,
@@ -12,7 +11,6 @@ from .holidays import is_iranian_holiday, is_working_day
 
 __all__ = [
     "fetch_gold_price_today",
-    "fetch_gold_price_yesterday",
     "fetch_dollar_prices",
     "fetch_yesterday_close",
     "fetch_market_data",
@@ -21,3 +19,4 @@ __all__ = [
     "is_iranian_holiday",
     "is_working_day",
 ]
+
