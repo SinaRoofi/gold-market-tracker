@@ -1,14 +1,12 @@
 import os
 import json
 import logging
-from datetime import datetime, date
-import pytz
+from datetime import datetime
 import requests
 
 logger = logging.getLogger(__name__)
 
 CACHE_FILE = "gold_yesterday_cache.json"
-API_KEY = "2f7b4b6c885940fbb1705a8520d9b540"
 
 def get_cached_gold_yesterday():
     """خواندن قیمت طلای دیروز از کش"""
@@ -19,9 +17,8 @@ def get_cached_gold_yesterday():
         with open(CACHE_FILE, 'r', encoding='utf-8') as f:
             cache_data = json.load(f)
         
-        # بررسی تاریخ کش
-        tehran_tz = pytz.timezone('Asia/Tehran')
-        today = datetime.now(tehran_tz).date()
+        # بررسی تاریخ کش - از تاریخ UTC استفاده می‌کنیم
+        today = datetime.utcnow().date()
         cache_date = datetime.fromisoformat(cache_data['date']).date()
         
         # اگر کش امروز است، استفاده کن
@@ -39,13 +36,20 @@ def get_cached_gold_yesterday():
 def fetch_and_cache_gold_yesterday():
     """دریافت قیمت طلای دیروز از API و ذخیره در کش"""
     try:
+        # خواندن API Key از متغیر محیطی
+        api_key = os.getenv('TWELVEDATA_API_KEY')
+        
+        if not api_key:
+            logger.error("❌ TWELVEDATA_API_KEY در متغیرهای محیطی تنظیم نشده است!")
+            return None
+        
         logger.info("📡 دریافت قیمت طلای دیروز از Twelve Data API...")
         
-        url = f"https://api.twelvedata.com/time_series"
+        url = "https://api.twelvedata.com/time_series"
         params = {
             'symbol': 'XAU/USD',
             'interval': '1day',
-            'apikey': API_KEY,
+            'apikey': api_key,
             'outputsize': 2
         }
         
@@ -57,11 +61,10 @@ def fetch_and_cache_gold_yesterday():
         if "values" in data and len(data["values"]) >= 2:
             previous_close = float(data["values"][1]["close"])
             
-            # ذخیره در کش
-            tehran_tz = pytz.timezone('Asia/Tehran')
+            # ذخیره در کش با تاریخ UTC
             cache_data = {
                 'price': previous_close,
-                'date': datetime.now(tehran_tz).isoformat(),
+                'date': datetime.utcnow().isoformat(),
                 'source': 'Twelve Data API'
             }
             
