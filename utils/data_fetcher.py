@@ -5,12 +5,11 @@ import pytz
 from datetime import datetime, timedelta
 from telethon import TelegramClient
 import requests
-from utils.gold_cache import get_gold_yesterday
 
 logger = logging.getLogger(__name__)
 
 # ==============================================================================
-# توابع کمکی استخراج قیمت‌ها (بر اساس کدهای ارسالی شما)
+# توابع کمکی استخراج قیمت‌ها
 # ==============================================================================
 
 def extract_prices_new(text):
@@ -71,17 +70,15 @@ def extract_gold_price(text):
 # ==============================================================================
 
 async def fetch_gold_price_today(client: TelegramClient):
-    """دریافت قیمت لحظه‌ای اونس طلای امروز (مطابق کد ارسالی شما)"""
+    """دریافت قیمت لحظه‌ای اونس طلای امروز"""
     try:
         channel_username = "XAUUSD_ONE"
         tehran_tz = pytz.timezone("Asia/Tehran")
 
-        # دریافت 5 پیام آخر
         messages = await client.get_messages(channel_username, limit=5)
 
         for message in messages:
             if message.text and "XAUUSD" in message.text:
-                # استفاده از تابع استخراج شما
                 price = extract_gold_price(message.text)
                 
                 if price:
@@ -93,88 +90,8 @@ async def fetch_gold_price_today(client: TelegramClient):
         logger.error(f"خطا در دریافت قیمت طلای امروز: {e}")
         return None, None
 
-async def fetch_gold_price_yesterday(client: TelegramClient):
-    """
-    دریافت قیمت طلای دیروز - جستجوی عمیق تا 25000 پیام
-    """
-    try:
-        channel_username = "XAUUSD_ONE"
-        tehran_tz = pytz.timezone("Asia/Tehran")
-        
-        # دریافت آخرین پیام برای تعیین تاریخ مرجع
-        latest_message = await client.get_messages(channel_username, limit=1)
-        if not latest_message:
-            logger.warning("⚠️ کانال طلا پیام جدیدی ندارد.")
-            return 0
-            
-        today_ref_time = latest_message[0].date.astimezone(tehran_tz)
-        yesterday = today_ref_time - timedelta(days=1)
-        yesterday_start = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
-        yesterday_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=999999)
-        
-        logger.info(f"🔍 جستجوی قیمت طلای دیروز برای تاریخ: {yesterday_start.strftime('%Y-%m-%d')}")
-        
-        # جستجوی دسته‌ای - حداکثر 25000 پیام
-        batch_size = 500
-        max_batches = 50  # 50 * 500 = 25000 پیام
-        offset_id = 0
-        yesterday_prices = []
-        
-        for batch_num in range(max_batches):
-            messages = await client.get_messages(
-                channel_username, 
-                limit=batch_size, 
-                offset_id=offset_id
-            )
-            
-            if not messages:
-                logger.info(f"⚠️ به انتهای کانال رسیدیم. {batch_num * batch_size} پیام بررسی شد.")
-                break
-            
-            offset_id = messages[-1].id
-            
-            for message in messages:
-                if not message.text or "XAUUSD" not in message.text:
-                    continue
-                    
-                msg_time = message.date.astimezone(tehran_tz)
-                
-                # اگر به پیام‌های قدیمی‌تر از دیروز رسیدیم، توقف
-                if msg_time < yesterday_start:
-                    logger.info(f"✅ به پیام‌های قبل از دیروز رسیدیم در batch {batch_num}")
-                    break
-                
-                # اگر پیام مربوط به دیروز است
-                if yesterday_start <= msg_time <= yesterday_end:
-                    price = extract_gold_price(message.text)
-                    if price:
-                        yesterday_prices.append((price, msg_time))
-            
-            # اگر قیمت پیدا شد یا به پیام‌های قدیمی‌تر رسیدیم، خروج
-            if yesterday_prices or (messages and messages[-1].date.astimezone(tehran_tz) < yesterday_start):
-                break
-                
-            # لاگ پیشرفت
-            if (batch_num + 1) % 10 == 0:
-                logger.info(f"⏳ {(batch_num + 1) * batch_size} پیام بررسی شد...")
-        
-        if yesterday_prices:
-            # مرتب‌سازی بر اساس زمان و انتخاب آخرین قیمت
-            yesterday_prices.sort(key=lambda x: x[1], reverse=True)
-            final_price = yesterday_prices[0][0]
-            final_time = yesterday_prices[0][1]
-            logger.info(f"✅ قیمت طلای دیروز: ${final_price:,.2f} در ساعت {final_time.strftime('%H:%M:%S')}")
-            return final_price
-        
-        logger.warning("⚠️ قیمت طلای دیروز پیدا نشد.")
-        return 0
-        
-    except Exception as e:
-        logger.error(f"خطا در دریافت قیمت طلای دیروز: {e}", exc_info=True)
-        return 0
-
 async def fetch_dollar_prices(client: TelegramClient):
-    """دریافت قیمت‌های دلار از کانال با منطق جستجوی دقیق‌تر (بر اساس کد کاربر)."""
+    """دریافت قیمت‌های دلار از کانال"""
     try:
         channel_username = "dollar_tehran3bze"
         tehran_tz = pytz.timezone("Asia/Tehran")
@@ -224,7 +141,7 @@ async def fetch_dollar_prices(client: TelegramClient):
         return None
 
 async def fetch_yesterday_close(client: TelegramClient):
-    """جستجوی قیمت بسته شدن دلار دیروز با جستجوی دسته‌ای (بر اساس منطق کاربر)"""
+    """جستجوی قیمت بسته شدن دلار دیروز"""
     try:
         channel_username = "dollar_tehran3bze"
         tehran_tz = pytz.timezone("Asia/Tehran")
@@ -266,7 +183,7 @@ async def fetch_yesterday_close(client: TelegramClient):
         return 0
 
 async def fetch_market_data():
-    """دریافت داده‌های بازار (بدون تغییر)"""
+    """دریافت داده‌های بازار"""
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
         url1 = "https://rahavard365.com/api/v2/gold/intrinsic-values"
@@ -281,4 +198,3 @@ async def fetch_market_data():
     except Exception as e:
         logger.error(f"خطا در دریافت داده‌های بازار: {e}")
         return None
-
