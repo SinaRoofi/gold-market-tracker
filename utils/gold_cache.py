@@ -59,7 +59,7 @@ def fetch_and_cache_gold_yesterday():
         
         # استخراج قیمت بسته‌شدن روز قبل
         if "values" in data and len(data["values"]) >= 2:
-            previous_close = float(data["values"][1]["close"])
+            previous_close = float(data["values"][0]["close"])
             
             # ذخیره در کش با تاریخ UTC
             cache_data = {
