@@ -1,43 +1,41 @@
 name: Gold Market Tracker
 
 on:
-  workflow_dispatch:  
+  workflow_dispatch:
 
 jobs:
   track-market:
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
         cache: 'pip'
-        
+
     - name: Cache Python dependencies
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: pip-deps-${{ hashFiles('**/requirements.txt') }}
         restore-keys: pip-deps-
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-    - name: Create session directory
-      run: mkdir -p sessions
-      
-    - name: Restore Telethon session
+
+    - name: Restore gold cache
       uses: actions/cache@v4
       with:
-        path: sessions/
-        key: telethon-session
-        restore-keys: telethon-session-
-        
+        path: gold_yesterday_cache.json
+        key: gold-yesterday-cache
+        restore-keys: gold-yesterday-cache
+
     - name: Run market tracker
       env:
         TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
@@ -46,9 +44,14 @@ jobs:
         TELETHON_API_ID: ${{ secrets.TELETHON_API_ID }}
         TELETHON_API_HASH: ${{ secrets.TELETHON_API_HASH }}
         TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
-      run: |
-        python main.py
-        
+      run: python main.py
+
+    - name: Save gold cache
+      uses: actions/cache@v4
+      with:
+        path: gold_yesterday_cache.json
+        key: gold-yesterday-cache
+
     - name: Upload logs on failure
       if: failure()
       uses: actions/upload-artifact@v4
