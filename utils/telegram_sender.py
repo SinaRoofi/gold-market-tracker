@@ -61,7 +61,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
 
-    FONT_BIG = 19
+    FONT_BIG = 25  # بزرگ‌تر برای موبایل
 
     def create_text(row):
         if row['value'] > 100:
@@ -87,7 +87,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     
     fig.add_trace(
         go.Treemap(
-            labels=df_sorted.index,  # استفاده از index اصلی (symbol)
+            labels=df_sorted.index,
             parents=[""] * len(df_sorted),
             values=df_sorted["value"],
             text=df_sorted["display_text"],
@@ -109,7 +109,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     
     table_header = ['نماد', 'قیمت', 'NAV', 'تغییر %', 'حباب %', 'اختلاف سرانه', 'پول حقیقی', 'ارزش معاملات']
     table_cells = [
-        top_10.index.tolist(),  # استفاده از index اصلی (symbol)
+        top_10.index.tolist(),
         [f"{x:,}" for x in top_10['close_price']],
         [f"{x:,}" for x in top_10['NAV']],
         [f"{x:+.2f}%" for x in top_10['close_price_change_percent']],
@@ -144,14 +144,14 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 fill_color='#242F3D',
                 align='center',
                 font=dict(color='white', size=FONT_BIG-3, family="Vazirmatn, Arial"),
-                height=32
+                height=40  # کمی بلندتر برای موبایل
             ),
             cells=dict(
                 values=table_cells,
                 fill_color=cell_colors,
                 align='center',
                 font=dict(color='white', size=FONT_BIG-3, family="Vazirmatn, Arial"),
-                height=35
+                height=45
             )
         ),
         row=2, col=1
@@ -160,12 +160,12 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     fig.update_layout(
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
-        height=1400,
-        width=1400,
-        margin=dict(t=90, l=10, r=10, b=10),
+        height=2000,  # بزرگ‌تر برای موبایل
+        width=2000,   # بزرگ‌تر برای موبایل
+        margin=dict(t=100, l=10, r=10, b=10),
         title=dict(
             text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
-            font=dict(size=32, color='#FFD700', family="Vazirmatn, Arial"),
+            font=dict(size=36, color='#FFD700', family="Vazirmatn, Arial"),
             x=0.5,
             y=1.0,
             xanchor="center",
@@ -174,29 +174,30 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         showlegend=False
     )
 
-    img_bytes = fig.to_image(format="png", width=1200, height=1200)
+    img_bytes = fig.to_image(format="png", width=2000, height=2000)
+
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
     
+    # --- واترمارک بزرگ و واضح ---
     watermark_layer = Image.new('RGBA', img.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(watermark_layer)
 
-    font_size = 60
+    font_size = 200
     try:
         font = ImageFont.truetype("Vazirmatn.ttf", font_size)
-    except Exception:
+    except:
         font = ImageFont.load_default()
 
     watermark_text = "Gold_Iran_Market"
-    bbox = draw.textbbox((0, 0), watermark_text, font=font)
-    textwidth = bbox[2] - bbox[0]
-    textheight = bbox[3] - bbox[1]
-    txt_img = Image.new('RGBA', (textwidth + 40, textheight + 40), (255, 255, 255, 0))
+    txt_img = Image.new('RGBA', (img.width, font_size + 20), (255, 255, 255, 0))
     txt_draw = ImageDraw.Draw(txt_img)
-    txt_draw.text((20, 20), watermark_text, font=font, fill=(255, 255, 255, 100))
+    txt_draw.text((0, 0), watermark_text, font=font, fill=(255, 255, 255, 120))
+
     rotated = txt_img.rotate(45, expand=True)
     x = (img.width - rotated.width) // 2
     y = (img.height - rotated.height) // 2
     watermark_layer.paste(rotated, (x, y), rotated)
+
     img = Image.alpha_composite(img, watermark_layer)
 
     output = io.BytesIO()
@@ -282,11 +283,9 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
 
 🪙 <b style='font-size:18px'>سکه امامی طرح جدید</b>
 <b>قیمت:</b> {sekeh_price:,.0f}
-تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
+تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>"""
 
     return caption
-
-
