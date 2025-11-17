@@ -9,11 +9,11 @@ from telethon.sessions import StringSession
 
 from utils.data_fetcher import (
     fetch_gold_price_today,
-    fetch_gold_price_yesterday,
     fetch_dollar_prices,
     fetch_yesterday_close,
     fetch_market_data
 )
+from utils.gold_cache import get_gold_yesterday  # ✅ اضافه شد
 from utils.data_processor import process_market_data
 from utils.telegram_sender import send_to_telegram
 from utils.holidays import is_iranian_holiday
@@ -63,9 +63,10 @@ async def main():
                 gold_today = 4000
             logger.info(f"✅ قیمت طلای امروز: ${gold_today:,.2f}")
 
-            # 2. دریافت قیمت طلای دیروز
+            # 2. دریافت قیمت طلای دیروز از API (با کش)
             logger.info("📊 دریافت قیمت اونس طلای دیروز...")
-            gold_yesterday = await fetch_gold_price_yesterday(client)
+            gold_yesterday = get_gold_yesterday()  # ✅ تغییر یافت - دیگه await نداره
+            
             if gold_yesterday is None:
                 logger.warning("⚠️ نتوانستیم قیمت دیروز را بگیریم، از مقدار پیش‌فرض استفاده می‌کنیم")
                 gold_yesterday = 4085.06
@@ -94,7 +95,7 @@ async def main():
             # 4. دریافت آخرین معامله دیروز
             logger.info("📈 دریافت قیمت بسته دیروز...")
             yesterday_close = await fetch_yesterday_close(client)
-            if yesterday_close is None:
+            if yesterday_close is None or yesterday_close == 0:
                 logger.warning("⚠️ قیمت بسته دیروز موجود نیست")
                 yesterday_close = 1130000
             else:
@@ -118,7 +119,6 @@ async def main():
                 gold_yesterday=gold_yesterday
             )
             
-            # FIXED: بررسی اینکه آیا پردازش موفقیت‌آمیز بوده و None برنگشته است.
             if processed_data is None:
                 logger.error("❌ پردازش داده‌ها ناموفق بود، ارسال انجام نمی‌شود.")
                 return
@@ -127,7 +127,6 @@ async def main():
 
             # 7. ارسال به تلگرام
             logger.info("📤 ارسال به تلگرام...")
-            # FIXED: حذف 'await' از تابع غیر async
             success = send_to_telegram(
                 bot_token=telegram_bot_token,
                 chat_id=telegram_chat_id,
@@ -154,6 +153,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
-
