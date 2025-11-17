@@ -68,7 +68,7 @@ async def main():
             gold_yesterday = await fetch_gold_price_yesterday(client)
             if gold_yesterday is None:
                 logger.warning("⚠️ نتوانستیم قیمت دیروز را بگیریم، از مقدار پیش‌فرض استفاده می‌کنیم")
-                gold_yesterday = 4169
+                gold_yesterday = 4085.06
             else:
                 logger.info(f"✅ قیمت طلای دیروز: ${gold_yesterday:,.2f}")
 
@@ -154,5 +154,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
