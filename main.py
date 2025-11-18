@@ -17,7 +17,7 @@ from utils.gold_cache import get_gold_yesterday
 from utils.data_processor import process_market_data
 from utils.telegram_sender import send_to_telegram
 from utils.holidays import is_iranian_holiday
-from utils.data_storage import save_market_snapshot  # ✅ جدید
+from utils.data_storage import save_market_snapshot
 
 logging.basicConfig(
     level=logging.INFO,
@@ -81,6 +81,7 @@ async def main():
                 logger.warning("⚠️ قیمت دلار موجود نیست، مقادیر پیش‌فرض استفاده می‌شود")
                 dollar_prices = {'last_trade': 1130000, 'bid': 1129050, 'ask': 1130000}
             else:
+                # اطمینان از عدد بودن last_trade
                 if dollar_prices.get('last_trade') is None:
                     dollar_prices['last_trade'] = 116000
                     logger.warning("⚠️ قیمت آخرین معامله دلار موجود نیست، مقدار پیش‌فرض استفاده شد")
