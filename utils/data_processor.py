@@ -298,7 +298,7 @@ def calculate_values(dfp, Gold, last_trade):
     # (برای کوتاهی کد، فقط چند مورد را نمایش می‌دهم)
     for i in range(len(dfp)):
         if i < 5:
-            factor = [0.75, 0.995, 0.995,7.3197,7.3197]][i]
+            factor = [0.75, 0.995, 0.995,7.3197,7.3197][i]
             multiplier = [10, 10, 1,10,10][i]
             dfp.loc[dfp.index[i], "pricing_dollar"] = (
                 (dfp.loc[dfp.index[i], "close_price"] * 31.1034768)
@@ -330,4 +330,5 @@ def calculate_values(dfp, Gold, last_trade):
     ]
 
     return dfp
+
 
