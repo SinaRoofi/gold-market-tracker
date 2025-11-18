@@ -141,11 +141,11 @@ def create_combined_image(
     ]
     table_cells = [
         top_10.index.tolist(),
-        [f"{x:,}" for x in top_10["close_price"]],
-        [f"{x:,}" for x in top_10["NAV"]],
+        [f"{x:,.0f}" for x in top_10["close_price"]],
+        [f"{x:,.0f}" for x in top_10["NAV"]],
         [f"{x:+.2f}%" for x in top_10["close_price_change_percent"]],
         [f"{x:+.2f}%" for x in top_10["nominal_bubble"]],
-        [f"{x:+.3f}" for x in top_10["ekhtelaf_sarane"]],
+        [f"{x:+.2f}" for x in top_10["ekhtelaf_sarane"]],
         [f"{x:+,.0f}" for x in top_10["pol_hagigi"]],
         [f"{x:,.0f}" for x in top_10["value"]],
     ]
