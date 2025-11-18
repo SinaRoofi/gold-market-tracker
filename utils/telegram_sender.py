@@ -364,14 +364,6 @@ def create_simple_caption(
         dollar_calc_sekeh = 0
         dollar_diff_sekeh = 0
 
-    # یافتن کمترین و بیشترین حباب
-    min_bubble_row = data["Fund_df"].loc[data["Fund_df"]["nominal_bubble"].idxmin()]
-    max_bubble_row = data["Fund_df"].loc[data["Fund_df"]["nominal_bubble"].idxmax()]
-    
-    # دومین کمترین و بیشترین حباب
-    sorted_by_bubble = data["Fund_df"].sort_values("nominal_bubble")
-    min_bubble_2nd = sorted_by_bubble.iloc[1] if len(sorted_by_bubble) > 1 else min_bubble_row
-    max_bubble_2nd = sorted_by_bubble.iloc[-2] if len(sorted_by_bubble) > 1 else max_bubble_row
 
     # محاسبه نسبت پول حقیقی به ارزش معاملات
     pol_to_value_ratio = (total_pol / total_value * 100) if total_value != 0 else 0
@@ -380,12 +372,12 @@ def create_simple_caption(
 📅 <b>{current_time}</b>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-<b>💵 بازار ارز</b>
+<b>💵 دلار</b>
 💰 آخرین معامله: <b>{dollar_prices['last_trade']:,} تومان</b> ({dollar_change:+.2f}%)
 🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-<b>🔆 اونس طلا جهانی</b>
+<b>🔆 اونس طلا </b>
 💰 قیمت: <b>${gold_price:,.2f}</b> ({gold_change:+.2f}%)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -395,15 +387,6 @@ def create_simple_caption(
 💸 ورود پول حقیقی: <b>{total_pol:+,.0f}</b> میلیارد تومان
 📊 پول حقیقی به ارزش معاملات: <b>{pol_to_value_ratio:+.0f}%</b>
 📈 آخرین قیمت کل صندوق‌ها: <b>{avg_price:,.0f}</b> تومان ({avg_change_percent:+.2f}%)
-
-💎 <b>حباب صندوق‌ها:</b>
-🔹 کمترین:
-   1️⃣ {min_bubble_row.name}: <b>{min_bubble_row['nominal_bubble']:+.2f}%</b>
-   2️⃣ {min_bubble_2nd.name}: <b>{min_bubble_2nd['nominal_bubble']:+.2f}%</b>
-
-🔸 بیشترین:
-   1️⃣ {max_bubble_row.name}: <b>{max_bubble_row['nominal_bubble']:+.2f}%</b>
-   2️⃣ {max_bubble_2nd.name}: <b>{max_bubble_2nd['nominal_bubble']:+.2f}%</b>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 <b>📈 بازار طلا و سکه</b>
@@ -428,7 +411,6 @@ def create_simple_caption(
 💰 قیمت: <b>{sekeh_price:,.0f}</b> تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
 💵 دلار محاسباتی: {dollar_calc_sekeh:,.0f} ({dollar_diff_sekeh:+,.0f})
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>
 """
