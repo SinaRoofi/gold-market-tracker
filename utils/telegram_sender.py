@@ -9,7 +9,6 @@ from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
-
 def send_to_telegram(
     bot_token,
     chat_id,
@@ -107,7 +106,7 @@ def create_combined_image(
 
     fig.add_trace(
         go.Treemap(
-            labels=df_sorted.index,  # استفاده از index اصلی (symbol)
+            labels=df_sorted.index,
             parents=[""] * len(df_sorted),
             values=df_sorted["value"],
             text=df_sorted["display_text"],
@@ -141,7 +140,7 @@ def create_combined_image(
         "ارزش معاملات",
     ]
     table_cells = [
-        top_10.index.tolist(),  # استفاده از index اصلی (symbol)
+        top_10.index.tolist(),
         [f"{x:,}" for x in top_10["close_price"]],
         [f"{x:,}" for x in top_10["NAV"]],
         [f"{x:+.2f}%" for x in top_10["close_price_change_percent"]],
@@ -287,6 +286,14 @@ def create_simple_caption(
     gold_18_price = gold_18["close_price"] / 10
     sekeh_price = sekeh["close_price"] / 10
 
+    # کمترین و بیشترین حباب صندوق‌ها
+    min_bubble_row = data["Fund_df"].loc[data["Fund_df"]["nominal_bubble"].idxmin()]
+    max_bubble_row = data["Fund_df"].loc[data["Fund_df"]["nominal_bubble"].idxmax()]
+
+    # سه صندوق با بیشترین ورود پول نسبت به ارزش معاملات
+    data["Fund_df"]["pol_ratio"] = data["Fund_df"]["pol_hagigi"] / data["Fund_df"]["value"] * 100
+    top_pol = data["Fund_df"].sort_values("pol_ratio", ascending=False).head(3)
+
     caption = f"""
 📅 <b>{current_time}</b>
 
@@ -303,10 +310,19 @@ def create_simple_caption(
 
 💰 ارزش معاملات: {total_value:,.0f} میلیارد تومان
 💸 ورود پول حقیقی: {total_pol:+,.0f} میلیارد تومان
-📈 آخرین قیمت: {avg_price:,.0f} تومان
-📊 درصد آخرین قیمت: {avg_change_percent:+.2f}%
+📈 آخرین قیمت: {avg_price:,.0f} ({avg_change_percent:+.2f}%)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💎 حباب صندوق‌ها:
+کمترین حباب: {min_bubble_row.name} ({min_bubble_row['nominal_bubble']:+.2f}%)
+بیشترین حباب: {max_bubble_row.name} ({max_bubble_row['nominal_bubble']:+.2f}%)
+
+📈 سه صندوق با بیشترین ورود پول نسبت به ارزش معاملات:
+"""
+    for _, row in top_pol.iterrows():
+        caption += f"{row.name} ({row['pol_ratio']:+.0f}% | اختلاف سرانه: {row['ekhtelaf_sarane']:+,.0f} میلیون تومان)\n"
+
+    # بخش شمش، طلا 24 و 18 و سکه
+    caption += f"""
 📈 <b style='font-size:18px'>✨ شمش طلا</b>
 <b>قیمت:</b> {shams['close_price']:,}
 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
