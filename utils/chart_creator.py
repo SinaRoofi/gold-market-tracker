@@ -39,21 +39,41 @@ def create_market_charts():
             'ekhtelaf_sarane': 'mean'
         }).reset_index()
         
+        # محاسبه رنج قیمت اونس برای رنگ‌بندی داینامیک
+        gold_min = grouped['gold_price'].min()
+        gold_max = grouped['gold_price'].max()
+        gold_range = gold_max - gold_min
+        
         # ایجاد subplot با 5 نمودار
         fig = make_subplots(
             rows=5, cols=1,
             row_heights=[0.2, 0.2, 0.2, 0.2, 0.2],
             subplot_titles=(
-                '🟡 قیمت اونس طلا (دلار)',
-                '💵 درصد تغییر دلار',
-                '📊 درصد تغییر شمش طلا',
-                '📈 درصد تغییر میانگین قیمت صندوق‌ها',
-                '💰 سرانه خرید و فروش صندوق‌ها'
+                '<b style="font-size:18px">قیمت اونس طلا جهانی</b>',
+                '<b style="font-size:18px">قیمت دلار</b>',
+                '<b style="font-size:18px">شمش طلا</b>',
+                '<b style="font-size:18px">آخرین قیمت صندوق‌ها</b>',
+                '<b style="font-size:18px">سرانه خرید و فروش و اختلاف سرانه صندوق‌های طلا</b>'
             ),
             vertical_spacing=0.08
         )
         
-        # نمودار 1: قیمت اونس طلا
+        # نمودار 1: قیمت اونس طلا با رنگ‌بندی داینامیک
+        colors_gold = []
+        for price in grouped['gold_price']:
+            if gold_range > 0:
+                # نرمال‌سازی به بازه 0-1
+                normalized = (price - gold_min) / gold_range
+                # انتخاب رنگ بر اساس مقدار
+                if normalized < 0.33:
+                    colors_gold.append('#E74C3C')  # قرمز
+                elif normalized < 0.67:
+                    colors_gold.append('#F39C12')  # نارنجی
+                else:
+                    colors_gold.append('#2ECC71')  # سبز
+            else:
+                colors_gold.append('#FFD700')  # طلایی
+        
         fig.add_trace(
             go.Scatter(
                 x=grouped['timestamp'],
@@ -61,14 +81,14 @@ def create_market_charts():
                 name='قیمت اونس',
                 mode='lines+markers',
                 line=dict(width=3, color='#FFD700'),
-                marker=dict(size=6, color='#FFD700'),
+                marker=dict(size=8, color=colors_gold),
                 fill='tozeroy',
                 fillcolor='rgba(255, 215, 0, 0.1)'
             ),
             row=1, col=1
         )
         
-        # نمودار 2: درصد تغییر دلار (با رنگ داینامیک)
+        # نمودار 2: درصد تغییر دلار
         colors_dollar = ['#2ECC71' if x >= 0 else '#E74C3C' for x in grouped['dollar_change_percent']]
         
         fig.add_trace(
@@ -85,7 +105,6 @@ def create_market_charts():
             row=2, col=1
         )
         
-        # اضافه کردن خط صفر
         fig.add_hline(y=0, line_dash="dash", line_color="white", opacity=0.5, row=2, col=1)
         
         # نمودار 3: درصد تغییر شمش طلا
@@ -95,7 +114,7 @@ def create_market_charts():
             go.Scatter(
                 x=grouped['timestamp'],
                 y=grouped['shams_change_percent'],
-                name='تغییر شمش',
+                name='شمش طلا',
                 mode='lines+markers',
                 line=dict(width=3, color='gray'),
                 marker=dict(size=8, color=colors_shams),
@@ -114,7 +133,7 @@ def create_market_charts():
             go.Scatter(
                 x=grouped['timestamp'],
                 y=grouped['fund_price_change_percent'],
-                name='تغییر صندوق‌ها',
+                name='صندوق‌ها',
                 mode='lines+markers',
                 line=dict(width=3, color='gray'),
                 marker=dict(size=8, color=colors_fund),
@@ -126,8 +145,7 @@ def create_market_charts():
         
         fig.add_hline(y=0, line_dash="dash", line_color="white", opacity=0.5, row=4, col=1)
         
-        # نمودار 5: سرانه‌ها (Line + Bar)
-        # Line 1: سرانه خرید (سبز)
+        # نمودار 5: سرانه‌ها
         fig.add_trace(
             go.Scatter(
                 x=grouped['timestamp'],
@@ -140,7 +158,6 @@ def create_market_charts():
             row=5, col=1
         )
         
-        # Line 2: سرانه فروش × (-1) (قرمز)
         fig.add_trace(
             go.Scatter(
                 x=grouped['timestamp'],
@@ -153,7 +170,6 @@ def create_market_charts():
             row=5, col=1
         )
         
-        # Bar: اختلاف سرانه
         colors_ekhtelaf = ['#2ECC71' if x >= 0 else '#E74C3C' for x in grouped['ekhtelaf_sarane']]
         
         fig.add_trace(
@@ -169,21 +185,26 @@ def create_market_charts():
         fig.add_hline(y=0, line_dash="dash", line_color="white", opacity=0.5, row=5, col=1)
         
         # تنظیمات ظاهری
-        fig.update_xaxes(title_text="زمان (تهران)", row=5, col=1)
-        fig.update_yaxes(title_text="دلار", row=1, col=1)
-        fig.update_yaxes(title_text="درصد", row=2, col=1)
-        fig.update_yaxes(title_text="درصد", row=3, col=1)
-        fig.update_yaxes(title_text="درصد", row=4, col=1)
-        fig.update_yaxes(title_text="میلیون تومان", row=5, col=1)
+        fig.update_xaxes(title_text="زمان (تهران)", row=5, col=1, title_font=dict(size=14))
+        fig.update_yaxes(title_text="دلار", row=1, col=1, title_font=dict(size=14))
+        fig.update_yaxes(title_text="درصد", row=2, col=1, title_font=dict(size=14))
+        fig.update_yaxes(title_text="درصد", row=3, col=1, title_font=dict(size=14))
+        fig.update_yaxes(title_text="درصد", row=4, col=1, title_font=dict(size=14))
+        fig.update_yaxes(title_text="میلیون تومان", row=5, col=1, title_font=dict(size=14))
+        
+        # تنظیم font برای تیترها
+        fig.update_annotations(font=dict(size=18, color='white', family='Vazirmatn, Arial'))
         
         fig.update_layout(
             height=2000,
             width=1400,
             showlegend=True,
             title={
-                'text': '📊 نمودار تحلیل لحظه‌ای بازار طلا',
-                'x': 0.5,
-                'xanchor': 'center',
+                'text': '<b>📊 نمودارهای تحلیل بازار</b>',
+                'x': 0.02,
+                'y': 0.99,
+                'xanchor': 'left',
+                'yanchor': 'top',
                 'font': {'size': 32, 'color': '#FFD700', 'family': 'Vazirmatn, Arial'}
             },
             paper_bgcolor='#000000',
@@ -196,7 +217,8 @@ def create_market_charts():
                 y=1.02,
                 xanchor="right",
                 x=1,
-                bgcolor='rgba(0,0,0,0.5)'
+                bgcolor='rgba(0,0,0,0.5)',
+                font=dict(size=12)
             )
         )
         
