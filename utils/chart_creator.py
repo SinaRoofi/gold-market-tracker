@@ -39,11 +39,6 @@ def create_market_charts():
             'ekhtelaf_sarane': 'mean'
         }).reset_index()
         
-        # محاسبه رنج قیمت اونس برای رنگ‌بندی داینامیک
-        gold_min = grouped['gold_price'].min()
-        gold_max = grouped['gold_price'].max()
-        gold_range = gold_max - gold_min
-        
         # ایجاد subplot با 5 نمودار
         fig = make_subplots(
             rows=5, cols=1,
@@ -58,21 +53,10 @@ def create_market_charts():
             vertical_spacing=0.08
         )
         
-        # نمودار 1: قیمت اونس طلا با رنگ‌بندی داینامیک
-        colors_gold = []
-        for price in grouped['gold_price']:
-            if gold_range > 0:
-                # نرمال‌سازی به بازه 0-1
-                normalized = (price - gold_min) / gold_range
-                # انتخاب رنگ بر اساس مقدار
-                if normalized < 0.33:
-                    colors_gold.append('#E74C3C')  # قرمز
-                elif normalized < 0.67:
-                    colors_gold.append('#F39C12')  # نارنجی
-                else:
-                    colors_gold.append('#2ECC71')  # سبز
-            else:
-                colors_gold.append('#FFD700')  # طلایی
+        # نمودار 1: قیمت اونس طلا با رنگ‌بندی بر اساس قیمت اول
+        first_gold_price = grouped['gold_price'].iloc[0]
+        colors_gold = ['#2ECC71' if price >= first_gold_price else '#E74C3C' 
+                       for price in grouped['gold_price']]
         
         fig.add_trace(
             go.Scatter(
@@ -85,6 +69,25 @@ def create_market_charts():
                 fill='tozeroy',
                 fillcolor='rgba(255, 215, 0, 0.1)'
             ),
+            row=1, col=1
+        )
+        
+        # اضافه کردن خط مرجع (قیمت اول)
+        fig.add_hline(
+            y=first_gold_price, 
+            line_dash="dash", 
+            line_color="yellow", 
+            opacity=0.5, 
+            row=1, col=1
+        )
+        
+        # تنظیم محور Y برای نمودار اونس
+        gold_min = grouped['gold_price'].min()
+        gold_max = grouped['gold_price'].max()
+        gold_padding = (gold_max - gold_min) * 0.1  # 10% فاصله
+        
+        fig.update_yaxes(
+            range=[gold_min - gold_padding, gold_max + gold_padding],
             row=1, col=1
         )
         
@@ -186,6 +189,14 @@ def create_market_charts():
         
         # تنظیمات ظاهری
         fig.update_xaxes(title_text="زمان (تهران)", row=5, col=1, title_font=dict(size=14))
+        
+        # فرمت محور X: فقط ساعت:دقیقه برای همه نمودارها
+        for i in range(1, 6):
+            fig.update_xaxes(
+                tickformat="%H:%M",
+                row=i, col=1
+            )
+        
         fig.update_yaxes(title_text="دلار", row=1, col=1, title_font=dict(size=14))
         fig.update_yaxes(title_text="درصد", row=2, col=1, title_font=dict(size=14))
         fig.update_yaxes(title_text="درصد", row=3, col=1, title_font=dict(size=14))
