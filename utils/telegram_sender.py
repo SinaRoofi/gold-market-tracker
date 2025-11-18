@@ -7,6 +7,7 @@ import pytz
 import requests
 from PIL import Image, ImageDraw, ImageFont
 from utils.chart_creator import create_market_charts
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
         
         data = {
             'chat_id': chat_id,
-            'media': str(media).replace("'", '"')
+            'media': json.dumps(media) 
         }
         
         response = requests.post(url, files=files, data=data, timeout=60)
