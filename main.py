@@ -13,10 +13,11 @@ from utils.data_fetcher import (
     fetch_yesterday_close,
     fetch_market_data
 )
-from utils.gold_cache import get_gold_yesterday  # ✅ اضافه شد
+from utils.gold_cache import get_gold_yesterday
 from utils.data_processor import process_market_data
 from utils.telegram_sender import send_to_telegram
 from utils.holidays import is_iranian_holiday
+from utils.data_storage import save_market_snapshot  # ✅ جدید
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,7 +66,7 @@ async def main():
 
             # 2. دریافت قیمت طلای دیروز از API (با کش)
             logger.info("📊 دریافت قیمت اونس طلای دیروز...")
-            gold_yesterday = get_gold_yesterday()  # ✅ تغییر یافت - دیگه await نداره
+            gold_yesterday = get_gold_yesterday()
             
             if gold_yesterday is None:
                 logger.warning("⚠️ نتوانستیم قیمت دیروز را بگیریم، از مقدار پیش‌فرض استفاده می‌کنیم")
@@ -80,7 +81,6 @@ async def main():
                 logger.warning("⚠️ قیمت دلار موجود نیست، مقادیر پیش‌فرض استفاده می‌شود")
                 dollar_prices = {'last_trade': 1130000, 'bid': 1129050, 'ask': 1130000}
             else:
-                # اطمینان از عدد بودن last_trade
                 if dollar_prices.get('last_trade') is None:
                     dollar_prices['last_trade'] = 116000
                     logger.warning("⚠️ قیمت آخرین معامله دلار موجود نیست، مقدار پیش‌فرض استفاده شد")
@@ -125,7 +125,18 @@ async def main():
 
             logger.info("✅ پردازش تکمیل شد")
 
-            # 7. ارسال به تلگرام
+            # 7. ذخیره داده‌ها در CSV
+            logger.info("💾 ذخیره داده‌ها در فایل CSV...")
+            save_market_snapshot(
+                dollar_prices=dollar_prices,
+                yesterday_close=yesterday_close,
+                Fund_df=processed_data['Fund_df'],
+                gold_price=gold_today,
+                gold_yesterday=gold_yesterday,
+                dfp=processed_data['dfp']
+            )
+
+            # 8. ارسال به تلگرام
             logger.info("📤 ارسال به تلگرام...")
             success = send_to_telegram(
                 bot_token=telegram_bot_token,
