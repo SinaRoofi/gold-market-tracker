@@ -316,12 +316,12 @@ def create_simple_caption(
 بیشترین حباب: {max_bubble_row.name} ({max_bubble_row['nominal_bubble']:+.2f}%)
 
 💹 <b>ورود پول به ارزش معامله (۳ رتبه اول)</b>:
+
 """
     for _, row in top_pol.iterrows():
         caption += f"{row.name} ({row['pol_ratio']:+.0f}% | اختلاف سرانه: {row['ekhtelaf_sarane']:+,.0f} میلیون تومان)\n"
 
     caption += "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-
     caption += f"""
 📈 <b>✨ شمش طلا</b>
 <b>قیمت:</b> {shams['close_price']:,}
@@ -340,7 +340,6 @@ def create_simple_caption(
 🪙 <b>سکه امامی طرح جدید</b>
 <b>قیمت:</b> {sekeh_price:,.0f}
 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>
 """
