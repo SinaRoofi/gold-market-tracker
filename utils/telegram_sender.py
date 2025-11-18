@@ -81,7 +81,7 @@ def create_combined_image(
         elif row["value"] > 50:
             return (
                 f"<b style='font-size:{FONT_BIG+1}px'>{row.name}</b><br>"
-                f"<span style='font-size:{FONT_BIG-1}px'>{row['close_price']:,}</span><br>"
+                f"<span style='font-size:{FONT_BIG-1}px'>{row['close_price']:,.0f}</span><br>"
                 f"<span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>"
             )
         else:
