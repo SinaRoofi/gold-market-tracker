@@ -317,7 +317,7 @@ def create_simple_caption(
 💹 <b>ورود پول به ارزش معامله (۳ رتبه اول)</b>:
 """
     for _, row in top_pol.iterrows():
-        caption += f"{row.name} ({row['pol_ratio']:+.0f}% | اختلاف سرانه: {row['ekhtelaf_sarane']:+,.0f} میلیون تومان)\n"
+        caption += f"{row.name} ({row['pol_ratio']:+.0f}% | اختلاف سرانه: {row['ekhtelaf_sarane']:+,.0f})\n"
 
     caption += "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     caption += f"""
