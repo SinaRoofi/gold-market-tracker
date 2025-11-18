@@ -314,8 +314,6 @@ def create_simple_caption(
 کمترین حباب: {min_bubble_row.name} ({min_bubble_row['nominal_bubble']:+.2f}%)
 بیشترین حباب: {max_bubble_row.name} ({max_bubble_row['nominal_bubble']:+.2f}%)
 
-🔹 کمترین حباب در ۵ صندوق پرحجم: {min_bubble_top5.name} ({min_bubble_top5['nominal_bubble']:+.2f}%)
-
 💹 <b>ورود پول به ارزش معامله (۳ رتبه اول)</b>:
 """
     for _, row in top_pol.iterrows():
