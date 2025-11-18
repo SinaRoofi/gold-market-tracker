@@ -250,7 +250,6 @@ def create_simple_caption(
 
     total_value = data["Fund_df"]["value"].sum()
     total_pol = data["Fund_df"]["pol_hagigi"].sum()
-
     avg_price = data["Fund_df"]["close_price"].mean()
     avg_change_percent = data["Fund_df"]["close_price_change_percent"].mean()
 
@@ -286,11 +285,12 @@ def create_simple_caption(
     gold_18_price = gold_18["close_price"] / 10
     sekeh_price = sekeh["close_price"] / 10
 
-    # کمترین و بیشترین حباب صندوق‌ها
     min_bubble_row = data["Fund_df"].loc[data["Fund_df"]["nominal_bubble"].idxmin()]
     max_bubble_row = data["Fund_df"].loc[data["Fund_df"]["nominal_bubble"].idxmax()]
 
-    # سه صندوق با بیشترین ورود پول نسبت به ارزش معاملات
+    top_value5 = data["Fund_df"].sort_values("value", ascending=False).head(5)
+    min_bubble_top5 = top_value5.loc[top_value5["nominal_bubble"].idxmin()]
+
     data["Fund_df"]["pol_ratio"] = data["Fund_df"]["pol_hagigi"] / data["Fund_df"]["value"] * 100
     top_pol = data["Fund_df"].sort_values("pol_ratio", ascending=False).head(3)
 
@@ -298,15 +298,15 @@ def create_simple_caption(
 📅 <b>{current_time}</b>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-💵 <b>بازار ارز</b>
+<b>💵 بازار ارز</b>
 💰 آخرین معامله: <b>{dollar_prices['last_trade']:,} تومان ({dollar_change:+.2f}%)</b> 
 🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔆 <b>اونس طلا</b>
+<b>🔆 اونس طلا</b>
 <b>قیمت:</b> ${gold_price:,.2f} ({gold_change:+.2f}%)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 <b>آمار صندوق‌های طلا</b>
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+<b>📊 آمار صندوق‌های طلا</b>
 💰 ارزش معاملات: {total_value:,.0f} میلیارد تومان
 💸 ورود پول حقیقی: {total_pol:+,.0f} میلیارد تومان
 📈 آخرین قیمت: {avg_price:,.0f} ({avg_change_percent:+.2f}%)
@@ -315,34 +315,35 @@ def create_simple_caption(
 کمترین حباب: {min_bubble_row.name} ({min_bubble_row['nominal_bubble']:+.2f}%)
 بیشترین حباب: {max_bubble_row.name} ({max_bubble_row['nominal_bubble']:+.2f}%)
 
-💹 ورود پول به ارزش معاملات ۳ صندوق اول:
+🔹 کمترین حباب در ۵ صندوق پرحجم: {min_bubble_top5.name} ({min_bubble_top5['nominal_bubble']:+.2f}%)
+
+💹 <b>ورود پول به ارزش معامله (۳ رتبه اول)</b>:
 """
     for _, row in top_pol.iterrows():
         caption += f"{row.name} ({row['pol_ratio']:+.0f}% | اختلاف سرانه: {row['ekhtelaf_sarane']:+,.0f} میلیون تومان)\n"
 
     caption += "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
 
-    # بخش شمش، طلا 24 و 18 و سکه
     caption += f"""
-📈 <b style='font-size:18px'>✨ شمش طلا</b>
+📈 <b>✨ شمش طلا</b>
 <b>قیمت:</b> {shams['close_price']:,}
 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
 💵 دلار محاسباتی: {dollar_calc:,.0f} ({dollar_diff:+,.0f})
 🔆 اونس محاسباتی: ${ounce_calc:,.0f} ({ounce_diff:+.0f})
 
-🔸 <b style='font-size:18px'>طلا ۲۴ عیار</b>
+🔸 <b>طلا ۲۴ عیار</b>
 <b>قیمت:</b> {gold_24_price:,.0f}
 تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
 
-🔸 <b style='font-size:18px'>طلا ۱۸ عیار</b>
+🔸 <b>طلا ۱۸ عیار</b>
 <b>قیمت:</b> {gold_18_price:,.0f}
 تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
 
-🪙 <b style='font-size:18px'>سکه امامی طرح جدید</b>
+🪙 <b>سکه امامی طرح جدید</b>
 <b>قیمت:</b> {sekeh_price:,.0f}
 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>"""
-
+🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>
+"""
     return caption
