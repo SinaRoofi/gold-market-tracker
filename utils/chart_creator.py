@@ -9,16 +9,26 @@ import io
 from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
-DATA_FILE = "market_data_today.csv"
+logger.setLevel(logging.INFO)
+ch = logging.StreamHandler()
+ch.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(ch)
+
+def get_csv_filename():
+    """نام فایل CSV بر اساس تاریخ امروز به وقت تهران"""
+    tehran_tz = pytz.timezone('Asia/Tehran')
+    today_str = datetime.now(tehran_tz).strftime('%Y-%m-%d')
+    return f"market_data_{today_str}.csv"
 
 def create_market_charts():
     """ایجاد نمودارهای بازار از داده‌های CSV با محاسبات وزنی"""
     try:
-        if not os.path.exists(DATA_FILE):
+        csv_file = get_csv_filename()
+        if not os.path.exists(csv_file):
             logger.warning("⚠️ فایل CSV وجود ندارد")
             return None
 
-        df = pd.read_csv(DATA_FILE, encoding='utf-8')
+        df = pd.read_csv(csv_file, encoding='utf-8')
         if df.empty:
             logger.warning("⚠️ فایل CSV خالی است")
             return None
@@ -32,7 +42,7 @@ def create_market_charts():
                 return 0
             return (group[column] * group['value']).sum() / total_value
 
-        # محاسبه میانگین وزنی برای صندوق‌ها و سرانه‌ها
+        # محاسبه میانگین وزنی
         weighted_change = df.groupby('timestamp').apply(
             lambda x: weighted_mean(x, 'fund_price_change_percent')
         ).reset_index(name='fund_price_change_percent_weighted')
@@ -45,20 +55,15 @@ def create_market_charts():
             lambda x: weighted_mean(x, 'sarane_forosh')
         ).reset_index(name='sarane_forosh_weighted')
 
-        # اعمال ضرب در -1 برای نمودار سرانه فروش
         weighted_sarane_forosh['sarane_forosh_weighted'] *= -1
-
-        # اختلاف سرانه وزنی (از مقادیر اصلی قبل از ضرب -1)
         ekhtelaf_weighted = (weighted_sarane_kharid['sarane_kharid_weighted'] -
                              weighted_sarane_forosh['sarane_forosh_weighted'] * -1)
 
-        # داده‌های پایه برای رسم نمودار
         grouped = df.groupby('timestamp').agg({
             'gold_price': 'first',
             'dollar_change_percent': 'first',
             'shams_change_percent': 'first'
         }).reset_index()
-
         grouped = grouped.merge(weighted_change, on='timestamp')
         grouped = grouped.merge(weighted_sarane_kharid, on='timestamp')
         grouped = grouped.merge(weighted_sarane_forosh, on='timestamp')
@@ -115,7 +120,7 @@ def create_market_charts():
                       row=3, col=1)
         fig.add_hline(y=0, line_dash="dash", line_color="white", opacity=0.5, row=3, col=1)
 
-        # نمودار 4: درصد آخرین صندوق‌های طلا
+        # نمودار 4: درصد آخرین صندوق‌ها
         colors_fund = ['#2ECC71' if x >= 0 else '#E74C3C' for x in grouped['fund_price_change_percent_weighted']]
         fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['fund_price_change_percent_weighted'],
                                  name='درصد آخرین', mode='lines+markers',
