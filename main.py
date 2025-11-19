@@ -102,6 +102,7 @@ async def main():
             # محاسبه میانگین‌های وزنی
             total_value = Fund_df["value"].sum() or 1
             fund_change_weighted = (Fund_df["close_price_change_percent"] * Fund_df["value"]).sum() / total_value
+            fund_bubble_weighted = (Fund_df["nominal_bubble"] * Fund_df["value"]).sum() / total_value  # ← جدید
             sarane_kharid_w = (Fund_df["sarane_kharid"] * Fund_df["value"]).sum() / total_value
             sarane_forosh_w = (Fund_df["sarane_forosh"] * Fund_df["value"]).sum() / total_value
             ekhtelaf_sarane_w = sarane_kharid_w - sarane_forosh_w
@@ -115,6 +116,7 @@ async def main():
                 'dollar_change': dollar_change,
                 'shams_change': shams_change,
                 'fund_change_weighted': fund_change_weighted,
+                'fund_bubble_weighted': fund_bubble_weighted,  # ← جدید
                 'sarane_kharid_w': sarane_kharid_w,
                 'sarane_forosh_w': -sarane_forosh_w,
                 'ekhtelaf_sarane_w': ekhtelaf_sarane_w,
