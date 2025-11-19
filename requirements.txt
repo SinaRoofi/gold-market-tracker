@@ -1,27 +1,11 @@
-# کتابخانه‌های اصلی
-requests>=2.31.0
-pandas>=2.1.0
-numpy>=1.24.0
-
-# Telegram
-telethon>=1.34.0
-python-telegram-bot>=20.7
-
-# تاریخ و زمان
-pytz>=2023.3
-persiantools>=3.0.0
-jdatetime>=4.1.0
-
-# نمودارها
-plotly>=5.18.0
-kaleido>=0.2.1
-
-# دیگر ابزارها
-Pillow>=10.1.3
-nest-asyncio>=1.5.8
-
-
-google-auth>=2.23.0
-google-auth-oauthlib>=1.1.0
-google-auth-httplib2>=0.1.0
-google-api-python-client>=2.100.0
+telethon==1.35.0
+pandas==2.2.0
+plotly==5.18.0
+kaleido==0.2.1
+Pillow==10.2.0
+requests==2.31.0
+pytz==2024.1
+persiantools==4.2.0
+google-auth==2.27.0
+google-auth-oauthlib==1.2.0
+google-api-python-client==2.116.0
