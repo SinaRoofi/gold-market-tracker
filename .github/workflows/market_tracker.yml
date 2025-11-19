@@ -39,27 +39,19 @@ jobs:
           TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
         run: python main.py
 
-      - name: Commit and push CSV
+      - name: Push CSV to branch
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://$GH_TOKEN@github.com/SinaRoofi/gold-market-tracker.git
+          git remote set-url origin https://$GH_TOKEN@github.com/${{ github.repository }}.git
           git add -f data/market_data.csv
           git commit -m "Update market CSV [skip ci]" || echo "No changes to commit"
           git push origin HEAD:market-data
 
-      - name: Upload CSV artifact
+      - name: Upload CSV as artifact
         uses: actions/upload-artifact@v4
         with:
           name: market-csv
           path: ./data/market_data.csv
-
-      - name: Upload logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs
-          path: gold_tracker.log
-          retention-days: 7
