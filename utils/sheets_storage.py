@@ -1,3 +1,5 @@
+# utils/sheets_storage.py — ذخیره‌سازی در Google Sheets بجای Drive
+
 import os
 import json
 import logging
@@ -53,6 +55,7 @@ def save_to_sheets(row_dict):
             round(row_dict['dollar_change'], 2),
             round(row_dict['shams_change'], 2),
             round(row_dict['fund_change_weighted'], 2),
+            round(row_dict['fund_bubble_weighted'], 2),  # ← جدید
             round(row_dict['sarane_kharid_w'], 2),
             round(row_dict['sarane_forosh_w'], 2),
             round(row_dict['ekhtelaf_sarane_w'], 2)
@@ -61,7 +64,7 @@ def save_to_sheets(row_dict):
         # بررسی وجود هدر
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
-            range='Sheet1!A1:H1'
+            range='Sheet1!A1:I1'  # ← تغییر از H به I
         ).execute()
         
         # اگه هدر نداشته باشه، اول هدر رو بنویس
@@ -72,13 +75,14 @@ def save_to_sheets(row_dict):
                 'dollar_change_percent',
                 'shams_change_percent',
                 'fund_weighted_change_percent',
+                'fund_weighted_bubble_percent',  # ← جدید
                 'sarane_kharid_weighted',
                 'sarane_forosh_weighted',
                 'ekhtelaf_sarane_weighted'
             ]
             service.spreadsheets().values().update(
                 spreadsheetId=SHEET_ID,
-                range='Sheet1!A1:H1',
+                range='Sheet1!A1:I1',  # ← تغییر از H به I
                 valueInputOption='RAW',
                 body={'values': [header]}
             ).execute()
@@ -87,7 +91,7 @@ def save_to_sheets(row_dict):
         # اضافه کردن ردیف جدید
         service.spreadsheets().values().append(
             spreadsheetId=SHEET_ID,
-            range='Sheet1!A:H',
+            range='Sheet1!A:I',  # ← تغییر از H به I
             valueInputOption='RAW',
             insertDataOption='INSERT_ROWS',
             body={'values': [new_row]}
