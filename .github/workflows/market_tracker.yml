@@ -1,35 +1,31 @@
-# .github/workflows/market_tracker.yml
-
 name: Gold Market Tracker
 
 on:
-  workflow_dispatch:      # فقط دستی — با دکمه Run اجرا میشه
+  workflow_dispatch:  # فقط دستی
 
 jobs:
   track-market:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+        
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
+          
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-
-      # فقط کش قیمت طلای دیروز
+          
       - name: Restore gold yesterday cache
         uses: actions/cache@v4
         with:
           path: gold_yesterday_cache.json
           key: gold-yesterday-cache
-
+          
       - name: Run Gold Tracker
         env:
           TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
@@ -38,16 +34,16 @@ jobs:
           TELETHON_API_ID: ${{ secrets.TELETHON_API_ID }}
           TELETHON_API_HASH: ${{ secrets.TELETHON_API_HASH }}
           TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
-          DRIVE_SERVICE_ACCOUNT: ${{ secrets.DRIVE_SERVICE_ACCOUNT }}
-          DRIVE_FILE_ID: ${{ secrets.DRIVE_FILE_ID }}
+          SHEETS_SERVICE_ACCOUNT: ${{ secrets.SHEETS_SERVICE_ACCOUNT }}
+          SHEET_ID: ${{ secrets.SHEET_ID }}
         run: python main.py
-
+        
       - name: Save gold yesterday cache
         uses: actions/cache@v4
         with:
           path: gold_yesterday_cache.json
           key: gold-yesterday-cache
-
+          
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
