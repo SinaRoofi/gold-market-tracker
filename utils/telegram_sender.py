@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from persiantools.jdatetime import JalaliDateTime
 from PIL import Image, ImageDraw, ImageFont
-from utils.chart_creator import create_market_charts # فرض می‌کنیم این تابع در یک فایل دیگر تعریف شده است.
+from utils.chart_creator import create_market_charts  # فرض می‌کنیم این تابع در یک فایل دیگر تعریف شده است.
 
 logger = logging.getLogger(__name__)
 
@@ -107,37 +107,23 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-    FONT_BIG = 22  # ← افزایش سایز فونت
+    FONT_BIG = 22  # سایز ثابت فونت
 
-    def create_text(row):
+    # --------- اصلاح متن وسط مربع‌ها ---------
+    def create_display_text(row):
         """
-        فرمت جدید:
-        نماد
-        قیمت (درصد تغییر%)
-        حباب: X%
+        سه خط مرتب:
+        خط1: اسم نماد بولد
+        خط2: قیمت + درصد تغییر
+        خط3: حباب
         """
-        if row["value"] > 100:
-            return (
-                f"<b style='font-size:{FONT_BIG+4}px'>{row.name}</b><br>"
-                f"<span style='font-size:{FONT_BIG}px'>{row['close_price']:,.0f} "
-                f"({row['close_price_change_percent']:+.2f}%)</span><br>"
-                f"<span style='font-size:{FONT_BIG-2}px'>حباب: {row['nominal_bubble']:+.2f}%</span>"
-            )
-        elif row["value"] > 50:
-            return (
-                f"<b style='font-size:{FONT_BIG+2}px'>{row.name}</b><br>"
-                f"<span style='font-size:{FONT_BIG-2}px'>{row['close_price']:,.0f} "
-                f"({row['close_price_change_percent']:+.2f}%)</span><br>"
-                f"<span style='font-size:{FONT_BIG-3}px'>حباب: {row['nominal_bubble']:+.2f}%</span>"
-            )
-        else:
-            return (
-                f"<b style='font-size:{FONT_BIG}px'>{row.name}</b><br>"
-                f"<span style='font-size:{FONT_BIG-3}px'>{row['close_price']:,.0f} "
-                f"({row['close_price_change_percent']:+.2f}%)</span>"
-            )
+        return (
+            f"<b>{row.name}</b><br>"  # خط 1: اسم نماد
+            f"{row['close_price']:,.0f} ({row['close_price_change_percent']:+.2f}%)<br>"  # خط 2
+            f"حباب: {row['nominal_bubble']:+.2f}%"  # خط 3
+        )
 
-    df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
+    df_sorted["display_text"] = df_sorted.apply(create_display_text, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
 
     colorscale = [
@@ -148,20 +134,24 @@ def create_combined_image(
 
     fig.add_trace(
         go.Treemap(
-            labels=df_sorted.index, 
-            parents=[""] * len(df_sorted), 
+            labels=df_sorted.index,
+            parents=[""] * len(df_sorted),
             values=df_sorted["value"],
-            text=df_sorted["display_text"], 
-            textinfo="text", 
+            text=df_sorted["display_text"],
+            textinfo="text",
             textposition="middle center",
-            textfont=dict(size=FONT_BIG, family="Vazirmatn, Arial", color="white"),
+            textfont=dict(
+                size=FONT_BIG,
+                family="Vazirmatn, Arial",
+                color="white"
+            ),
             hoverinfo="skip",
             marker=dict(
-                colors=df_sorted["color_value"], 
-                colorscale=colorscale, 
-                cmid=0, 
-                cmin=-10, 
-                cmax=10, 
+                colors=df_sorted["color_value"],
+                colorscale=colorscale,
+                cmid=0,
+                cmin=-10,
+                cmax=10,
                 line=dict(width=2, color="#1A1A1A")
             ),
         ),
@@ -190,12 +180,12 @@ def create_combined_image(
             return "#1C2733"
 
     cell_colors = [
-        ["#1C2733"] * len(top_10), 
-        ["#1C2733"] * len(top_10), 
         ["#1C2733"] * len(top_10),
-        [col_color(x) for x in table_cells[3]], 
+        ["#1C2733"] * len(top_10),
+        ["#1C2733"] * len(top_10),
+        [col_color(x) for x in table_cells[3]],
         [col_color(x) for x in table_cells[4]],
-        [col_color(x) for x in table_cells[5]], 
+        [col_color(x) for x in table_cells[5]],
         [col_color(x) for x in table_cells[6]],
         ["#1C2733"] * len(top_10),
     ]
@@ -203,17 +193,17 @@ def create_combined_image(
     fig.add_trace(
         go.Table(
             header=dict(
-                values=[f"<b>{h}</b>" for h in table_header], 
-                fill_color="#242F3D", 
-                align="center", 
-                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
+                values=[f"<b>{h}</b>" for h in table_header],
+                fill_color="#242F3D",
+                align="center",
+                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"),
                 height=32
             ),
             cells=dict(
-                values=table_cells, 
-                fill_color=cell_colors, 
-                align="center", 
-                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
+                values=table_cells,
+                fill_color=cell_colors,
+                align="center",
+                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"),
                 height=35
             ),
         ),
@@ -221,17 +211,17 @@ def create_combined_image(
     )
 
     fig.update_layout(
-        paper_bgcolor="#000000", 
-        plot_bgcolor="#000000", 
-        height=1400, 
+        paper_bgcolor="#000000",
+        plot_bgcolor="#000000",
+        height=1400,
         width=1400,
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
-            text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>", 
-            font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"), 
-            x=0.5, 
-            y=1.0, 
-            xanchor="center", 
+            text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
+            font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"),
+            x=0.5,
+            y=1.0,
+            xanchor="center",
             yanchor="top"
         ),
         showlegend=False,
@@ -264,8 +254,8 @@ def create_combined_image(
     img.save(output, format="PNG", optimize=True, quality=85)
     return output.getvalue()
 
-# --- تابع کپشن (بدون تغییر) ---
 
+# --- تابع کپشن (بدون تغییر) ---
 def create_simple_caption(
     data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
 ):
@@ -285,22 +275,15 @@ def create_simple_caption(
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
     
-    # ✅ بخش اصلاح شده: هر ۳ پارامتر به صورت وزنی محاسبه می‌شوند
     if total_value > 0:
-        # 1. میانگین قیمت وزنی
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
-        
-        # 2. میانگین درصد تغییر وزنی (جدید)
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
-        
-        # 3. میانگین حباب وزنی
         avg_bubble_weighted = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value
     else:
         avg_price_weighted = 0
         avg_change_percent_weighted = 0
         avg_bubble_weighted = 0
 
-    # --- سایر محاسبات ---
     dollar_change = (
         ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100)
         if yesterday_close and yesterday_close != 0
@@ -369,17 +352,17 @@ def create_simple_caption(
 🔸 <b>طلا ۲۴ عیار</b>
 💰 قیمت: <b>{gold_24_price:,.0f}</b> تومان
 📊 تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:+,.0f})
+💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:+.0f})
 
 🔸 <b>طلا ۱۸ عیار</b>
 💰 قیمت: <b>{gold_18_price:,.0f}</b> تومان
 📊 تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+,.0f})
+💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+.0f})
 
 🪙 <b>سکه امامی</b>
 💰 قیمت: <b>{sekeh_price:,.0f}</b> تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
+💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+.0f})
 ━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>
 """
