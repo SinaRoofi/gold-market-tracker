@@ -1,4 +1,4 @@
-# main.py — نسخه نهایی با ذخیره‌سازی کاملاً پایدار در گوگل درایو
+# main.py — نسخه Google Sheets
 
 import os
 import sys
@@ -19,7 +19,7 @@ from utils.gold_cache import get_gold_yesterday
 from utils.data_processor import process_market_data
 from utils.telegram_sender import send_to_telegram
 from utils.holidays import is_iranian_holiday
-from utils.drive_storage import save_to_drive  # ← فقط این اضافه شد
+from utils.sheets_storage import save_to_sheets  # ← تغییر اصلی
 
 # تنظیمات لاگ
 logging.basicConfig(
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 async def main():
     try:
         logger.info("=" * 60)
-        logger.info("شروع اجرای Gold Market Tracker با ذخیره‌سازی در گوگل درایو")
+        logger.info("شروع اجرای Gold Market Tracker با Google Sheets")
         logger.info("=" * 60)
 
         tehran_tz = pytz.timezone('Asia/Tehran')
@@ -109,14 +109,14 @@ async def main():
             dollar_change = ((last_trade - yesterday_close) / yesterday_close) * 100 if yesterday_close else 0
             shams_change = dfp.loc["شمش-طلا", "close_price_change_percent"] if "شمش-طلا" in dfp.index else 0
 
-            # ذخیره دائمی در گوگل درایو (هر ۵ دقیقه یه ردیف جدید)
-            save_to_drive({
+            # ✅ ذخیره در Google Sheets
+            save_to_sheets({
                 'gold_price': gold_today,
                 'dollar_change': dollar_change,
                 'shams_change': shams_change,
                 'fund_change_weighted': fund_change_weighted,
                 'sarane_kharid_w': sarane_kharid_w,
-                'sarane_forosh_w': -sarane_forosh_w,  # منفی برای نمایش بهتر
+                'sarane_forosh_w': -sarane_forosh_w,
                 'ekhtelaf_sarane_w': ekhtelaf_sarane_w,
             })
 
@@ -133,14 +133,14 @@ async def main():
             )
 
             if success:
-                logger.info("ارسال به تلگرام با موفقیت انجام شد")
+                logger.info("✅ ارسال به تلگرام با موفقیت انجام شد")
             else:
-                logger.error("ارسال به تلگرام ناموفق")
+                logger.error("❌ ارسال به تلگرام ناموفق")
 
-        logger.info("اجرای موفق به پایان رسید")
+        logger.info("✅ اجرای موفق به پایان رسید")
 
     except Exception as e:
-        logger.error(f"خطای کلی: {e}", exc_info=True)
+        logger.error(f"❌ خطای کلی: {e}", exc_info=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
