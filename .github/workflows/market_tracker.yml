@@ -29,6 +29,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Restore gold cache
+        uses: actions/cache@v4
+        with:
+          path: gold_yesterday_cache.json
+          key: gold-yesterday-cache
+          restore-keys: gold-yesterday-cache
+
+      # دانلود CSV روز قبل (در صورت وجود) تا داده‌های امروز ادامه پیدا کند
+      - name: Restore previous CSV
+        uses: actions/download-artifact@v4
+        with:
+          name: market-csv
+          path: ./data
+        continue-on-error: true
+
       - name: Run market tracker
         env:
           TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
@@ -39,19 +54,23 @@ jobs:
           TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
         run: python main.py
 
-      - name: Push CSV to branch
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://$GH_TOKEN@github.com/${{ github.repository }}.git
-          git add -f data/market_data.csv
-          git commit -m "Update market CSV [skip ci]" || echo "No changes to commit"
-          git push origin HEAD:market-data
+      - name: Save gold cache
+        uses: actions/cache@v4
+        with:
+          path: gold_yesterday_cache.json
+          key: gold-yesterday-cache
 
-      - name: Upload CSV as artifact
+      # آپلود CSV روزانه به عنوان Artifact
+      - name: Upload daily CSV
         uses: actions/upload-artifact@v4
         with:
           name: market-csv
-          path: ./data/market_data.csv
+          path: ./data/market_data_*.csv
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: gold_tracker.log
+          retention-days: 7
