@@ -67,7 +67,6 @@ async def main():
             # 2. دریافت قیمت طلای دیروز از API (با کش)
             logger.info("📊 دریافت قیمت اونس طلای دیروز...")
             gold_yesterday = get_gold_yesterday()
-            
             if gold_yesterday is None:
                 logger.warning("⚠️ نتوانستیم قیمت دیروز را بگیریم، از مقدار پیش‌فرض استفاده می‌کنیم")
                 gold_yesterday = 4085.06
@@ -119,14 +118,14 @@ async def main():
                 yesterday_close=yesterday_close,
                 gold_yesterday=gold_yesterday
             )
-            
+
             if processed_data is None:
                 logger.error("❌ پردازش داده‌ها ناموفق بود، ارسال انجام نمی‌شود.")
                 return
 
             logger.info("✅ پردازش تکمیل شد")
 
-            # 7. ذخیره داده‌ها در CSV
+            # 7. ذخیره داده‌ها در CSV داخل پوشه data
             logger.info("💾 ذخیره داده‌ها در فایل CSV...")
             save_market_snapshot(
                 dollar_prices=dollar_prices,
