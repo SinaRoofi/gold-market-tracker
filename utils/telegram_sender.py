@@ -7,9 +7,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from persiantools.jdatetime import JalaliDateTime
 from PIL import Image, ImageDraw, ImageFont
-from utils.chart_creator import create_market_charts
+from utils.chart_creator import create_market_charts # فرض می‌کنیم این تابع در یک فایل دیگر تعریف شده است.
 
 logger = logging.getLogger(__name__)
+
+# --- توابع ارسال تلگرام (بدون تغییر) ---
 
 def send_to_telegram(
     bot_token,
@@ -94,6 +96,8 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
         return False
 
 
+# --- تابع تولید تصویر (با اصلاحات Treemap) ---
+
 def create_combined_image(
     Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close
 ):
@@ -105,24 +109,41 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-    FONT_BIG = 19
+    FONT_BIG = 19  # تنظیم مجدد فونت اصلی به ۱۹
 
     def create_text(row):
+        """ساخت محتوای متنی بهینه شده بر اساس اندازه (value) با FONT_BIG=19"""
+        
+        # تعریف متغیرها بر اساس FONT_BIG=19
+        symbol_name_big = f"<b style='font-size:{FONT_BIG+3}px'>{row.name}</b>" # 22px
+        price_change_text = f"<span style='font-size:{FONT_BIG}px'>{row['close_price']:,.0f} ({row['close_price_change_percent']:+.2f}%)</span>" # 19px
+        bubble_text = f"<span style='font-size:{FONT_BIG-2}px'>حباب: {row['nominal_bubble']:+.2f}%</span>" # 17px
+        
+        # --- قوانین نمایش بهینه شده ---
+        
+        # اگر ارزش معاملات خیلی زیاد است (مربع های بزرگتر از 100)
         if row["value"] > 100:
             return (
-                f"<b style='font-size:{FONT_BIG+3}px'>{row.name}</b><br>"
-                f"<span style='font-size:{FONT_BIG}px'>{row['close_price']:,.0f}</span><br>"
-                f"<span style='font-size:{FONT_BIG-1}px'>{row['close_price_change_percent']:+.2f}%</span><br>"
-                f"<span style='font-size:{FONT_BIG-2}px'>حباب: {row['nominal_bubble']:+.2f}%</span>"
+                f"{symbol_name_big}<br>" 
+                f"{price_change_text}<br>" 
+                f"{bubble_text}" 
             )
+        
+        # اگر ارزش معاملات متوسط است (مربع های بین 50 و 100)
         elif row["value"] > 50:
+            # نمایش نماد و قیمت/تغییر، حباب حذف می‌شود.
             return (
-                f"<b style='font-size:{FONT_BIG+1}px'>{row.name}</b><br>"
-                f"<span style='font-size:{FONT_BIG-1}px'>{row['close_price']:,.0f}</span><br>"
-                f"<span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>"
+                f"{symbol_name_big}<br>" 
+                f"{price_change_text}" 
             )
+        
+        # اگر ارزش معاملات کوچک است (مربع های کوچکتر از 50)
         else:
-            return f"<b style='font-size:{FONT_BIG}px'>{row.name}</b><br><span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>"
+            # نمایش نماد و درصد تغییر (فقط درصد تغییر)
+            return (
+                f"<b style='font-size:{FONT_BIG}px'>{row.name}</b><br>"
+                f"<span style='font-size:{FONT_BIG-3}px'>{row['close_price_change_percent']:+.2f}%</span>"
+            )
 
     df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
@@ -137,7 +158,10 @@ def create_combined_image(
         go.Treemap(
             labels=df_sorted.index, parents=[""] * len(df_sorted), values=df_sorted["value"],
             text=df_sorted["display_text"], textinfo="text", textposition="middle center",
-            textfont=dict(size=FONT_BIG, family="Vazirmatn, Arial", color="white"),
+            
+            # تنظیم فونت Treemap برای سازگاری با HTML (اندازه کوچک‌تر از FONT_BIG)
+            textfont=dict(size=FONT_BIG - 3, family="Vazirmatn, Arial", color="white"),
+            
             hoverinfo="skip",
             marker=dict(colors=df_sorted["color_value"], colorscale=colorscale, cmid=0, cmin=-10, cmax=10, line=dict(width=2, color="#1A1A1A")),
         ),
@@ -181,7 +205,7 @@ def create_combined_image(
 
     fig.update_layout(
         paper_bgcolor="#000000", plot_bgcolor="#000000", height=1400, width=1400,
-        margin=dict(t=90, l=10, r=10, b=10),
+        margin=dict(t=120, l=10, r=10, b=10), # Margin را کمی افزایش دادم
         title=dict(text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>", font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"), x=0.5, y=1.0, xanchor="center", yanchor="top"),
         showlegend=False,
     )
@@ -211,6 +235,8 @@ def create_combined_image(
     img.save(output, format="PNG", optimize=True, quality=85)
     return output.getvalue()
 
+
+# --- تابع کپشن (بدون تغییر) ---
 
 def create_simple_caption(
     data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
@@ -274,7 +300,7 @@ def create_simple_caption(
             o_diff = o_calc - gold_current
         except:
             o_calc = 0
-            o_diff = 0    
+            o_diff = 0  
         return d_calc, d_diff, o_calc, o_diff
 
     d_shams, diff_shams, o_shams, diff_o_shams = calc_diffs(shams, dollar_prices["last_trade"], gold_price)
