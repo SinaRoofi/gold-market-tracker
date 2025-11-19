@@ -65,17 +65,17 @@ def create_market_charts():
         grouped['ekhtelaf_sarane_weighted'] = ekhtelaf_weighted
 
         # -------------------------------
-        # رسم نمودار (همانند نسخه قبلی)
+        # رسم نمودار با ۵ ساب‌پلات
         # -------------------------------
         fig = make_subplots(
             rows=5, cols=1,
             row_heights=[0.2]*5,
             subplot_titles=(
-                'قیمت اونس طلا جهانی',
+                'قیمت اونس طلا',
                 'قیمت دلار',
                 'شمش طلا',
-                'درصد تغییر میانگین قیمت صندوق‌ها (وزنی)',
-                'سرانه خرید و فروش و اختلاف سرانه صندوق‌ها (وزنی)'
+                'درصد تغییر آخرین صندوق‌ها',
+                'سرانه خرید و فروش و اختلاف سرانه صندوق‌ها'
             ),
             vertical_spacing=0.08
         )
@@ -83,47 +83,72 @@ def create_market_charts():
         # نمودار 1: طلای جهانی
         first_gold = grouped['gold_price'].iloc[0]
         colors_gold = ['#2ECC71' if x >= first_gold else '#E74C3C' for x in grouped['gold_price']]
-        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['gold_price'], mode='lines+markers',
-                                 line=dict(width=3, color='#FFD700'), marker=dict(size=8, color=colors_gold),
-                                 fill='tozeroy', fillcolor='rgba(255, 215, 0, 0.1)'), row=1, col=1)
+        gold_min = grouped['gold_price'].min()
+        gold_max = grouped['gold_price'].max()
+        gold_padding = (gold_max - gold_min) * 0.1
+        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['gold_price'],
+                                 name='قیمت اونس', mode='lines+markers',
+                                 line=dict(width=3, color='#FFD700'),
+                                 marker=dict(size=8, color=colors_gold),
+                                 fill='tozeroy', fillcolor='rgba(255, 215, 0, 0.1)'),
+                      row=1, col=1)
         fig.add_hline(y=first_gold, line_dash="dash", line_color="yellow", opacity=0.5, row=1, col=1)
+        fig.update_yaxes(range=[gold_min - gold_padding, gold_max + gold_padding], row=1, col=1)
 
         # نمودار 2: دلار
         colors_dollar = ['#2ECC71' if x >= 0 else '#E74C3C' for x in grouped['dollar_change_percent']]
-        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['dollar_change_percent'], mode='lines+markers',
-                                 line=dict(width=3, color='gray'), marker=dict(size=8, color=colors_dollar),
-                                 fill='tozeroy', fillcolor='rgba(46, 204, 113, 0.1)'), row=2, col=1)
+        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['dollar_change_percent'],
+                                 name='تغییر دلار', mode='lines+markers',
+                                 line=dict(width=3, color='gray'),
+                                 marker=dict(size=8, color=colors_dollar),
+                                 fill='tozeroy', fillcolor='rgba(46, 204, 113, 0.1)'),
+                      row=2, col=1)
         fig.add_hline(y=0, line_dash="dash", line_color="white", opacity=0.5, row=2, col=1)
 
         # نمودار 3: شمش
         colors_shams = ['#2ECC71' if x >= 0 else '#E74C3C' for x in grouped['shams_change_percent']]
-        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['shams_change_percent'], mode='lines+markers',
-                                 line=dict(width=3, color='gray'), marker=dict(size=8, color=colors_shams),
-                                 fill='tozeroy', fillcolor='rgba(46, 204, 113, 0.1)'), row=3, col=1)
+        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['shams_change_percent'],
+                                 name='شمش طلا', mode='lines+markers',
+                                 line=dict(width=3, color='gray'),
+                                 marker=dict(size=8, color=colors_shams),
+                                 fill='tozeroy', fillcolor='rgba(46, 204, 113, 0.1)'),
+                      row=3, col=1)
         fig.add_hline(y=0, line_dash="dash", line_color="white", opacity=0.5, row=3, col=1)
 
-        # نمودار 4: صندوق‌ها (وزنی)
+        # نمودار 4: درصد تغییر آخرین صندوق‌ها
         colors_fund = ['#2ECC71' if x >= 0 else '#E74C3C' for x in grouped['fund_price_change_percent_weighted']]
-        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['fund_price_change_percent_weighted'], mode='lines+markers',
-                                 line=dict(width=3, color='gray'), marker=dict(size=8, color=colors_fund),
-                                 fill='tozeroy', fillcolor='rgba(46, 204, 113, 0.1)'), row=4, col=1)
+        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['fund_price_change_percent_weighted'],
+                                 name='درصد آخرین', mode='lines+markers',
+                                 line=dict(width=3, color='gray'),
+                                 marker=dict(size=8, color=colors_fund),
+                                 fill='tozeroy', fillcolor='rgba(46, 204, 113, 0.1)'),
+                      row=4, col=1)
         fig.add_hline(y=0, line_dash="dash", line_color="white", opacity=0.5, row=4, col=1)
 
         # نمودار 5: سرانه‌ها
-        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['sarane_kharid_weighted'], name='سرانه خرید (وزنی)',
-                                 mode='lines+markers', line=dict(width=3, color='#2ECC71'), marker=dict(size=6)), row=5, col=1)
-        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['sarane_forosh_weighted'], name='سرانه فروش (وزنی)',
-                                 mode='lines+markers', line=dict(width=3, color='#E74C3C'), marker=dict(size=6)), row=5, col=1)
+        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['sarane_kharid_weighted'],
+                                 name='سرانه خرید', mode='lines+markers',
+                                 line=dict(width=3, color='#2ECC71'), marker=dict(size=6)), row=5, col=1)
+        fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['sarane_forosh_weighted'],
+                                 name='سرانه فروش', mode='lines+markers',
+                                 line=dict(width=3, color='#E74C3C'), marker=dict(size=6)), row=5, col=1)
         colors_ekhtelaf = ['#2ECC71' if x >= 0 else '#E74C3C' for x in grouped['ekhtelaf_sarane_weighted']]
-        fig.add_trace(go.Bar(x=grouped['timestamp'], y=grouped['ekhtelaf_sarane_weighted'], name='اختلاف سرانه (وزنی)',
-                             marker=dict(color=colors_ekhtelaf, opacity=0.6)), row=5, col=1)
+        fig.add_trace(go.Bar(x=grouped['timestamp'], y=grouped['ekhtelaf_sarane_weighted'],
+                             name='اختلاف سرانه', marker=dict(color=colors_ekhtelaf, opacity=0.6)),
+                      row=5, col=1)
         fig.add_hline(y=0, line_dash="dash", line_color="white", opacity=0.5, row=5, col=1)
 
-        # تنظیمات کلی نمودار
-        fig.update_layout(height=2000, width=1400, showlegend=True, paper_bgcolor='#000000', plot_bgcolor='#1A1A1A',
-                          font=dict(family='Vazirmatn, Arial', size=12, color='white'), hovermode='x unified')
+        # محور X فقط ساعت و دقیقه
+        for i in range(1, 6):
+            fig.update_xaxes(tickformat="%H:%M", row=i, col=1)
 
-        # تبدیل به تصویر با PIL و افزودن واترمارک (همانند نسخه قبلی)
+        # تنظیمات کلی نمودار
+        fig.update_layout(height=2000, width=1400, showlegend=True,
+                          paper_bgcolor='#000000', plot_bgcolor='#1A1A1A',
+                          font=dict(family='Vazirmatn, Arial', size=12, color='white'),
+                          hovermode='x unified')
+
+        # تبدیل به تصویر با PIL و افزودن واترمارک
         img_bytes = fig.to_image(format="png", width=1400, height=2000)
         img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
         watermark_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
