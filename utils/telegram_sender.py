@@ -105,24 +105,11 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-    FONT_BIG = 19
+    FONT_BIG = 18  # تغییر فونت
 
+    # فقط نماد و درصد تغییر برای مربع‌های کوچک
     def create_text(row):
-        if row["value"] > 100:
-            return (
-                f"<b style='font-size:{FONT_BIG+3}px'>{row.name}</b><br>"
-                f"<span style='font-size:{FONT_BIG}px'>{row['close_price']:,.0f}</span><br>"
-                f"<span style='font-size:{FONT_BIG-1}px'>{row['close_price_change_percent']:+.2f}%</span><br>"
-                f"<span style='font-size:{FONT_BIG-2}px'>حباب: {row['nominal_bubble']:+.2f}%</span>"
-            )
-        elif row["value"] > 50:
-            return (
-                f"<b style='font-size:{FONT_BIG+1}px'>{row.name}</b><br>"
-                f"<span style='font-size:{FONT_BIG-1}px'>{row['close_price']:,.0f}</span><br>"
-                f"<span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>"
-            )
-        else:
-            return f"<b style='font-size:{FONT_BIG}px'>{row.name}</b><br><span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>"
+        return f"{row.name}\n{row['close_price_change_percent']:+.2f}%"
 
     df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
