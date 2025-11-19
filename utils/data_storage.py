@@ -37,9 +37,11 @@ def initialize_csv(file_path):
                 'value'
             ])
         logger.info(f"✅ فایل CSV جدید ایجاد شد: {file_path}")
+    else:
+        logger.info(f"ℹ️ فایل CSV موجود است و داده‌های قبلی حفظ می‌شوند: {file_path}")
 
 def save_market_snapshot(dollar_prices, yesterday_close, Fund_df, gold_price, gold_yesterday, dfp):
-    """ذخیره یک snapshot از بازار"""
+    """ذخیره یک snapshot از بازار به فایل CSV روزانه"""
     try:
         csv_file = get_csv_filename()
         initialize_csv(csv_file)
