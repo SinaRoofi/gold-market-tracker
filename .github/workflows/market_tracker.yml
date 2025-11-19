@@ -1,7 +1,7 @@
 name: Gold Market Tracker
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # یا Cloudflare Worker هر ۵ دقیقه آن را فراخوانی می‌کند
 
 jobs:
   track-market:
@@ -15,26 +15,11 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-        cache: 'pip'
-
-    - name: Cache Python dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: pip-deps-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: pip-deps-
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
-    - name: Restore gold cache
-      uses: actions/cache@v4
-      with:
-        path: gold_yesterday_cache.json
-        key: gold-yesterday-cache
-        restore-keys: gold-yesterday-cache
 
     - name: Run market tracker
       env:
@@ -46,11 +31,12 @@ jobs:
         TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
       run: python main.py
 
-    - name: Save gold cache
-      uses: actions/cache@v4
+    - name: Upload daily CSV artifact
+      uses: actions/upload-artifact@v4
       with:
-        path: gold_yesterday_cache.json
-        key: gold-yesterday-cache
+        name: daily-market-data
+        path: market_data_*.csv
+        retention-days: 7
 
     - name: Upload logs on failure
       if: failure()
