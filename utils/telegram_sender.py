@@ -1,13 +1,13 @@
 import io
 import logging
+import json
+import requests
+import pytz
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from persiantools.jdatetime import JalaliDateTime
-import pytz
-import requests
 from PIL import Image, ImageDraw, ImageFont
-from utils.chart_creator import create_market_charts
-import json
+from utils.chart_creator import create_market_charts  # فرض بر این است که این ماژول وجود دارد
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +21,15 @@ def send_to_telegram(
     gold_time,
     yesterday_close,
 ):
+    """
+    مدیریت کلی تولید تصاویر و کپشن و ارسال به تلگرام
+    """
     if data is None:
         logger.error("❌ داده‌های پردازش‌شده (data) مقدار None دارد. ارسال متوقف شد.")
         return False
 
     try:
-        # ایجاد تصویر اول (Treemap + جدول)
+        # 1. ایجاد تصویر اول (Treemap + جدول)
         img1_bytes = create_combined_image(
             data["Fund_df"],
             dollar_prices["last_trade"],
@@ -36,15 +39,15 @@ def send_to_telegram(
             yesterday_close,
         )
 
-        # ایجاد تصویر دوم (نمودارها)
+        # 2. ایجاد تصویر دوم (نمودارها)
         img2_bytes = create_market_charts()
 
-        # ایجاد کپشن
+        # 3. ایجاد کپشن (شامل محاسبه حباب وزنی)
         caption = create_simple_caption(
             data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
         )
 
-        # ارسال به صورت Media Group (آلبوم)
+        # 4. تصمیم‌گیری برای ارسال (تکی یا آلبوم)
         if img2_bytes:
             return send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption)
         else:
@@ -53,30 +56,31 @@ def send_to_telegram(
             url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
             files = {"photo": ("market_report.png", io.BytesIO(img1_bytes), "image/png")}
             params = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
-            
+
             response = requests.post(url, files=files, data=params, timeout=60)
-            
+
             if response.status_code == 200:
+                logger.info("✅ گزارش (تک عکس) ارسال شد")
                 return True
             else:
-                logger.error(f"❌ خطا در ارسال: {response.text}")
+                logger.error(f"❌ خطا در ارسال تک عکس: {response.text}")
                 return False
 
     except Exception as e:
-        logger.error(f"❌ خطا در ارسال به تلگرام: {e}", exc_info=True)
+        logger.error(f"❌ خطا در فرآیند ارسال به تلگرام: {e}", exc_info=True)
         return False
 
 
 def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
-    """ارسال 2 عکس + کپشن به صورت Media Group"""
+    """ارسال 2 عکس + کپشن به صورت Media Group (آلبوم)"""
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMediaGroup"
-        
+
         files = {
             'photo1': ('market_treemap.png', io.BytesIO(img1_bytes), 'image/png'),
             'photo2': ('market_charts.png', io.BytesIO(img2_bytes), 'image/png')
         }
-        
+
         media = [
             {
                 'type': 'photo',
@@ -89,21 +93,21 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
                 'media': 'attach://photo2'
             }
         ]
-        
-        data = {
+
+        data_payload = {
             'chat_id': chat_id,
             'media': json.dumps(media)
         }
-        
-        response = requests.post(url, files=files, data=data, timeout=60)
-        
+
+        response = requests.post(url, files=files, data=data_payload, timeout=60)
+
         if response.status_code == 200:
             logger.info("✅ Media Group ارسال شد")
             return True
         else:
             logger.error(f"❌ خطا در ارسال Media Group: {response.text}")
             return False
-            
+
     except Exception as e:
         logger.error(f"❌ خطا در ارسال Media Group: {e}", exc_info=True)
         return False
@@ -112,6 +116,7 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
 def create_combined_image(
     Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close
 ):
+    """تولید تصویر ترکیبی شامل Treemap و جدول"""
     fig = make_subplots(
         rows=2,
         cols=1,
@@ -121,11 +126,13 @@ def create_combined_image(
     )
 
     df_sorted = Fund_df.copy()
+    # برای رنگ‌بندی از درصد تغییر قیمت استفاده می‌کنیم
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
 
     FONT_BIG = 19
 
     def create_text(row):
+        # تنظیم اندازه فونت بر اساس اهمیت (ارزش معاملات)
         if row["value"] > 100:
             return (
                 f"<b style='font-size:{FONT_BIG+3}px'>{row.name}</b><br>"
@@ -145,6 +152,7 @@ def create_combined_image(
     df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
 
+    # تعریف طیف رنگی (قرمز تا سبز)
     colorscale = [
         [0.0, "#E57373"],
         [0.1, "#D85C5C"],
@@ -159,6 +167,7 @@ def create_combined_image(
         [1.0, "#66BB6A"],
     ]
 
+    # افزودن Treemap
     fig.add_trace(
         go.Treemap(
             labels=df_sorted.index,
@@ -182,6 +191,7 @@ def create_combined_image(
         col=1,
     )
 
+    # آماده‌سازی داده‌های جدول (۱۰ تای برتر)
     top_10 = df_sorted.head(10)
 
     table_header = [
@@ -207,6 +217,7 @@ def create_combined_image(
 
     def col_color(v):
         try:
+            # حذف کاراکترهای غیر عددی برای تشخیص مثبت/منفی
             x = float(v.replace("%", "").replace("+", "").replace(",", ""))
             return "#1B5E20" if x > 0 else "#A52A2A" if x < 0 else "#2C2C2C"
         except:
@@ -216,13 +227,14 @@ def create_combined_image(
         ["#1C2733"] * len(top_10),
         ["#1C2733"] * len(top_10),
         ["#1C2733"] * len(top_10),
-        [col_color(x) for x in table_cells[3]],
-        [col_color(x) for x in table_cells[4]],
-        [col_color(x) for x in table_cells[5]],
-        [col_color(x) for x in table_cells[6]],
+        [col_color(x) for x in table_cells[3]], # تغییر %
+        [col_color(x) for x in table_cells[4]], # حباب
+        [col_color(x) for x in table_cells[5]], # اختلاف سرانه
+        [col_color(x) for x in table_cells[6]], # پول حقیقی
         ["#1C2733"] * len(top_10),
     ]
 
+    # افزودن جدول
     fig.add_trace(
         go.Table(
             header=dict(
@@ -261,9 +273,11 @@ def create_combined_image(
         showlegend=False,
     )
 
+    # تبدیل پلات به عکس
     img_bytes = fig.to_image(format="png", width=1200, height=1200)
+    
+    # افزودن واترمارک با PIL
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-
     watermark_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(watermark_layer)
 
@@ -277,13 +291,17 @@ def create_combined_image(
     bbox = draw.textbbox((0, 0), watermark_text, font=font)
     textwidth = bbox[2] - bbox[0]
     textheight = bbox[3] - bbox[1]
+    
+    # ساخت واترمارک چرخیده
     txt_img = Image.new("RGBA", (textwidth + 40, textheight + 40), (255, 255, 255, 0))
     txt_draw = ImageDraw.Draw(txt_img)
     txt_draw.text((20, 20), watermark_text, font=font, fill=(255, 255, 255, 100))
     rotated = txt_img.rotate(45, expand=True)
+    
     x = (img.width - rotated.width) // 2
     y = (img.height - rotated.height) // 2
     watermark_layer.paste(rotated, (x, y), rotated)
+    
     img = Image.alpha_composite(img, watermark_layer)
 
     output = io.BytesIO()
@@ -294,6 +312,7 @@ def create_combined_image(
 def create_simple_caption(
     data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
 ):
+    """ساخت کپشن برای تلگرام"""
     tehran_tz = pytz.timezone("Asia/Tehran")
     now = JalaliDateTime.now(tehran_tz)
     current_time = now.strftime("%Y/%m/%d - %H:%M:%S")
@@ -303,11 +322,22 @@ def create_simple_caption(
     except:
         dollar_time = "نامشخص"
 
-    total_value = data["Fund_df"]["value"].sum()
-    total_pol = data["Fund_df"]["pol_hagigi"].sum()
-    avg_price = data["Fund_df"]["close_price"].mean()
-    avg_change_percent = data["Fund_df"]["close_price_change_percent"].mean()
+    # --- دسترسی راحت‌تر به داده‌های صندوق ---
+    df_funds = data["Fund_df"]
 
+    # --- محاسبات آماری صندوق‌ها ---
+    total_value = df_funds["value"].sum()
+    total_pol = df_funds["pol_hagigi"].sum()
+    avg_price = df_funds["close_price"].mean()
+    avg_change_percent = df_funds["close_price_change_percent"].mean()
+
+    # ✅ محاسبه میانگین حباب وزنی (Weighted Average Bubble)
+    if total_value > 0:
+        avg_bubble = (df_funds["value"] * df_funds["nominal_bubble"]).sum() / total_value
+    else:
+        avg_bubble = 0
+
+    # --- محاسبات تغییرات ---
     dollar_change = (
         ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100)
         if yesterday_close and yesterday_close != 0
@@ -317,57 +347,49 @@ def create_simple_caption(
         ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday and gold_yesterday != 0 else 0
     )
 
+    # --- استخراج داده‌های طلا و سکه ---
     shams = data["dfp"].loc["شمش-طلا"]
     gold_24 = data["dfp"].loc["طلا-گرم-24-عیار"]
     gold_18 = data["dfp"].loc["طلا-گرم-18-عیار"]
     sekeh = data["dfp"].loc["سکه-امامی-طرح-جدید"]
 
-    try:
-        dollar_calc = shams["pricing_dollar"]
-        dollar_diff = dollar_calc - dollar_prices["last_trade"]
-    except:
-        dollar_calc = 0
-        dollar_diff = 0
+    # --- توابع کمکی برای محاسبه حباب دلاری/اونسی ---
+    def calc_diffs(asset_row, dollar_current, gold_current):
+        # محاسبه دلار
+        try:
+            d_calc = asset_row["pricing_dollar"]
+            d_diff = d_calc - dollar_current
+        except:
+            d_calc = 0
+            d_diff = 0
+        
+        # محاسبه اونس (فقط برای شمش)
+        try:
+            o_calc = asset_row["pricing_Gold"]
+            o_diff = o_calc - gold_current
+        except:
+            o_calc = 0
+            o_diff = 0
+            
+        return d_calc, d_diff, o_calc, o_diff
 
-    try:
-        ounce_calc = shams["pricing_Gold"]
-        ounce_diff = ounce_calc - gold_price
-    except:
-        ounce_calc = 0
-        ounce_diff = 0
+    # محاسبات شمش
+    d_shams, diff_shams, o_shams, diff_o_shams = calc_diffs(shams, dollar_prices["last_trade"], gold_price)
 
+    # محاسبات سایر اقلام (اونس برای اینها محاسبه نمی‌شود)
+    d_24, diff_24, _, _ = calc_diffs(gold_24, dollar_prices["last_trade"], gold_price)
+    d_18, diff_18, _, _ = calc_diffs(gold_18, dollar_prices["last_trade"], gold_price)
+    d_sekeh, diff_sekeh, _, _ = calc_diffs(sekeh, dollar_prices["last_trade"], gold_price)
+
+    # تبدیل قیمت‌ها (تقسیم بر ۱۰ برای تبدیل ریال به تومان اگر لازم است - در کد اصلی شما بود)
     gold_24_price = gold_24["close_price"] / 10
     gold_18_price = gold_18["close_price"] / 10
     sekeh_price = sekeh["close_price"] / 10
 
-    # محاسبه دلار محاسباتی برای طلا ۲۴ عیار
-    try:
-        dollar_calc_24 = gold_24["pricing_dollar"]
-        dollar_diff_24 = dollar_calc_24 - dollar_prices["last_trade"]
-    except:
-        dollar_calc_24 = 0
-        dollar_diff_24 = 0
-
-    # محاسبه دلار محاسباتی برای طلا ۱۸ عیار
-    try:
-        dollar_calc_18 = gold_18["pricing_dollar"]
-        dollar_diff_18 = dollar_calc_18 - dollar_prices["last_trade"]
-    except:
-        dollar_calc_18 = 0
-        dollar_diff_18 = 0
-
-    # محاسبه دلار محاسباتی برای سکه
-    try:
-        dollar_calc_sekeh = sekeh["pricing_dollar"]
-        dollar_diff_sekeh = dollar_calc_sekeh - dollar_prices["last_trade"]
-    except:
-        dollar_calc_sekeh = 0
-        dollar_diff_sekeh = 0
-
-
-    # محاسبه نسبت پول حقیقی به ارزش معاملات
+    # نسبت پول حقیقی
     pol_to_value_ratio = (total_pol / total_value * 100) if total_value != 0 else 0
 
+    # --- ساخت متن کپشن ---
     caption = f"""
 📅 <b>{current_time}</b>
 
@@ -384,27 +406,28 @@ def create_simple_caption(
 💸 ورود پول حقیقی: <b>{total_pol:+,.0f}</b> میلیارد تومان
 📊 پول حقیقی به ارزش معاملات: <b>{pol_to_value_ratio:+.0f}%</b>
 📈 آخرین قیمت : <b>{avg_price:,.0f}</b> تومان ({avg_change_percent:+.2f}%)
+🎈 میانگین حباب (وزنی): <b>{avg_bubble:+.2f}%</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━
 ✨ <b>شمش طلا</b>
 💰 قیمت: <b>{shams['close_price']:,}</b> ریال
 📊 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
-💵 دلار محاسباتی: {dollar_calc:,.0f} ({dollar_diff:+,.0f})
-🔆 اونس محاسباتی: ${ounce_calc:,.0f} ({ounce_diff:+.0f})
+💵 دلار محاسباتی: {d_shams:,.0f} ({diff_shams:+,.0f})
+🔆 اونس محاسباتی: ${o_shams:,.0f} ({diff_o_shams:+.0f})
 
 🔸 <b>طلا ۲۴ عیار</b>
 💰 قیمت: <b>{gold_24_price:,.0f}</b> تومان
 📊 تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
-💵 دلار محاسباتی: {dollar_calc_24:,.0f} ({dollar_diff_24:+,.0f})
+💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:+,.0f})
 
 🔸 <b>طلا ۱۸ عیار</b>
 💰 قیمت: <b>{gold_18_price:,.0f}</b> تومان
 📊 تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
-💵 دلار محاسباتی: {dollar_calc_18:,.0f} ({dollar_diff_18:+,.0f})
+💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+,.0f})
 
 🪙 <b>سکه امامی</b>
 💰 قیمت: <b>{sekeh_price:,.0f}</b> تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
-💵 دلار محاسباتی: {dollar_calc_sekeh:,.0f} ({dollar_diff_sekeh:+,.0f})
+💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
 ━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>
 """
