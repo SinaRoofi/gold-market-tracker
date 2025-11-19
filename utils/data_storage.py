@@ -10,10 +10,13 @@ ch = logging.StreamHandler()
 ch.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(ch)
 
+# اطمینان از وجود پوشه data
+DATA_FOLDER = "data"
+os.makedirs(DATA_FOLDER, exist_ok=True)
+
 def get_csv_filename():
-    """فایل CSV ثابت در پوشه data/"""
-    os.makedirs("data", exist_ok=True)
-    return os.path.join("data", "market_data.csv")
+    """بازگشت مسیر کامل فایل CSV داخل پوشه data"""
+    return os.path.join(DATA_FOLDER, "market_data.csv")
 
 def initialize_csv(file_path):
     """ایجاد فایل CSV با هدرها اگر وجود نداشته باشد"""
@@ -40,7 +43,7 @@ def initialize_csv(file_path):
         logger.info(f"ℹ️ فایل CSV موجود است و داده‌های قبلی حفظ می‌شوند: {file_path}")
 
 def save_market_snapshot(dollar_prices, yesterday_close, Fund_df, gold_price, gold_yesterday, dfp):
-    """ذخیره یک snapshot از بازار به فایل CSV ثابت در data/"""
+    """ذخیره یک snapshot از بازار به فایل CSV داخل پوشه data"""
     try:
         csv_file = get_csv_filename()
         initialize_csv(csv_file)
