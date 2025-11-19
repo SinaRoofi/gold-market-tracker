@@ -11,8 +11,9 @@ ch.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(ch)
 
 def get_csv_filename():
-    """یک CSV ثابت باز می‌کند که داده‌ها append شوند"""
-    return "market_data.csv"
+    """فایل CSV ثابت در پوشه data/"""
+    os.makedirs("data", exist_ok=True)
+    return os.path.join("data", "market_data.csv")
 
 def initialize_csv(file_path):
     """ایجاد فایل CSV با هدرها اگر وجود نداشته باشد"""
@@ -39,7 +40,7 @@ def initialize_csv(file_path):
         logger.info(f"ℹ️ فایل CSV موجود است و داده‌های قبلی حفظ می‌شوند: {file_path}")
 
 def save_market_snapshot(dollar_prices, yesterday_close, Fund_df, gold_price, gold_yesterday, dfp):
-    """ذخیره یک snapshot از بازار به فایل CSV ثابت"""
+    """ذخیره یک snapshot از بازار به فایل CSV ثابت در data/"""
     try:
         csv_file = get_csv_filename()
         initialize_csv(csv_file)
