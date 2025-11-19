@@ -1,7 +1,7 @@
 name: Gold Market Tracker
 
 on:
-  workflow_dispatch:  # یا Cloudflare Worker هر ۵ دقیقه آن را فراخوانی می‌کند
+  workflow_dispatch:
 
 jobs:
   track-market:
@@ -21,6 +21,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    # دانلود CSV Artifact قبلی
+    - name: Download CSV artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: market_csv
+        path: .
+
+    # اجرای اسکریپت اصلی
     - name: Run market tracker
       env:
         TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
@@ -31,17 +39,9 @@ jobs:
         TWELVEDATA_API_KEY: ${{ secrets.TWELVEDATA_API_KEY }}
       run: python main.py
 
-    - name: Upload daily CSV artifact
-      uses: actions/upload-artifact@v4
+    # آپلود CSV به عنوان Artifact برای اجراهای بعدی
+    - name: Upload CSV artifact
+      uses: actions/upload-artifact@v3
       with:
-        name: daily-market-data
+        name: market_csv
         path: market_data_*.csv
-        retention-days: 7
-
-    - name: Upload logs on failure
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: logs
-        path: gold_tracker.log
-        retention-days: 7
