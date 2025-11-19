@@ -115,7 +115,7 @@ def create_market_charts():
                       row=3, col=1)
         fig.add_hline(y=0, line_dash="dash", line_color="white", opacity=0.5, row=3, col=1)
 
-        # نمودار 4: درصد تغییر آخرین صندوق‌ها
+        # نمودار 4: درصد آخرین صندوق‌های طلا
         colors_fund = ['#2ECC71' if x >= 0 else '#E74C3C' for x in grouped['fund_price_change_percent_weighted']]
         fig.add_trace(go.Scatter(x=grouped['timestamp'], y=grouped['fund_price_change_percent_weighted'],
                                  name='درصد آخرین', mode='lines+markers',
