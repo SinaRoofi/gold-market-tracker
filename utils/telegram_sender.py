@@ -105,14 +105,24 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-    FONT_BIG = 18  # تغییر فونت به ۱۸ برای همه مربع‌ها
+    FONT_BIG = 19
 
     def create_text(row):
-        # متن سه خطی ثابت برای همه مربع‌ها
-        name = f"<b>{row.name}</b>"
-        price_change = f"{row['close_price']:,.0f}({row['close_price_change_percent']:+.1f})"
-        bubble = f"٪حباب:{row['nominal_bubble']:+.1f}"
-        return f"{name}<br>{price_change}<br>{bubble}"
+        if row["value"] > 100:
+            return (
+                f"<b style='font-size:{FONT_BIG+3}px'>{row.name}</b><br>"
+                f"<span style='font-size:{FONT_BIG}px'>{row['close_price']:,.0f}</span><br>"
+                f"<span style='font-size:{FONT_BIG-1}px'>{row['close_price_change_percent']:+.2f}%</span><br>"
+                f"<span style='font-size:{FONT_BIG-2}px'>حباب: {row['nominal_bubble']:+.2f}%</span>"
+            )
+        elif row["value"] > 50:
+            return (
+                f"<b style='font-size:{FONT_BIG+1}px'>{row.name}</b><br>"
+                f"<span style='font-size:{FONT_BIG-1}px'>{row['close_price']:,.0f}</span><br>"
+                f"<span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>"
+            )
+        else:
+            return f"<b style='font-size:{FONT_BIG}px'>{row.name}</b><br><span style='font-size:{FONT_BIG-2}px'>{row['close_price_change_percent']:+.2f}%</span>"
 
     df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
@@ -221,17 +231,30 @@ def create_simple_caption(
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
     
+    # ✅ بخش اصلاح شده: هر ۳ پارامتر به صورت وزنی محاسبه می‌شوند
     if total_value > 0:
+        # 1. میانگین قیمت وزنی
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
+        
+        # 2. میانگین درصد تغییر وزنی (جدید)
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
+        
+        # 3. میانگین حباب وزنی
         avg_bubble_weighted = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value
     else:
         avg_price_weighted = 0
         avg_change_percent_weighted = 0
         avg_bubble_weighted = 0
 
-    dollar_change = ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100) if yesterday_close and yesterday_close != 0 else 0
-    gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday and gold_yesterday != 0 else 0
+    # --- سایر محاسبات ---
+    dollar_change = (
+        ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100)
+        if yesterday_close and yesterday_close != 0
+        else 0
+    )
+    gold_change = (
+        ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday and gold_yesterday != 0 else 0
+    )
 
     shams = data["dfp"].loc["شمش-طلا"]
     gold_24 = data["dfp"].loc["طلا-گرم-24-عیار"]
