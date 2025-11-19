@@ -96,8 +96,6 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
         return False
 
 
-# --- تابع تولید تصویر (با اصلاحات Treemap) ---
-
 def create_combined_image(
     Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close
 ):
@@ -109,40 +107,34 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-    FONT_BIG = 19  # تنظیم مجدد فونت اصلی به ۱۹
+    FONT_BIG = 22  # ← افزایش سایز فونت
 
     def create_text(row):
-        """ساخت محتوای متنی بهینه شده بر اساس اندازه (value) با FONT_BIG=19"""
-        
-        # تعریف متغیرها بر اساس FONT_BIG=19
-        symbol_name_big = f"<b style='font-size:{FONT_BIG+3}px'>{row.name}</b>" # 22px
-        price_change_text = f"<span style='font-size:{FONT_BIG}px'>{row['close_price']:,.0f} ({row['close_price_change_percent']:+.2f}%)</span>" # 19px
-        bubble_text = f"<span style='font-size:{FONT_BIG-2}px'>حباب: {row['nominal_bubble']:+.2f}%</span>" # 17px
-        
-        # --- قوانین نمایش بهینه شده ---
-        
-        # اگر ارزش معاملات خیلی زیاد است (مربع های بزرگتر از 100)
+        """
+        فرمت جدید:
+        نماد
+        قیمت (درصد تغییر%)
+        حباب: X%
+        """
         if row["value"] > 100:
             return (
-                f"{symbol_name_big}<br>" 
-                f"{price_change_text}<br>" 
-                f"{bubble_text}" 
+                f"<b style='font-size:{FONT_BIG+4}px'>{row.name}</b><br>"
+                f"<span style='font-size:{FONT_BIG}px'>{row['close_price']:,.0f} "
+                f"({row['close_price_change_percent']:+.2f}%)</span><br>"
+                f"<span style='font-size:{FONT_BIG-2}px'>حباب: {row['nominal_bubble']:+.2f}%</span>"
             )
-        
-        # اگر ارزش معاملات متوسط است (مربع های بین 50 و 100)
         elif row["value"] > 50:
-            # نمایش نماد و قیمت/تغییر، حباب حذف می‌شود.
             return (
-                f"{symbol_name_big}<br>" 
-                f"{price_change_text}" 
+                f"<b style='font-size:{FONT_BIG+2}px'>{row.name}</b><br>"
+                f"<span style='font-size:{FONT_BIG-2}px'>{row['close_price']:,.0f} "
+                f"({row['close_price_change_percent']:+.2f}%)</span><br>"
+                f"<span style='font-size:{FONT_BIG-3}px'>حباب: {row['nominal_bubble']:+.2f}%</span>"
             )
-        
-        # اگر ارزش معاملات کوچک است (مربع های کوچکتر از 50)
         else:
-            # نمایش نماد و درصد تغییر (فقط درصد تغییر)
             return (
                 f"<b style='font-size:{FONT_BIG}px'>{row.name}</b><br>"
-                f"<span style='font-size:{FONT_BIG-3}px'>{row['close_price_change_percent']:+.2f}%</span>"
+                f"<span style='font-size:{FONT_BIG-3}px'>{row['close_price']:,.0f} "
+                f"({row['close_price_change_percent']:+.2f}%)</span>"
             )
 
     df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
@@ -156,18 +148,27 @@ def create_combined_image(
 
     fig.add_trace(
         go.Treemap(
-            labels=df_sorted.index, parents=[""] * len(df_sorted), values=df_sorted["value"],
-            text=df_sorted["display_text"], textinfo="text", textposition="middle center",
-            
-            # تنظیم فونت Treemap برای سازگاری با HTML (اندازه کوچک‌تر از FONT_BIG)
-            textfont=dict(size=FONT_BIG - 3, family="Vazirmatn, Arial", color="white"),
-            
+            labels=df_sorted.index, 
+            parents=[""] * len(df_sorted), 
+            values=df_sorted["value"],
+            text=df_sorted["display_text"], 
+            textinfo="text", 
+            textposition="middle center",
+            textfont=dict(size=FONT_BIG, family="Vazirmatn, Arial", color="white"),
             hoverinfo="skip",
-            marker=dict(colors=df_sorted["color_value"], colorscale=colorscale, cmid=0, cmin=-10, cmax=10, line=dict(width=2, color="#1A1A1A")),
+            marker=dict(
+                colors=df_sorted["color_value"], 
+                colorscale=colorscale, 
+                cmid=0, 
+                cmin=-10, 
+                cmax=10, 
+                line=dict(width=2, color="#1A1A1A")
+            ),
         ),
         row=1, col=1,
     )
 
+    # جدول (بدون تغییر)
     top_10 = df_sorted.head(10)
     table_header = ["نماد", "قیمت", "NAV", "تغییر %", "حباب %", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"]
     table_cells = [
@@ -189,29 +190,57 @@ def create_combined_image(
             return "#1C2733"
 
     cell_colors = [
-        ["#1C2733"] * len(top_10), ["#1C2733"] * len(top_10), ["#1C2733"] * len(top_10),
-        [col_color(x) for x in table_cells[3]], [col_color(x) for x in table_cells[4]],
-        [col_color(x) for x in table_cells[5]], [col_color(x) for x in table_cells[6]],
+        ["#1C2733"] * len(top_10), 
+        ["#1C2733"] * len(top_10), 
+        ["#1C2733"] * len(top_10),
+        [col_color(x) for x in table_cells[3]], 
+        [col_color(x) for x in table_cells[4]],
+        [col_color(x) for x in table_cells[5]], 
+        [col_color(x) for x in table_cells[6]],
         ["#1C2733"] * len(top_10),
     ]
 
     fig.add_trace(
         go.Table(
-            header=dict(values=[f"<b>{h}</b>" for h in table_header], fill_color="#242F3D", align="center", font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), height=32),
-            cells=dict(values=table_cells, fill_color=cell_colors, align="center", font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), height=35),
+            header=dict(
+                values=[f"<b>{h}</b>" for h in table_header], 
+                fill_color="#242F3D", 
+                align="center", 
+                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
+                height=32
+            ),
+            cells=dict(
+                values=table_cells, 
+                fill_color=cell_colors, 
+                align="center", 
+                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
+                height=35
+            ),
         ),
         row=2, col=1,
     )
 
     fig.update_layout(
-        paper_bgcolor="#000000", plot_bgcolor="#000000", height=1400, width=1400,
-        margin=dict(t=120, l=10, r=10, b=10), # Margin را کمی افزایش دادم
-        title=dict(text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>", font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"), x=0.5, y=1.0, xanchor="center", yanchor="top"),
+        paper_bgcolor="#000000", 
+        plot_bgcolor="#000000", 
+        height=1400, 
+        width=1400,
+        margin=dict(t=90, l=10, r=10, b=10),
+        title=dict(
+            text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>", 
+            font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"), 
+            x=0.5, 
+            y=1.0, 
+            xanchor="center", 
+            yanchor="top"
+        ),
         showlegend=False,
     )
 
     img_bytes = fig.to_image(format="png", width=1200, height=1200)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+    
+    # واترمارک
     watermark_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(watermark_layer)
     font_size = 60
@@ -234,7 +263,6 @@ def create_combined_image(
     output = io.BytesIO()
     img.save(output, format="PNG", optimize=True, quality=85)
     return output.getvalue()
-
 
 # --- تابع کپشن (بدون تغییر) ---
 
