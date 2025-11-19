@@ -15,11 +15,11 @@ ch.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(ch)
 
 def get_csv_filename():
-    """فایل CSV ثابت برای ذخیره داده‌ها"""
-    return "market_data.csv"
+    """فایل CSV ثابت در پوشه data/"""
+    return os.path.join("data", "market_data.csv")
 
 def create_market_charts():
-    """ایجاد نمودارهای بازار از داده‌های CSV با محاسبات وزنی فقط برای امروز"""
+    """ایجاد نمودارهای بازار از داده‌های CSV فقط برای امروز"""
     try:
         csv_file = get_csv_filename()
         if not os.path.exists(csv_file):
