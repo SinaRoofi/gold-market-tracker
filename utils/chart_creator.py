@@ -55,11 +55,11 @@ def create_market_charts():
             rows=6, cols=1,
             subplot_titles=(
                 '<b>قیمت اونس طلا ($)</b>',
-                '<b> دلار آزاد (%)</b>',
-                '<b> شمش طلا (%)</b>',
-                '<b>  درصد آخرین صندوق‌های طلا (%)</b>',
-                '<b>  حباب صندوق‌های طلا (%)</b>',
-                '<b>سرانه خرید/فروش حقیقی</b>'
+                '<b>تغییر دلار آزاد (%)</b>',
+                '<b>تغییر شمش طلا (%)</b>',
+                '<b>میانگین وزنی تغییر صندوق‌های طلا (%)</b>',
+                '<b>میانگین وزنی حباب صندوق‌های طلا (%)</b>',
+                '<b>سرانه خرید/فروش حقیقی (وزنی)</b>'
             ),
             vertical_spacing=0.045,
             shared_xaxes=True
@@ -142,16 +142,17 @@ def create_market_charts():
             height=2200,
             paper_bgcolor='#0D1117',
             plot_bgcolor='#0D1117',
-            font=dict(color='#C9D1D9', family='Vazirmatn, Arial', size=17),  # فونت +3
+            font=dict(color='#C9D1D9', family='Vazirmatn, Arial', size=20),  # ← فونت بزرگتر (17→20)
             hovermode='x unified',
             showlegend=False,
-            margin=dict(l=60, r=30, t=40, b=40),
+            margin=dict(l=60, r=30, t=100, b=40),  # ← فضای بالا بیشتر برای تیتر
             title=dict(
-                text='<b style="color:#FFD700">📊 روند بازار</b>',
-                x=0.5,
-                y=0.99,
-                xanchor='center',
-                font=dict(size=28)
+                text='<b style="color:#FFD700; font-size:36px">📊 روند بازار</b>',  # ← فونت بزرگتر
+                x=0.02,  # ← سمت چپ بالا
+                y=0.995,  # ← خیلی بالا
+                xanchor='left',
+                yanchor='top',
+                font=dict(size=36, color='#FFD700')
             )
         )
         
@@ -194,7 +195,7 @@ def create_market_charts():
         
         # تنظیم عنوان‌های subplot
         for annotation in fig['layout']['annotations']:
-            annotation['font'] = dict(size=19, color='#8B949E')
+            annotation['font'] = dict(size=22, color='#8B949E')  # ← فونت بزرگتر (19→22)
         
         # تبدیل به عکس
         img_bytes = fig.to_image(format='png', width=1400, height=2200)
@@ -224,77 +225,54 @@ def create_market_charts():
 def add_conditional_line(fig, df, column, row):
     """
     اضافه کردن خط با رنگ شرطی (سبز اگه مثبت، قرمز اگه منفی)
+    خطوط کاملاً صاف و هموار با line smoothing
     """
-    # جدا کردن قسمت‌های مثبت و منفی
-    df_positive = df[df[column] >= 0].copy()
-    df_negative = df[df[column] < 0].copy()
+    # یک خط پیوسته با رنگ‌های مختلف
+    colors = ['#00E676' if val >= 0 else '#FF1744' for val in df[column]]
     
-    # خط سبز برای مثبت
-    if not df_positive.empty:
-        fig.add_trace(go.Scatter(
-            x=df_positive['timestamp'],
-            y=df_positive[column],
-            mode='lines',
-            line=dict(color='#00E676', width=5),
-            showlegend=False,
-            hovertemplate='<b>%{y:+.2f}%</b><extra></extra>'
-        ), row=row, col=1)
-    
-    # خط قرمز برای منفی
-    if not df_negative.empty:
-        fig.add_trace(go.Scatter(
-            x=df_negative['timestamp'],
-            y=df_negative[column],
-            mode='lines',
-            line=dict(color='#FF1744', width=5),
-            showlegend=False,
-            hovertemplate='<b>%{y:+.2f}%</b><extra></extra>'
-        ), row=row, col=1)
-    
-    # اگه از مثبت به منفی یا بالعکس میره، باید خطوط وصل بشن
-    # پیدا کردن نقاط تلاقی با صفر
-    transitions = []
+    # برای خطوط صاف‌تر، از shape='spline' استفاده می‌کنیم
     for i in range(len(df) - 1):
         curr_val = df[column].iloc[i]
         next_val = df[column].iloc[i + 1]
+        curr_time = df['timestamp'].iloc[i]
+        next_time = df['timestamp'].iloc[i + 1]
         
-        # اگه علامت عوض شد
+        # تعیین رنگ بر اساس مقدار فعلی
+        color = '#00E676' if curr_val >= 0 else '#FF1744'
+        
+        # اگه از مثبت به منفی یا بالعکس می‌ره
         if (curr_val >= 0 and next_val < 0) or (curr_val < 0 and next_val >= 0):
-            # محاسبه نقطه دقیق تلاقی با صفر
-            curr_time = df['timestamp'].iloc[i]
-            next_time = df['timestamp'].iloc[i + 1]
-            
-            # میانیابی خطی
+            # نقطه تلاقی با صفر
             t = abs(curr_val) / (abs(curr_val) + abs(next_val))
             cross_time = curr_time + (next_time - curr_time) * t
             
-            transitions.append({
-                'time': cross_time,
-                'value': 0,
-                'prev_time': curr_time,
-                'prev_val': curr_val,
-                'next_time': next_time,
-                'next_val': next_val
-            })
-    
-    # رسم خطوط اتصال
-    for trans in transitions:
-        color = '#00E676' if trans['prev_val'] >= 0 else '#FF1744'
-        fig.add_trace(go.Scatter(
-            x=[trans['prev_time'], trans['time']],
-            y=[trans['prev_val'], 0],
-            mode='lines',
-            line=dict(color=color, width=5),
-            showlegend=False,
-            hoverinfo='skip'
-        ), row=row, col=1)
-        
-        color = '#FF1744' if trans['next_val'] < 0 else '#00E676'
-        fig.add_trace(go.Scatter(
-            x=[trans['time'], trans['next_time']],
-            y=[0, trans['next_val']],
-            mode='lines',
-            line=dict(color=color, width=5),
-            showlegend=False,
-            hoverinfo='skip'
-        ), row=row, col=1)
+            # خط اول تا نقطه صفر
+            fig.add_trace(go.Scatter(
+                x=[curr_time, cross_time],
+                y=[curr_val, 0],
+                mode='lines',
+                line=dict(color=color, width=5, shape='spline'),
+                showlegend=False,
+                hoverinfo='skip'
+            ), row=row, col=1)
+            
+            # خط دوم از نقطه صفر
+            color_next = '#FF1744' if next_val < 0 else '#00E676'
+            fig.add_trace(go.Scatter(
+                x=[cross_time, next_time],
+                y=[0, next_val],
+                mode='lines',
+                line=dict(color=color_next, width=5, shape='spline'),
+                showlegend=False,
+                hoverinfo='skip'
+            ), row=row, col=1)
+        else:
+            # خط عادی
+            fig.add_trace(go.Scatter(
+                x=[curr_time, next_time],
+                y=[curr_val, next_val],
+                mode='lines',
+                line=dict(color=color, width=5, shape='spline'),
+                showlegend=False,
+                hovertemplate='<b>%{y:+.2f}%</b><extra></extra>' if i == 0 else None
+            ), row=row, col=1)
