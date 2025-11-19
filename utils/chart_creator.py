@@ -15,13 +15,11 @@ ch.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(ch)
 
 def get_csv_filename():
-    """نام فایل CSV بر اساس تاریخ امروز به وقت تهران"""
-    tehran_tz = pytz.timezone('Asia/Tehran')
-    today_str = datetime.now(tehran_tz).strftime('%Y-%m-%d')
-    return f"market_data_{today_str}.csv"
+    """فایل CSV ثابت برای ذخیره داده‌ها"""
+    return "market_data.csv"
 
 def create_market_charts():
-    """ایجاد نمودارهای بازار از داده‌های CSV با محاسبات وزنی"""
+    """ایجاد نمودارهای بازار از داده‌های CSV با محاسبات وزنی فقط برای امروز"""
     try:
         csv_file = get_csv_filename()
         if not os.path.exists(csv_file):
@@ -34,6 +32,14 @@ def create_market_charts():
             return None
 
         df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+        # فیلتر برای داده‌های امروز به وقت تهران
+        tehran_tz = pytz.timezone('Asia/Tehran')
+        today_str = datetime.now(tehran_tz).strftime('%Y-%m-%d')
+        df = df[df['timestamp'].dt.strftime('%Y-%m-%d') == today_str]
+        if df.empty:
+            logger.warning("⚠️ داده‌ای برای امروز موجود نیست")
+            return None
 
         # تابع میانگین وزنی
         def weighted_mean(group, column):
