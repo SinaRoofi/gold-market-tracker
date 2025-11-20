@@ -120,13 +120,20 @@ def create_combined_image(
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
 
     def create_text_html(row):
-        """متن HTML برای Treemap با چندخطی و قالب‌بندی"""
+        """متن HTML برای Treemap با جهت‌یابی صحیح RTL"""
+        RLE = "\u202B"  # Right-to-Left Embedding
+        PDF = "\u202C"  # Pop Directional Formatting
+        
         name = row.name
         price = f"{row['close_price']:,.0f}"
         change_pct = f"{row['close_price_change_percent']:+.2f}%"
         bubble = f"{row['nominal_bubble']:+.2f}% حباب"
 
-        return f"""\u200F<b>{name}</b><br>(\u200E{change_pct}\u200F%)
+        return (
+            f"{RLE}<b>{name}</b>{PDF}<br>"
+            f"{RLE}{price} ({change_pct}){PDF}<br>"
+            f"{RLE}{bubble}{PDF}"
+        )
 
     df_sorted["display_text"] = df_sorted.apply(create_text_html, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
@@ -154,8 +161,7 @@ def create_combined_image(
             textinfo="text",
             textposition="middle center",
             textfont=dict(
-                size=19,
-                family="Arial",
+                size=16,
                 color="white",
             ),
             hoverinfo="skip",
@@ -174,6 +180,7 @@ def create_combined_image(
         row=1,
         col=1,
     )
+    
     # جدول 10 صندوق برتر
     top_10 = df_sorted.head(10)
     table_header = [
@@ -222,7 +229,8 @@ def create_combined_image(
                 fill_color="#242F3D",
                 align="center",
                 font=dict(
-                    color="white", size=FONT_BIG - 3, family="Vazirmatn-Regular, Arial"
+                    color="white", 
+                    size=FONT_BIG - 3
                 ),
                 height=32,
             ),
@@ -231,7 +239,8 @@ def create_combined_image(
                 fill_color=cell_colors,
                 align="center",
                 font=dict(
-                    color="white", size=FONT_BIG - 3, family="Vazirmatn-Regular, Arial"
+                    color="white", 
+                    size=FONT_BIG - 3
                 ),
                 height=35,
             ),
@@ -248,7 +257,7 @@ def create_combined_image(
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
             text="<b>📊 نقشه بازار وجدول ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
-            font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"),
+            font=dict(size=32, color="#FFD700"),
             x=0.5,
             y=1.0,
             xanchor="center",
@@ -260,22 +269,6 @@ def create_combined_image(
     # تبدیل به تصویر
     img_bytes = fig.to_image(format="png", width=1200, height=1200)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-
-    # ادامه همان بخش رسم دستی متن و واترمارک
-    draw = ImageDraw.Draw(img)
-
-    # بارگذاری فونت فارسی
-    try:
-        font_large = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", 28)
-        font_medium = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", 22)
-        font_small = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", 18)
-    except:
-        try:
-            font_large = ImageFont.truetype("Vazirmatn-Regular.ttf", 28)
-            font_medium = ImageFont.truetype("Vazirmatn-Regular.ttf", 22)
-            font_small = ImageFont.truetype("Vazirmatn-Regular.ttf", 18)
-        except:
-            font_large = font_medium = font_small = ImageFont.load_default()
 
     # واترمارک
     watermark_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
