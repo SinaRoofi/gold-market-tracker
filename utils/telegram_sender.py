@@ -154,8 +154,8 @@ def create_combined_image(
             textinfo="text",
             textposition="middle center",
             textfont=dict(
-                size=16,
-                family="Vazirmatn, Arial",
+                size=19,
+                family="Arial",
                 color="white",
             ),
             hoverinfo="skip",
