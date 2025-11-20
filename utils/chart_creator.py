@@ -1,4 +1,4 @@
-# utils/chart_creator.py — نسخه نهایی با تیتر راست‌بالا + تاریخ و ساعت چپ‌بالا
+# utils/chart_creator.py — نسخه نهایی با تاریخ سفید چپ بالا + تیتر زرد راست بالا
 
 import logging
 import pytz
@@ -47,7 +47,7 @@ def create_market_charts():
 
         df = df.sort_values('timestamp')
 
-        # تاریخ و ساعت شمسی
+        # تاریخ و ساعت شمسی برای بالا چپ
         jalali_now = JalaliDateTime.now(tehran_tz)
         date_time_str = jalali_now.strftime("%Y/%m/%d - %H:%M")
 
@@ -65,7 +65,7 @@ def create_market_charts():
             shared_xaxes=True
         )
 
-        # فونت Vazirmatn-Medium
+        # فونت Vazirmatn-Medium برای کل نمودار
         try:
             ImageFont.truetype("assets/fonts/Vazirmatn-Medium.ttf", 40)
             chart_font_family = "Vazirmatn-Medium, Vazirmatn, sans-serif"
@@ -132,22 +132,30 @@ def create_market_charts():
             margin=dict(l=60, r=60, t=120, b=40),
         )
 
-        # عنوان اصلی بالا راست
+        # تیتر "روند بازار" — سمت راست بالا (زرد)
         fig.add_annotation(
-            text='<b style="color:#FFD700; font-size:36px">📊 روند بازار</b>',
-            x=0.98, y=0.995,
-            xanchor='right', yanchor='top',
-            showarrow=False,
-            font=dict(family=chart_font_family)
+            text='<b>📊 روند بازار</b>',
+            x=0.98,
+            y=1.04,
+            xref='paper',
+            yref='paper',
+            xanchor='right',
+            yanchor='top',
+            font=dict(size=36, color='#FFD700', family=chart_font_family),
+            showarrow=False
         )
 
-        # تاریخ و ساعت بالا چپ
+        # تاریخ و ساعت — سمت چپ بالا (سفید)
         fig.add_annotation(
-            text=f'<b style="color:#FFFFFF; font-size:34px">{date_time_str}</b>',
-            x=0.02, y=0.995,
-            xanchor='left', yanchor='top',
-            showarrow=False,
-            font=dict(family=chart_font_family)
+            text=f'<b>{date_time_str}</b>',
+            x=0.02,
+            y=1.04,
+            xref='paper',
+            yref='paper',
+            xanchor='left',
+            yanchor='top',
+            font=dict(size=34, color='#FFFFFF', family=chart_font_family),
+            showarrow=False
         )
 
         # تنظیمات محورها
@@ -179,20 +187,28 @@ def create_market_charts():
                 fig.add_hline(y=0, line_dash='dot', line_color='#484F58', line_width=2, row=i, col=1)
 
         for annotation in fig['layout']['annotations']:
-            annotation['font'] = dict(size=25, color='#8B949E', family=chart_font_family)
+            # فقط عنوان‌های subplot را تنظیم کن، نه annotation‌های جدید
+            if 'xref' not in annotation or annotation.get('xref') != 'paper':
+                annotation['font'] = dict(size=25, color='#8B949E', family=chart_font_family)
 
         # تولید تصویر
         img_bytes = fig.to_image(format='png', width=1400, height=2200, scale=2)
         img = Image.open(io.BytesIO(img_bytes)).convert('RGBA')
 
-        # واترمارک مرکزی امن
+        # واترمارک — پایین راست (مکان امن)
         try:
             draw = ImageDraw.Draw(img)
-            font = ImageFont.truetype('assets/fonts/Vazirmatn-Regular.ttf', 38)
+            font = ImageFont.truetype('assets/fonts/Vazirmatn-Regular.ttf', 46)
             text = 'Gold_Iran_Market'
             bbox = draw.textbbox((0, 0), text, font=font)
-            w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-            draw.text(((1400-w)/2, 2200-80), text, fill=(201,209,217,180), font=font)
+            w = bbox[2] - bbox[0]
+            h = bbox[3] - bbox[1]
+
+            # امن‌ترین نقطه
+            x = img.width - w - 25
+            y = img.height - h - 25
+
+            draw.text((x, y), text, fill=(201,209,217,160), font=font)
         except:
             pass
 
