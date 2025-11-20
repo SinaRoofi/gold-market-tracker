@@ -78,12 +78,12 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
 
 
 def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
-    """Treemap + جدول + تاریخ سفید + اندازه: ارزش معاملات — با فونت Vazirmatn-Medium از assets"""
+    """نقشه + جدول حرفه‌ای با فونت Vazirmatn-Medium از assets + رنگ‌های شیک و هدر زیبا"""
 
     # تاریخ و ساعت شمسی
     tehran_tz = pytz.timezone("Asia/Tehran")
     now_jalali = JalaliDateTime.now(tehran_tz)
-    date_time_str = now_jalali = now_jalali.strftime("%Y/%m/%d - %H:%M")
+    date_time_str = now_jalali.strftime("%Y/%m/%d - %H:%M")
 
     fig = make_subplots(
         rows=2, cols=1,
@@ -97,15 +97,14 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     df["display_text"] = df.apply(lambda row: f"\u202B<b>{row.name}</b>\u202C", axis=1)
     df = df.sort_values("value", ascending=False)
 
-    # فونت اصلی از پوشه assets
+    # استفاده از فونت Vazirmatn-Medium برای Treemap و جدول
     try:
-        medium_font_path = "assets/fonts/Vazirmatn-Medium.ttf"
-        medium_font = ImageFont.truetype(medium_font_path, 48)  # فقط برای اطمینان از وجود فایل
-        treemap_font_family = "Vazirmatn-Medium, sans-serif"
+        ImageFont.truetype("assets/fonts/Vazirmatn-Medium.ttf", 40)
+        font_family = "Vazirmatn-Medium, sans-serif"
     except:
-        treemap_font_family = "sans-serif"
+        font_family = "sans-serif"
 
-    # Treemap — فونت Vazirmatn-Medium
+    # Treemap
     fig.add_trace(go.Treemap(
         labels=df.index,
         parents=[""] * len(df),
@@ -113,15 +112,15 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         text=df["display_text"],
         textinfo="text",
         textposition="middle center",
-        textfont=dict(size=25, color="white", family=treemap_font_family),
+        textfont=dict(size=25, color="white", family=font_family),
         marker=dict(
             colors=df["color_value"],
             colorscale=[
-                [0.0, "#FF5555"],     # قرمز ملایم
-                [0.4, "#FF9999"],
-                [0.5, "#333333"],
-                [0.6, "#66BB6A"],
-                [1.0, "#00AA55"],     # سبز تیره و شیک
+                [0.0, "#cc4444"],   # قرمز ملایم
+                [0.4, "#aa6666"],
+                [0.5, "#222222"],
+                [0.6, "#448844"],
+                [1.0, "#006633"],   # سبز تیره و شیک
             ],
             cmid=0, cmin=-10, cmax=10,
             line=dict(width=3, color="#000000"),
@@ -132,7 +131,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 
     # جدول ۱۰ تایی
     top10 = df.head(10)
-    headers = ["نماد","قیمت","NAV","تغییر %","حباب %","اختلاف سرانه","پول حقیقی","ارزش معاملات"]
+    headers = ["نماد", "قیمت", "NAV", "تغییر %", "حباب %", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"]
 
     cells = [
         top10.index.tolist(),
@@ -145,43 +144,44 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         [f"{x:,.0f}" for x in top10["value"]],
     ]
 
-    # رنگ‌های جدید و خیلی خوشگل
-    def cell_bg_color(val):
+    # رنگ پس‌زمینه سلول‌ها — سبز تیره‌تر، قرمز ملایم‌تر
+    def cell_bg(val):
         try:
-            n = float(str(val).replace("%","").replace("+","").replace(",","").replace("-","").strip())
+            n = float(str(val).replace("%","").replace("+","").replace(",","").replace("-",""))
             if n > 0:
-                return "#003300"      # سبز تیره شیک
+                return "#004d26"    # سبز تیره خیلی شیک
             elif n < 0:
-                return "#660000"      # قرمز ملایم و لوکس
+                return "#663333"    # قرمز ملایم و لوکس
             else:
-                return "#222222"      # خاکستری تیره برای صفر
+                return "#1e1e1e"
         except:
-            return "#222222"
+            return "#1e1e1e"
 
     cell_colors = [
-        ["#1a1a1a"]*10,  # نماد
-        ["#1a1a1a1"]*10,  # قیمت
-        ["#1a1a1a"]*10,  # NAV
-        [cell_bg_color(v) for v in cells[3]],  # تغییر %
-        [cell_bg_color(v) for v in cells[4]],  # حباب
-        [cell_bg_color(v) for v in cells[5]],  # اختلاف سرانه
-        [cell_bg_color(v) for v in cells[6]],  # پول حقیقی
-        ["#1a1a1a"]*10,  # ارزش معاملات
+        ["#1e1e1e"]*10,
+        ["#1e1e1e"]*10,
+        ["#1e1e1e"]*10,
+        [cell_bg(v) for v in cells[3]],
+        [cell_bg(v) for v in cells[4]],
+        [cell_bg(v) for v in cells[5]],
+        [cell_bg(v) for v in cells[6]],
+        ["#1e1e1e"]*10,
     ]
 
+    # جدول با هدر فوق‌العاده زیبا
     fig.add_trace(go.Table(
         header=dict(
             values=[f"<b>{h}</b>" for h in headers],
-            fill_color="#00AA88",          # هدر سبز زمردی فوق‌العاده جذاب
-            font=dict(color="#FFFFFF", size=22, family=treemap_font_family),
-            height=48,
+            fill_color="#008855",          # سبز زمردی درخشان — هدر
+            font=dict(color="#FFFFFF", size=23, family=font_family),
+            height=52,
             align="center"
         ),
         cells=dict(
             values=cells,
             fill_color=cell_colors,
-            font=dict(color="#FFFFFF", size=19, family=treemap_font_family),
-            height=40,
+            font=dict(color="#FFFFFF", size=19, family=font_family),
+            height=42,
             align="center"
         )
     ), row=2, col=1)
@@ -193,18 +193,18 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         margin=dict(t=150, l=20, r=20, b=20),
         title=dict(
             text="<b>نقشه بازار صندوق‌های طلا</b>",
-            font=dict(size=36, color="#FFD700", family=treemap_font_family),
+            font=dict(size=36, color="#FFD700", family=font_family),
             x=0.5, y=0.96, xanchor="center", yanchor="top"
         ),
         showlegend=False,
     )
 
-    # تولید تصویر با کیفیت بالا
+    # تولید تصویر
     img_bytes = fig.to_image(format="png", width=1380, height=1380, scale=2.2)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    # فونت تاریخ و توضیح از پوشه assets
+    # تاریخ و توضیح با فونت وزیر
     try:
         font_date = ImageFont.truetype("assets/fonts/Vazirmatn-Bold.ttf", 66)
         font_desc = ImageFont.truetype("assets/fonts/Vazirmatn-Medium.ttf", 52)
@@ -237,7 +237,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     return out.getvalue()
 
 
-# کپشن بدون تغییر (همونی که قبلاً کار می‌کرد)
 def create_simple_caption(
     data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
 ):
@@ -245,13 +244,7 @@ def create_simple_caption(
     now = JalaliDateTime.now(tehran_tz)
     current_time = now.strftime("%Y/%m/%d - %H:%M:%S")
 
-    try:
-        dollar_time = gold_time.strftime("%H:%M") if gold_time else "نامشخص"
-    except:
-        dollar_time = "نامشخص"
-
     df_funds = data["Fund_df"]
-
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
 
