@@ -135,7 +135,7 @@ def create_market_charts():
             yref='paper',
             xanchor='right',
             yanchor='top',
-            font=dict(size=38, color='#FFD700', family=chart_font_family),
+            font=dict(size=40, color='#FFD700', family=chart_font_family),
             showarrow=False
         )
 
@@ -148,7 +148,7 @@ def create_market_charts():
             yref='paper',
             xanchor='left',
             yanchor='top',
-            font=dict(size=38, color='#FFFFFF', family=chart_font_family),
+            font=dict(size=40, color='#FFFFFF', family=chart_font_family),
             showarrow=False
         )
 
@@ -192,7 +192,7 @@ def create_market_charts():
             w = bbox[2] - bbox[0]
             h = bbox[3] - bbox[1]
             x = img.width - w - 25
-            y = img.height - h - 25
+            y = int(img.height * 0.83)
             draw.text((x, y), text, fill=(201,209,217,160), font=font)
         except:
             pass
