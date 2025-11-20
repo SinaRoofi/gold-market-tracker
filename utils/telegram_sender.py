@@ -225,7 +225,7 @@ def create_combined_image(
                 align="center",
                 font=dict(
                     color="white", 
-                    size=FONT_BIG - 2
+                    size=FONT_BIG - 1
                 ),
                 height=32,
             ),
@@ -235,7 +235,7 @@ def create_combined_image(
                 align="center",
                 font=dict(
                     color="white", 
-                    size=FONT_BIG - 3
+                    size=FONT_BIG - 2
                 ),
                 height=35,
             ),
@@ -247,8 +247,8 @@ def create_combined_image(
     fig.update_layout(
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
-        height=1400,
-        width=1400,
+        height=1300,
+        width=1300,
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
             text="<b> نقشه بازار وجدول ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
@@ -262,7 +262,7 @@ def create_combined_image(
     )
 
     # تبدیل به تصویر
-    img_bytes = fig.to_image(format="png", width=1200, height=1200)
+    img_bytes = fig.to_image(format="png", width=1300, height=1300,scale=2)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
 
     # واترمارک
@@ -270,10 +270,10 @@ def create_combined_image(
     draw = ImageDraw.Draw(watermark_layer)
     font_size = 60
     try:
-        font = ImageFont.truetype("assets/fonts/Vazirmatn.ttf", font_size)
+        font = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", font_size)
     except Exception:
         try:
-            font = ImageFont.truetype("Vazirmatn.ttf", font_size)
+            font = ImageFont.truetype("Vazirmatn-Regular.ttf", font_size)
         except:
             font = ImageFont.load_default()
 
