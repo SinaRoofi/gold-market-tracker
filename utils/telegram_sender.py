@@ -131,8 +131,8 @@ def create_combined_image(
 
         return (
             f"{RLE}<b>{name}</b>{PDF}<br>"
-            f"{RLE}{price} ({change_pct}){PDF}<br>"
-            f"{RLE}{bubble}{PDF}"
+
+            f"({change_pct}){PDF}"
         )
 
     df_sorted["display_text"] = df_sorted.apply(create_text_html, axis=1)
