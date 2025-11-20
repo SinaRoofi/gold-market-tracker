@@ -118,25 +118,12 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-
-    def create_text_html(row):
-        """متن HTML برای Treemap با جهت‌یابی صحیح RTL"""
-        RLE = "\u202B"  # Right-to-Left Embedding
-        PDF = "\u202C"  # Pop Directional Formatting
-        
-        name = row.name
-        price = f"{row['close_price']:,.0f}"
-        change_pct = f"{row['close_price_change_percent']:+.2f}%"
-        bubble = f"{row['nominal_bubble']:+.2f}% حباب"
-
-        return (
-            f"{RLE}<b>{name}</b>{PDF}<br>"
-            f"{RLE}{price} ({change_pct}){PDF}<br>"
-            f"{RLE}{bubble}{PDF}"
-        )
-
-    df_sorted["display_text"] = df_sorted.apply(create_text_html, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
+
+    # آماده‌سازی customdata برای texttemplate
+    df_sorted['price_formatted'] = df_sorted['close_price'].apply(lambda x: f"{x:,.0f}")
+    df_sorted['change_formatted'] = df_sorted['close_price_change_percent'].apply(lambda x: f"{x:+.2f}")
+    df_sorted['bubble_formatted'] = df_sorted['nominal_bubble'].apply(lambda x: f"{x:+.2f}")
 
     colorscale = [
         [0.0, "#E57373"],
@@ -157,21 +144,27 @@ def create_combined_image(
             labels=df_sorted.index,
             parents=[""] * len(df_sorted),
             values=df_sorted["value"],
-            text=df_sorted["display_text"],
-            textinfo="text",
+            customdata=df_sorted[['price_formatted', 'change_formatted', 'bubble_formatted']],
+            texttemplate="<b>%{label}</b><br>%{customdata[0]} (%{customdata[1]}%%)<br>%{customdata[2]}%% حباب",
             textposition="middle center",
             textfont=dict(
-                size=16,
+                size=14,
                 color="white",
             ),
-            hoverinfo="skip",
+            hovertemplate=(
+                "<b>%{label}</b><br>"
+                "قیمت: %{customdata[0]}<br>"
+                "تغییر: %{customdata[1]}%%<br>"
+                "حباب: %{customdata[2]}%%<br>"
+                "<extra></extra>"
+            ),
             marker=dict(
                 colors=df_sorted["color_value"],
                 colorscale=colorscale,
                 cmid=0,
                 cmin=-10,
                 cmax=10,
-                line=dict(width=3, color="#1A1A1A"),
+                line=dict(width=2, color="#1A1A1A"),
             ),
             pathbar=dict(visible=False),
             root=dict(color="lightgrey"),
