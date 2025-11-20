@@ -126,7 +126,7 @@ def create_combined_image(
         change_pct = f"{row['close_price_change_percent']:+.2f}%"
         bubble = f"{row['nominal_bubble']:+.2f}% حباب"
 
-        return f"<b>{name}</b>"
+        return f"\u200F<b>{name}</b><br>\u200F{price} (\u200E{change_pct}\u200F)<br>\u200F{bubble}"
 
     df_sorted["display_text"] = df_sorted.apply(create_text_html, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
