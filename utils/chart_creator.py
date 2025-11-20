@@ -76,9 +76,7 @@ def create_market_charts():
             x=df['timestamp'], 
             y=df['gold_price_usd'],
             name='طلا', 
-            line=dict(color='#FFD700', width=5),
-            fill='tozeroy', 
-            fillcolor='rgba(255,215,0,0.15)',
+            line=dict(color='#FFD700', width=5), 
             hovertemplate='<b>%{y:.2f} $</b><extra></extra>'
         ), row=1, col=1)
         
@@ -142,7 +140,7 @@ def create_market_charts():
             height=2200,
             paper_bgcolor='#0D1117',
             plot_bgcolor='#0D1117',
-            font=dict(color='#C9D1D9', family='Vazirmatn, Arial', size=20),  # ← فونت بزرگتر (17→20)
+            font=dict(color='#C9D1D9', family='Vazirmatn, Arial', size=25),  # ← فونت بزرگتر (17→20)
             hovermode='x unified',
             showlegend=False,
             margin=dict(l=60, r=30, t=100, b=40),  # ← فضای بالا بیشتر برای تیتر
