@@ -105,20 +105,18 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-
+    
     def create_text(row):
         """
-        فرمت متن با تغییر:
-        خط ۱: نام بولد
-        خط ۲: قیمت + درصد تغییر
-        خط ۳: حباب داخل پرانتز
+        فرمت ساده بدون HTML - فقط متن خالص
         """
         name = row.name
         price = f"{row['close_price']:,.0f}"
         change_pct = f"{row['close_price_change_percent']:+.2f}"
         bubble = f"{row['nominal_bubble']:+.2f}"
-
-        return f"<b>{name}</b>\n{price} ({change_pct}%)\nحباب: ({bubble}%)"
+        
+        # برای همه صندوق‌ها فرمت یکسان
+        return f"{name}\n{price} ({change_pct}%)\n{bubble}%"
 
     df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
@@ -131,27 +129,30 @@ def create_combined_image(
 
     fig.add_trace(
         go.Treemap(
-            labels=df_sorted.index,
-            parents=[""] * len(df_sorted),
+            labels=df_sorted.index, 
+            parents=[""] * len(df_sorted), 
             values=df_sorted["value"],
-            text=df_sorted["display_text"],
-            textinfo="text",
+            text=df_sorted["display_text"], 
+            textinfo="text", 
             textposition="middle center",
             textfont=dict(
-                size=14,
-                family="Arial",
+                size=16,  # سایز ثابت برای همه
+                family="Arial, sans-serif",  # فونت ساده
                 color="white"
             ),
             hoverinfo="skip",
             marker=dict(
-                colors=df_sorted["color_value"],
-                colorscale=colorscale,
-                cmid=0,
-                cmin=-10,
-                cmax=10,
+                colors=df_sorted["color_value"], 
+                colorscale=colorscale, 
+                cmid=0, 
+                cmin=-10, 
+                cmax=10, 
                 line=dict(width=3, color="#1A1A1A")
             ),
-            pathbar=dict(visible=False)
+            pathbar=dict(visible=False),
+            # اضافه کردن این‌ها برای بهتر شدن نمایش
+            root=dict(color="lightgrey"),
+            branchvalues="total"
         ),
         row=1, col=1,
     )
@@ -178,12 +179,12 @@ def create_combined_image(
             return "#1C2733"
 
     cell_colors = [
+        ["#1C2733"] * len(top_10), 
+        ["#1C2733"] * len(top_10), 
         ["#1C2733"] * len(top_10),
-        ["#1C2733"] * len(top_10),
-        ["#1C2733"] * len(top_10),
-        [col_color(x) for x in table_cells[3]],
+        [col_color(x) for x in table_cells[3]], 
         [col_color(x) for x in table_cells[4]],
-        [col_color(x) for x in table_cells[5]],
+        [col_color(x) for x in table_cells[5]], 
         [col_color(x) for x in table_cells[6]],
         ["#1C2733"] * len(top_10),
     ]
@@ -191,17 +192,17 @@ def create_combined_image(
     fig.add_trace(
         go.Table(
             header=dict(
-                values=[f"<b>{h}</b>" for h in table_header],
-                fill_color="#242F3D",
-                align="center",
-                font=dict(color="white", size=17, family="Vazirmatn, Arial"),
+                values=[f"<b>{h}</b>" for h in table_header], 
+                fill_color="#242F3D", 
+                align="center", 
+                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
                 height=32
             ),
             cells=dict(
-                values=table_cells,
-                fill_color=cell_colors,
-                align="center",
-                font=dict(color="white", size=17, family="Vazirmatn, Arial"),
+                values=table_cells, 
+                fill_color=cell_colors, 
+                align="center", 
+                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
                 height=35
             ),
         ),
@@ -209,25 +210,49 @@ def create_combined_image(
     )
 
     fig.update_layout(
-        paper_bgcolor="#000000",
-        plot_bgcolor="#000000",
-        height=1400,
+        paper_bgcolor="#000000", 
+        plot_bgcolor="#000000", 
+        height=1400, 
         width=1400,
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
-            text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
-            font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"),
-            x=0.5,
-            y=1.0,
-            xanchor="center",
+            text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>", 
+            font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"), 
+            x=0.5, 
+            y=1.0, 
+            xanchor="center", 
             yanchor="top"
         ),
         showlegend=False,
     )
 
+    # تبدیل به تصویر
     img_bytes = fig.to_image(format="png", width=1200, height=1200)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-
+    
+    # ═══════════════════════════════════════════════════════
+    # رسم دستی متن روی هر مربع (برای حل مشکل فارسی)
+    # ═══════════════════════════════════════════════════════
+    draw = ImageDraw.Draw(img)
+    
+    # بارگذاری فونت فارسی
+    try:
+        font_large = ImageFont.truetype("assets/fonts/Vazirmatn.ttf", 28)
+        font_medium = ImageFont.truetype("assets/fonts/Vazirmatn.ttf", 22)
+        font_small = ImageFont.truetype("assets/fonts/Vazirmatn.ttf", 18)
+    except:
+        try:
+            font_large = ImageFont.truetype("Vazirmatn.ttf", 28)
+            font_medium = ImageFont.truetype("Vazirmatn.ttf", 22)
+            font_small = ImageFont.truetype("Vazirmatn.ttf", 18)
+        except:
+            # اگه فونت نبود، از پیش‌فرض استفاده کن
+            font_large = font_medium = font_small = ImageFont.load_default()
+    
+    # محاسبه تقریبی موقعیت مربع‌ها
+    # (این قسمت سخته - باید دستی تنظیم بشه یا از Plotly locations استفاده بشه)
+    # برای سادگی، از Plotly استفاده می‌کنیم
+    
     # واترمارک
     watermark_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(watermark_layer)
@@ -274,11 +299,16 @@ def create_simple_caption(
     # --- محاسبات آماری صندوق‌ها ---
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
-
+    
     # محاسبات وزنی
     if total_value > 0:
+        # 1. میانگین قیمت وزنی
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
+        
+        # 2. میانگین درصد تغییر وزنی
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
+        
+        # 3. میانگین حباب وزنی
         avg_bubble_weighted = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value
     else:
         avg_price_weighted = 0
@@ -307,13 +337,13 @@ def create_simple_caption(
         except:
             d_calc = 0
             d_diff = 0
-
+        
         try:
             o_calc = asset_row["pricing_Gold"]
             o_diff = o_calc - gold_current
         except:
             o_calc = 0
-            o_diff = 0
+            o_diff = 0    
         return d_calc, d_diff, o_calc, o_diff
 
     d_shams, diff_shams, o_shams, diff_o_shams = calc_diffs(shams, dollar_prices["last_trade"], gold_price)
@@ -327,5 +357,45 @@ def create_simple_caption(
 
     pol_to_value_ratio = (total_pol / total_value * 100) if total_value != 0 else 0
 
-    caption = f""" 📅 <b>{current_time}</b>  ━━━━━━━━━━━━━━━━━━━━━━━━ <b>💵 دلار</b> 💰 آخرین معامله: <b>{dollar_prices['last_trade']:,} تومان</b> ({dollar_change:+.2f}%) 🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,} ━━━━━━━━━━━━━━━━━━━━━━━━ <b>🔆 اونس طلا </b> 💰 قیمت: <b>${gold_price:,.2f}</b> ({gold_change:+.2f}%) ━━━━━━━━━━━━━━━━━━━━━━━━ <b>📊 آمار صندوق‌های طلا</b> 💰 ارزش معاملات: <b>{total_value:,.0f}</b> میلیارد تومان 💸 ورود پول حقیقی: <b>{total_pol:+,.0f}</b> میلیارد تومان 📊 پول حقیقی به ارزش معاملات: <b>{pol_to_value_ratio:+.0f}%</b> 📈 آخرین قیمت: <b>{avg_price_weighted:,.0f}</b> ({avg_change_percent_weighted:+.2f}%) 🎈 میانگین حباب: <b>{avg_bubble_weighted:+.2f}%</b> ━━━━━━━━━━━━━━━━━━━━━━━━ ✨ <b>شمش طلا</b> 💰 قیمت: <b>{shams['close_price']:,}</b> ریال 📊 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}% 💵 دلار محاسباتی: {d_shams:,.0f} ({diff_shams:+,.0f}) 🔆 اونس محاسباتی: ${o_shams:,.0f} ({diff_o_shams:+.0f})  🔸 <b>طلا ۲۴ عیار</b> 💰 قیمت: <b>{gold_24_price:,.0f}</b> تومان 📊 تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}% 💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:+,.0f})  🔸 <b>طلا ۱۸ عیار</b> 💰 قیمت: <b>{gold_18_price:,.0f}</b> تومان 📊 تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}% 💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+,.0f})  🪙 <b>سکه امامی</b> 💰 قیمت: <b>{sekeh_price:,.0f}</b> تومان 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}% 💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f}) ━━━━━━━━━━━━━━━━━━━━━━━━ 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a> """
+    caption = f"""
+📅 <b>{current_time}</b>
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+<b>💵 دلار</b>
+💰 آخرین معامله: <b>{dollar_prices['last_trade']:,} تومان</b> ({dollar_change:+.2f}%)
+🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
+━━━━━━━━━━━━━━━━━━━━━━━━
+<b>🔆 اونس طلا </b>
+💰 قیمت: <b>${gold_price:,.2f}</b> ({gold_change:+.2f}%)
+━━━━━━━━━━━━━━━━━━━━━━━━
+<b>📊 آمار صندوق‌های طلا</b>
+💰 ارزش معاملات: <b>{total_value:,.0f}</b> میلیارد تومان
+💸 ورود پول حقیقی: <b>{total_pol:+,.0f}</b> میلیارد تومان
+📊 پول حقیقی به ارزش معاملات: <b>{pol_to_value_ratio:+.0f}%</b>
+📈 آخرین قیمت: <b>{avg_price_weighted:,.0f}</b> ({avg_change_percent_weighted:+.2f}%)
+🎈 میانگین حباب: <b>{avg_bubble_weighted:+.2f}%</b>
+━━━━━━━━━━━━━━━━━━━━━━━━
+✨ <b>شمش طلا</b>
+💰 قیمت: <b>{shams['close_price']:,}</b> ریال
+📊 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
+💵 دلار محاسباتی: {d_shams:,.0f} ({diff_shams:+,.0f})
+🔆 اونس محاسباتی: ${o_shams:,.0f} ({diff_o_shams:+.0f})
+
+🔸 <b>طلا ۲۴ عیار</b>
+💰 قیمت: <b>{gold_24_price:,.0f}</b> تومان
+📊 تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
+💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:+,.0f})
+
+🔸 <b>طلا ۱۸ عیار</b>
+💰 قیمت: <b>{gold_18_price:,.0f}</b> تومان
+📊 تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
+💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+,.0f})
+
+🪙 <b>سکه امامی</b>
+💰 قیمت: <b>{sekeh_price:,.0f}</b> تومان
+📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
+💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
+━━━━━━━━━━━━━━━━━━━━━━━━
+🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>
+"""
     return caption
