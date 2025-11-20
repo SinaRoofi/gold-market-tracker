@@ -23,7 +23,7 @@ jobs:
       - name: Install Vazirmatn font
         run: |
           mkdir -p ~/.fonts
-          wget -O ~/.fonts/Vazirmatn.ttf https://github.com/rastikerdar/vazir-font/releases/download/v30.1.0/Vazirmatn-FD-WOL.ttf
+          wget -O ~/.fonts/Vazirmatn.ttf https://github.com/rastikerdar/vazirmatn/releases/download/v33.003/Vazirmatn-Regular.ttf
           fc-cache -f -v
 
       - name: Restore gold yesterday cache
