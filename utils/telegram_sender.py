@@ -192,14 +192,14 @@ def create_combined_image(
                 values=[f"<b>{h}</b>" for h in table_header], 
                 fill_color="#242F3D", 
                 align="center", 
-                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
+                font=dict(color="white", size=17, family="Vazirmatn, Arial"),  # ← سایز ثابت
                 height=32
             ),
             cells=dict(
                 values=table_cells, 
                 fill_color=cell_colors, 
                 align="center", 
-                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
+                font=dict(color="white", size=17, family="Vazirmatn, Arial"),  # ← سایز ثابت
                 height=35
             ),
         ),
