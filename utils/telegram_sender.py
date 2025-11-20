@@ -174,8 +174,71 @@ def create_combined_image(
         row=1,
         col=1,
     )
+    # جدول 10 صندوق برتر
+    top_10 = df_sorted.head(10)
+    table_header = [
+        "نماد",
+        "قیمت",
+        "NAV",
+        "تغییر %",
+        "حباب %",
+        "اختلاف سرانه",
+        "پول حقیقی",
+        "ارزش معاملات",
+    ]
+    table_cells = [
+        top_10.index.tolist(),
+        [f"{x:,.0f}" for x in top_10["close_price"]],
+        [f"{x:,.0f}" for x in top_10["NAV"]],
+        [f"{x:+.2f}%" for x in top_10["close_price_change_percent"]],
+        [f"{x:+.2f}%" for x in top_10["nominal_bubble"]],
+        [f"{x:+.2f}" for x in top_10["ekhtelaf_sarane"]],
+        [f"{x:+,.0f}" for x in top_10["pol_hagigi"]],
+        [f"{x:,.0f}" for x in top_10["value"]],
+    ]
 
-    # جدول و سایر بخش‌ها بدون تغییر باقی می‌مانند
+    def col_color(v):
+        try:
+            x = float(v.replace("%", "").replace("+", "").replace(",", ""))
+            return "#1B5E20" if x > 0 else "#A52A2A" if x < 0 else "#2C2C2C"
+        except:
+            return "#1C2733"
+
+    cell_colors = [
+        ["#1C2733"] * len(top_10),
+        ["#1C2733"] * len(top_10),
+        ["#1C2733"] * len(top_10),
+        [col_color(x) for x in table_cells[3]],
+        [col_color(x) for x in table_cells[4]],
+        [col_color(x) for x in table_cells[5]],
+        [col_color(x) for x in table_cells[6]],
+        ["#1C2733"] * len(top_10),
+    ]
+
+    fig.add_trace(
+        go.Table(
+            header=dict(
+                values=[f"<b>{h}</b>" for h in table_header],
+                fill_color="#242F3D",
+                align="center",
+                font=dict(
+                    color="white", size=FONT_BIG - 3, family="Vazirmatn-Regular, Arial"
+                ),
+                height=32,
+            ),
+            cells=dict(
+                values=table_cells,
+                fill_color=cell_colors,
+                align="center",
+                font=dict(
+                    color="white", size=FONT_BIG - 3, family="Vazirmatn-Regular, Arial"
+                ),
+                height=35,
+            ),
+        ),
+        row=2,
+        col=1,
+    )
 
     fig.update_layout(
         paper_bgcolor="#000000",
@@ -183,6 +246,14 @@ def create_combined_image(
         height=1400,
         width=1400,
         margin=dict(t=90, l=10, r=10, b=10),
+        title=dict(
+            text="<b>📊 نقشه بازار وجدول ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
+            font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"),
+            x=0.5,
+            y=1.0,
+            xanchor="center",
+            yanchor="top",
+        ),
         showlegend=False,
     )
 
@@ -275,7 +346,7 @@ def create_simple_caption(
         avg_price_weighted = 0
         avg_change_percent_weighted = 0
         avg_bubble_weighted = 0
-        
+
     # --- سایر محاسبات ---
     dollar_change = (
         ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100)
