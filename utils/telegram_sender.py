@@ -105,40 +105,18 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-    FONT_BIG = 20  # سایز فونت پایه
-
+    
     def create_text(row):
         """
-        فرمت نمایش:
-        نماد
-        قیمت (درصد%)
-        حباب: X%
+        فرمت ساده بدون HTML - فقط متن خالص
         """
         name = row.name
         price = f"{row['close_price']:,.0f}"
         change_pct = f"{row['close_price_change_percent']:+.2f}"
         bubble = f"{row['nominal_bubble']:+.2f}"
         
-        if row["value"] > 100:
-            # صندوق‌های بزرگ - 3 خط
-            return (
-                f"<b style='font-size:{FONT_BIG+3}px'>{name}</b><br>"
-                f"<span style='font-size:{FONT_BIG}px'>{price} ({change_pct}%)</span><br>"
-                f"<span style='font-size:{FONT_BIG-2}px'>حباب: {bubble}%</span>"
-            )
-        elif row["value"] > 50:
-            # صندوق‌های متوسط - 3 خط
-            return (
-                f"<b style='font-size:{FONT_BIG+2}px'>{name}</b><br>"
-                f"<span style='font-size:{FONT_BIG-1}px'>{price} ({change_pct}%)</span><br>"
-                f"<span style='font-size:{FONT_BIG-3}px'>حباب: {bubble}%</span>"
-            )
-        else:
-            # صندوق‌های کوچک - 2 خط
-            return (
-                f"<b style='font-size:{FONT_BIG-1}px'>{name}</b><br>"
-                f"<span style='font-size:{FONT_BIG-4}px'>{price} ({change_pct}%)</span>"
-            )
+        # برای همه صندوق‌ها فرمت یکسان
+        return f"{name}\n{price} ({change_pct}%)\n{bubble}%"
 
     df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
