@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 from utils.chart_creator import create_market_charts
 
 logger = logging.getLogger(__name__)
-pd.set_option('future.no_silent_downcasting', True)
+FONT_BIG = 22
 
 
 def send_to_telegram(
@@ -25,7 +25,7 @@ def send_to_telegram(
     yesterday_close,
 ):
     if data is None:
-        logger.error("داده‌های پردازش‌شده (data) مقدار None دارد. ارسال متوقف شد.")
+        logger.error("❌ داده‌های پردازش‌شده (data) مقدار None دارد. ارسال متوقف شد.")
         return False
 
     try:
@@ -47,7 +47,7 @@ def send_to_telegram(
         if img2_bytes:
             return send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption)
         else:
-            logger.warning("نمودارها موجود نیست، فقط تصویر اول ارسال می‌شود")
+            logger.warning("⚠️ نمودارها موجود نیست، فقط تصویر اول ارسال می‌شود")
             url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
             files = {"photo": ("market_report.png", io.BytesIO(img1_bytes), "image/png")}
             params = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
@@ -55,7 +55,7 @@ def send_to_telegram(
             return response.status_code == 200
 
     except Exception as e:
-        logger.error(f"خطا در ارسال به تلگرام: {e}", exc_info=True)
+        logger.error(f"❌ خطا در ارسال به تلگرام: {e}", exc_info=True)
         return False
 
 
@@ -63,8 +63,8 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMediaGroup"
         files = {
-            "photo1": ("treemap.png", io.BytesIO(img1_bytes), "image/png"),
-            "photo2": ("charts.png", io.BytesIO(img2_bytes), "image/png"),
+            "photo1": ("market_treemap.png", io.BytesIO(img1_bytes), "image/png"),
+            "photo2": ("market_charts.png", io.BytesIO(img2_bytes), "image/png"),
         }
         media = [
             {"type": "photo", "media": "attach://photo1", "caption": caption, "parse_mode": "HTML"},
@@ -73,168 +73,177 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
         response = requests.post(url, files=files, data={"chat_id": chat_id, "media": json.dumps(media)}, timeout=60)
         return response.status_code == 200
     except Exception as e:
-        logger.error(f"خطا در ارسال Media Group: {e}", exc_info=True)
+        logger.error(f"❌ خطا در ارسال Media Group: {e}", exc_info=True)
         return False
 
 
 def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
-    """نقشه + جدول حرفه‌ای با فونت Vazirmatn-Medium از assets + رنگ‌های شیک و هدر زیبا"""
-
-    # تاریخ و ساعت شمسی
+    # تاریخ و ساعت در بالا چپ
     tehran_tz = pytz.timezone("Asia/Tehran")
     now_jalali = JalaliDateTime.now(tehran_tz)
     date_time_str = now_jalali.strftime("%Y/%m/%d - %H:%M")
 
     fig = make_subplots(
-        rows=2, cols=1,
+        rows=2,
+        cols=1,
         row_heights=[0.65, 0.35],
-        vertical_spacing=0.025,
+        vertical_spacing=0.02,
         specs=[[{"type": "treemap"}], [{"type": "table"}]],
     )
 
-    df = Fund_df.copy()
-    df["color_value"] = df["close_price_change_percent"].fillna(0)
-    df["display_text"] = df.apply(lambda row: f"\u202B<b>{row.name}</b>\u202C", axis=1)
-    df = df.sort_values("value", ascending=False)
+    df_sorted = Fund_df.copy()
+    df_sorted["color_value"] = df_sorted["close_price_change_percent"]
+    df_sorted = df_sorted.sort_values("value", ascending=False)
 
-    # استفاده از فونت Vazirmatn-Medium برای Treemap و جدول
+    colorscale = [
+        [0.0, "#E57373"],
+        [0.1, "#D85C5C"],
+        [0.2, "#C94444"],
+        [0.3, "#A52A2A"],
+        [0.4, "#6B1A1A"],
+        [0.5, "#2C2C2C"],
+        [0.6, "#1B5E20"],
+        [0.7, "#2E7D32"],
+        [0.8, "#43A047"],
+        [0.9, "#5CB860"],
+        [1.0, "#66BB6A"],
+    ]
+
+    # فونت Vazirmatn-Medium برای Treemap
     try:
         ImageFont.truetype("assets/fonts/Vazirmatn-Medium.ttf", 40)
-        font_family = "Vazirmatn-Medium, sans-serif"
+        treemap_font_family = "Vazirmatn-Medium, sans-serif"
     except:
-        font_family = "sans-serif"
+        treemap_font_family = "sans-serif"
 
-    # Treemap
-    fig.add_trace(go.Treemap(
-        labels=df.index,
-        parents=[""] * len(df),
-        values=df["value"],
-        text=df["display_text"],
-        textinfo="text",
-        textposition="middle center",
-        textfont=dict(size=25, color="white", family=font_family),
-        marker=dict(
-            colors=df["color_value"],
-            colorscale=[
-                [0.0, "#cc4444"],   # قرمز ملایم
-                [0.4, "#aa6666"],
-                [0.5, "#222222"],
-                [0.6, "#448844"],
-                [1.0, "#006633"],   # سبز تیره و شیک
-            ],
-            cmid=0, cmin=-10, cmax=10,
-            line=dict(width=3, color="#000000"),
+    fig.add_trace(
+        go.Treemap(
+            labels=df_sorted.index,
+            parents=[""] * len(df_sorted),
+            values=df_sorted["value"],
+            text=[f"<b>{i}</b>" for i in df_sorted.index],
+            textinfo="text",
+            textposition="middle center",
+            textfont=dict(size=20, color="white", family=treemap_font_family),
+            hoverinfo="skip",
+            marker=dict(
+                colors=df_sorted["color_value"],
+                colorscale=colorscale,
+                cmid=0,
+                cmin=-10,
+                cmax=10,
+                line=dict(width=3, color="#1A1A1A"),
+            ),
+            pathbar=dict(visible=False),
         ),
-        pathbar=dict(visible=False),
-        hoverinfo="skip",
-    ), row=1, col=1)
+        row=1, col=1,
+    )
 
-    # جدول ۱۰ تایی
-    top10 = df.head(10)
-    headers = ["نماد", "قیمت", "NAV", "تغییر %", "حباب %", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"]
-
-    cells = [
-        top10.index.tolist(),
-        [f"{x:,.0f}" for x in top10["close_price"]],
-        [f"{x:,.0f}" for x in top10["NAV"]],
-        [f"{x:+.2f}%" for x in top10["close_price_change_percent"]],
-        [f"{x:+.2f}%" for x in top10["nominal_bubble"]],
-        [f"{x:+.2f}" if pd.notna(x) and x != 0 else "۰" for x in top10.get("ekhtelaf_sarane", [0]*10)],
-        [f"{x:+,.0f}" for x in top10["pol_hagigi"]],
-        [f"{x:,.0f}" for x in top10["value"]],
+    top_10 = df_sorted.head(10)
+    table_header = ["نماد","قیمت","NAV","تغییر %","حباب %","اختلاف سرانه","پول حقیقی","ارزش معاملات"]
+    table_cells = [
+        top_10.index.tolist(),
+        [f"{x:,.0f}" for x in top_10["close_price"]],
+        [f"{x:,.0f}" for x in top_10["NAV"]],
+        [f"{x:+.2f}%" for x in top_10["close_price_change_percent"]],
+        [f"{x:+.2f}%" for x in top_10["nominal_bubble"]],
+        [f"{x:+.2f}" for x in top_10["ekhtelaf_sarane"]],
+        [f"{x:+,.0f}" for x in top_10["pol_hagigi"]],
+        [f"{x:,.0f}" for x in top_10["value"]],
     ]
 
-    # رنگ پس‌زمینه سلول‌ها — سبز تیره‌تر، قرمز ملایم‌تر
-    def cell_bg(val):
+    def col_color(v):
         try:
-            n = float(str(val).replace("%","").replace("+","").replace(",","").replace("-",""))
-            if n > 0:
-                return "#004d26"    # سبز تیره خیلی شیک
-            elif n < 0:
-                return "#663333"    # قرمز ملایم و لوکس
-            else:
-                return "#1e1e1e"
+            x = float(v.replace("%", "").replace("+", "").replace(",", ""))
+            return "#1B5E20" if x > 0 else "#A52A2A" if x < 0 else "#2C2C2C"
         except:
-            return "#1e1e1e"
+            return "#1C2733"
 
     cell_colors = [
-        ["#1e1e1e"]*10,
-        ["#1e1e1e"]*10,
-        ["#1e1e1e"]*10,
-        [cell_bg(v) for v in cells[3]],
-        [cell_bg(v) for v in cells[4]],
-        [cell_bg(v) for v in cells[5]],
-        [cell_bg(v) for v in cells[6]],
-        ["#1e1e1e"]*10,
+        ["#1C2733"] * 10,
+        ["#1C2733"] * 10,
+        ["#1C2733"] * 10,
+        [col_color(x) for x in table_cells[3]],
+        [col_color(x) for x in table_cells[4]],
+        [col_color(x) for x in table_cells[5]],
+        [col_color(x) for x in table_cells[6]],
+        ["#1C2733"] * 10,
     ]
 
-    # جدول با هدر فوق‌العاده زیبا
-    fig.add_trace(go.Table(
-        header=dict(
-            values=[f"<b>{h}</b>" for h in headers],
-            fill_color="#008855",          # سبز زمردی درخشان — هدر
-            font=dict(color="#FFFFFF", size=23, family=font_family),
-            height=52,
-            align="center"
+    fig.add_trace(
+        go.Table(
+            header=dict(
+                values=[f"<b>{h}</b>" for h in table_header],
+                fill_color="#242F3D",
+                align="center",
+                font=dict(color="white", size=20, family=treemap_font_family),
+                height=38,
+            ),
+            cells=dict(
+                values=table_cells,
+                fill_color=cell_colors,
+                align="center",
+                font=dict(color="white", size=18, family=treemap_font_family),
+                height=36,
+            ),
         ),
-        cells=dict(
-            values=cells,
-            fill_color=cell_colors,
-            font=dict(color="#FFFFFF", size=19, family=font_family),
-            height=42,
-            align="center"
-        )
-    ), row=2, col=1)
+        row=2, col=1,
+    )
 
     fig.update_layout(
-        height=1380, width=1380,
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
-        margin=dict(t=150, l=20, r=20, b=20),
+        height=1350,
+        width=1350,
+        margin=dict(t=140, l=20, r=20, b=20),
         title=dict(
             text="<b>نقشه بازار صندوق‌های طلا</b>",
-            font=dict(size=36, color="#FFD700", family=font_family),
-            x=0.5, y=0.96, xanchor="center", yanchor="top"
+            font=dict(size=35, color="#FFD700"),
+            x=0.5,
+            y=0.96,
+            xanchor="center",
+            yanchor="top",
         ),
         showlegend=False,
     )
 
     # تولید تصویر
-    img_bytes = fig.to_image(format="png", width=1380, height=1380, scale=2.2)
+    img_bytes = fig.to_image(format="png", width=1350, height=1350, scale=2)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
     draw = ImageDraw.Draw(img)
 
     # تاریخ و توضیح با فونت وزیر
     try:
-        font_date = ImageFont.truetype("assets/fonts/Vazirmatn-Bold.ttf", 66)
-        font_desc = ImageFont.truetype("assets/fonts/Vazirmatn-Medium.ttf", 52)
+        font_date = ImageFont.truetype("assets/fonts/Vazirmatn-Bold.ttf", 64)
+        font_desc = ImageFont.truetype("assets/fonts/Vazirmatn-Medium.ttf", 50)
     except:
         font_date = font_desc = ImageFont.load_default()
 
-    draw.text((65, 32), date_time_str, font=font_date, fill="#FFFFFF")
-    draw.text((65, 108), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
+    draw.text((60, 35), date_time_str, font=font_date, fill="#FFFFFF")
+    draw.text((60, 110), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
 
     # واترمارک
     overlay = Image.new("RGBA", img.size, (0,0,0,0))
-    d = ImageDraw.Draw(overlay)
+    wdraw = ImageDraw.Draw(overlay)
     try:
-        wf = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", 75)
+        wfont = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", 70)
     except:
-        wf = ImageFont.load_default()
-    txt = "Gold_Iran_Market"
-    bbox = d.textbbox((0,0), txt, font=wf)
-    w = bbox[2]-bbox[0] + 100
-    h = bbox[3]-bbox[1] + 100
-    txtimg = Image.new("RGBA", (w,h), (0,0,0,0))
-    td = ImageDraw.Draw(txtimg)
-    td.text((50,50), txt, font=wf, fill=(255,255,255,100))
-    rotated = txtimg.rotate(45, expand=True)
-    img.paste(rotated, ((img.width-rotated.width)//2, (img.height-rotated.height)//2), rotated)
+        wfont = ImageFont.load_default()
 
-    out = io.BytesIO()
-    img.save(out, format="PNG", optimize=True, quality=95)
-    out.seek(0)
-    return out.getvalue()
+    wtext = "Gold_Iran_Market"
+    bbox = wdraw.textbbox((0,0), wtext, font=wfont)
+    w = bbox[2] - bbox[0] + 80
+    h = bbox[3] - bbox[1] + 80
+    txt_img = Image.new("RGBA", (w, h), (0,0,0,0))
+    td = ImageDraw.Draw(txt_img)
+    td.text((40, 40), wtext, font=wfont, fill=(255,255,255,100))
+    rotated = txt_img.rotate(45, expand=True)
+    img.paste(rotated, ((img.width - rotated.width)//2, (img.height - rotated.height)//2), rotated)
+
+    output = io.BytesIO()
+    img.save(output, format="PNG", optimize=True, quality=92)
+    output.seek(0)
+    return output.getvalue()
 
 
 def create_simple_caption(
