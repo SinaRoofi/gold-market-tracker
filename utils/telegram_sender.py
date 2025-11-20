@@ -3,6 +3,7 @@ import logging
 import json
 import requests
 import pytz
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from persiantools.jdatetime import JalaliDateTime
