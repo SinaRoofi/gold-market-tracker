@@ -3,76 +3,83 @@ import logging
 import json
 import requests
 import pytz
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from persiantools.jdatetime import JalaliDateTime
 from PIL import Image, ImageDraw, ImageFont
 from utils.chart_creator import create_market_charts
 
-
 logger = logging.getLogger(__name__)
 FONT_BIG = 20
 
+# =========================================
+# توابع کمکی (Helpers)
+# =========================================
 
-def send_to_telegram(
-    bot_token,
-    chat_id,
-    data,
-    dollar_prices,
-    gold_price,
-    gold_yesterday,
-    gold_time,
-    yesterday_close,
-):
-    """
-    مدیریت کلی تولید تصاویر و کپشن و ارسال به تلگرام
-    """
+def safe_float(val):
+    """تبدیل ایمن مقادیر به عدد اعشاری"""
+    try:
+        return float(str(val).replace("%", "").replace("+", "").replace(",", ""))
+    except (ValueError, AttributeError, TypeError):
+        return 0.0
+
+def get_color_for_value(val):
+    """تعیین رنگ سبز/قرمز بر اساس مقدار"""
+    v = safe_float(val)
+    if v > 0: return "#2E7D32"  # سبز
+    if v < 0: return "#C62828"  # قرمز
+    return "#263238"            # خنثی
+
+def get_asset_safe(df, index_name):
+    """دسترسی ایمن به ردیف‌های دیتافریم"""
+    if index_name in df.index:
+        return df.loc[index_name]
+    return pd.Series({
+        'close_price': 0, 'close_price_change_percent': 0, 
+        'Bubble': 0, 'pricing_dollar': 0, 'pricing_Gold': 0
+    })
+
+# =========================================
+# توابع ارسال به تلگرام (Telegram Functions)
+# =========================================
+
+def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_yesterday, gold_time, yesterday_close):
+    """مدیریت کلی تولید تصاویر و کپشن و ارسال به تلگرام"""
     if data is None:
         logger.error("❌ داده‌های پردازش‌شده (data) مقدار None دارد. ارسال متوقف شد.")
         return False
-
     try:
         # 1. ایجاد تصویر اول (Treemap + جدول)
         img1_bytes = create_combined_image(
-            data["Fund_df"],
-            dollar_prices["last_trade"],
-            gold_price,
-            gold_yesterday,
-            data["dfp"],
-            yesterday_close,
+            data["Fund_df"], dollar_prices["last_trade"], gold_price, gold_yesterday, data["dfp"], yesterday_close,
         )
-
+        
         # 2. ایجاد تصویر دوم (نمودارها)
         img2_bytes = create_market_charts()
-
-        # 3. ایجاد کپشن (شامل تمام محاسبات وزنی)
+        
+        # 3. ایجاد کپشن
         caption = create_simple_caption(
             data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
         )
-
+        
         # 4. تصمیم‌گیری برای ارسال
         if img2_bytes:
             return send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption)
         else:
             logger.warning("⚠️ نمودارها موجود نیست، فقط تصویر اول ارسال می‌شود")
             url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
-            files = {
-                "photo": ("market_report.png", io.BytesIO(img1_bytes), "image/png")
-            }
+            files = { "photo": ("market_report.png", io.BytesIO(img1_bytes), "image/png") }
             params = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
-
             response = requests.post(url, files=files, data=params, timeout=60)
-
             if response.status_code == 200:
                 return True
             else:
                 logger.error(f"❌ خطا در ارسال تک عکس: {response.text}")
                 return False
-
     except Exception as e:
         logger.error(f"❌ خطا در فرآیند ارسال به تلگرام: {e}", exc_info=True)
         return False
-
 
 def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
     """ارسال 2 عکس + کپشن به صورت Media Group"""
@@ -103,88 +110,78 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
         logger.error(f"❌ خطا در ارسال Media Group: {e}", exc_info=True)
         return False
 
+# =========================================
+# توابع تولید تصویر (Image Generation)
+# =========================================
 
-def create_combined_image(
-    Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close
-):
-    """تولید تصویر ترکیبی شامل Treemap و جدول"""
+def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
+    """تولید تصویر ترکیبی شامل Treemap و جدول (اصلاح شده)"""
     fig = make_subplots(
-        rows=2,
-        cols=1,
-        row_heights=[0.65, 0.35],
+        rows=2, cols=1, 
+        row_heights=[0.65, 0.35], 
         vertical_spacing=0.02,
         specs=[[{"type": "treemap"}], [{"type": "table"}]],
     )
 
+    # --- بخش 1: Treemap ---
     df_sorted = Fund_df.copy()
-    df_sorted["color_value"] = df_sorted["close_price_change_percent"]
+    # سورت بر اساس ارزش معاملات
     df_sorted = df_sorted.sort_values("value", ascending=False)
-
-    # آماده‌سازی customdata برای texttemplate
-    df_sorted['price_formatted'] = df_sorted['close_price'].apply(lambda x: f"{x:,.0f}")
-    df_sorted['change_formatted'] = df_sorted['close_price_change_percent'].apply(lambda x: f"{x:+.2f}")
-    df_sorted['bubble_formatted'] = df_sorted['nominal_bubble'].apply(lambda x: f"{x:+.2f}")
-
-    colorscale = [
-        [0.0, "#E57373"],
-        [0.1, "#D85C5C"],
-        [0.2, "#C94444"],
-        [0.3, "#A52A2A"],
-        [0.4, "#6B1A1A"],
-        [0.5, "#2C2C2C"],
-        [0.6, "#1B5E20"],
-        [0.7, "#2E7D32"],
-        [0.8, "#43A047"],
-        [0.9, "#5CB860"],
-        [1.0, "#66BB6A"],
-    ]
-
-    fig.add_trace(
-        go.Treemap(
-            labels=df_sorted.index,
-            parents=[""] * len(df_sorted),
-            values=df_sorted["value"],
-            customdata=df_sorted[['price_formatted', 'change_formatted', 'bubble_formatted']],
-            texttemplate="<b>%{label}</b><br>%{customdata[0]} (%{customdata[1]}%%)<br>%{customdata[2]}%% حباب",
-            textposition="middle center",
-            textfont=dict(
-                size=14,
-                color="white",
-            ),
-            hovertemplate=(
-                "<b>%{label}</b><br>"
-                "تغییر: %{customdata[1]}%%<br>"
-                "<extra></extra>"
-            ),
-            marker=dict(
-                colors=df_sorted["color_value"],
-                colorscale=colorscale,
-                cmid=0,
-                cmin=-10,
-                cmax=10,
-                line=dict(width=2, color="#1A1A1A"),
-            ),
-            pathbar=dict(visible=False),
-            root=dict(color="lightgrey"),
-            branchvalues="total",
-        ),
-        row=1,
-        col=1,
-    )
     
-    # جدول 10 صندوق برتر
-    top_10 = df_sorted.head(10)
-    table_header = [
-        "نماد",
-        "قیمت",
-        "NAV",
-        "تغییر %",
-        "حباب %",
-        "اختلاف سرانه",
-        "پول حقیقی",
-        "ارزش معاملات",
+    # فرمت‌دهی درصد تغییر
+    df_sorted['change_fmt'] = df_sorted['close_price_change_percent'].apply(lambda x: f"%{x:+.2f}")
+
+    # مقیاس رنگی
+    colorscale = [
+        [0.0, "#D32F2F"], [0.5, "#212121"], [1.0, "#388E3C"]
     ]
-    table_cells = [
+
+    fig.add_trace(go.Treemap(
+        labels=df_sorted.index,
+        parents=[""] * len(df_sorted),
+        values=df_sorted["value"],
+        customdata=df_sorted[['change_fmt']],
+        
+        # فقط نام نماد و درصد تغییر برای جلوگیری از درهم ریختگی
+        texttemplate="<b>%{label}</b><br>%{customdata[0]}",
+        textposition="middle center",
+        
+        # فونت بزرگ (18) و پیش‌فرض
+        textfont=dict(
+            size=18, 
+            color="white", 
+            family="Arial, sans-serif"
+        ),
+        
+        marker=dict(
+            colors=df_sorted["close_price_change_percent"],
+            colorscale=colorscale,
+            cmid=0, cmin=-3, cmax=3,
+            line=dict(width=1, color="#000000"),
+        ),
+        pathbar=dict(visible=False),
+        root=dict(color="#263238"),
+    ), row=1, col=1)
+
+    # --- اضافه کردن متن راهنما در گوشه نقشه ---
+    fig.add_annotation(
+        text="اندازه مربع‌ها بر اساس ارزش معاملات",
+        xref="paper", yref="paper",
+        x=0.99, y=0.36, # گوشه پایین سمت راستِ تری‌مپ
+        showarrow=False,
+        font=dict(size=14, color="#90A4AE", family="Arial"),
+        align="right",
+        bgcolor="rgba(0,0,0,0.7)",
+        bordercolor="#37474F",
+        borderwidth=1,
+        borderpad=4
+    )
+
+    # --- بخش 2: جدول ---
+    top_10 = df_sorted.head(10)
+    headers = ["نماد", "قیمت", "NAV", "تغییر %", "حباب %", "سرانه", "پول حقیقی", "ارزش معاملات"]
+    
+    vals = [
         top_10.index.tolist(),
         [f"{x:,.0f}" for x in top_10["close_price"]],
         [f"{x:,.0f}" for x in top_10["NAV"]],
@@ -195,223 +192,142 @@ def create_combined_image(
         [f"{x:,.0f}" for x in top_10["value"]],
     ]
 
-    def col_color(v):
-        try:
-            x = float(v.replace("%", "").replace("+", "").replace(",", ""))
-            return "#1B5E20" if x > 0 else "#A52A2A" if x < 0 else "#2C2C2C"
-        except:
-            return "#1C2733"
-
+    base_color = ["#1C2733"] * len(top_10)
     cell_colors = [
-        ["#1C2733"] * len(top_10),
-        ["#1C2733"] * len(top_10),
-        ["#1C2733"] * len(top_10),
-        [col_color(x) for x in table_cells[3]],
-        [col_color(x) for x in table_cells[4]],
-        [col_color(x) for x in table_cells[5]],
-        [col_color(x) for x in table_cells[6]],
-        ["#1C2733"] * len(top_10),
+        base_color, base_color, base_color,
+        [get_color_for_value(x) for x in vals[3]],
+        [get_color_for_value(x) for x in vals[4]],
+        [get_color_for_value(x) for x in vals[5]],
+        [get_color_for_value(x) for x in vals[6]],
+        base_color,
     ]
 
-    fig.add_trace(
-        go.Table(
-            header=dict(
-                values=[f"<b>{h}</b>" for h in table_header],
-                fill_color="#242F3D",
-                align="center",
-                font=dict(
-                    color="white", 
-                    size=FONT_BIG - 3
-                ),
-                height=32,
-            ),
-            cells=dict(
-                values=table_cells,
-                fill_color=cell_colors,
-                align="center",
-                font=dict(
-                    color="white", 
-                    size=FONT_BIG - 3
-                ),
-                height=35,
-            ),
+    fig.add_trace(go.Table(
+        header=dict(
+            values=[f"<b>{h}</b>" for h in headers],
+            fill_color="#242F3D",
+            align="center",
+            font=dict(color="white", size=16, family="Arial"),
+            height=35,
         ),
-        row=2,
-        col=1,
-    )
+        cells=dict(
+            values=vals,
+            fill_color=cell_colors,
+            align="center",
+            font=dict(color="white", size=15, family="Arial"),
+            height=35,
+        ),
+    ), row=2, col=1)
 
     fig.update_layout(
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
-        height=1400,
-        width=1400,
+        height=1400, width=1400,
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
-            text="<b>📊 نقشه بازار وجدول ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
-            font=dict(size=32, color="#FFD700"),
-            x=0.5,
-            y=1.0,
-            xanchor="center",
-            yanchor="top",
+            text="<b>📊 نقشه بازار و جدول ۱۰ صندوق طلا</b>",
+            font=dict(size=32, color="#FFD700", family="Arial"),
+            x=0.5, y=1.0, xanchor="center", yanchor="top",
         ),
         showlegend=False,
+        # مخفی کردن متن اگر جا نشود
+        uniformtext=dict(minsize=10, mode='hide') 
     )
 
-    # تبدیل به تصویر
     img_bytes = fig.to_image(format="png", width=1200, height=1200)
-    img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+    return add_watermark(img_bytes)
 
-    # واترمارک
-    watermark_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
-    draw = ImageDraw.Draw(watermark_layer)
-    font_size = 60
+def add_watermark(img_bytes):
+    """اضافه کردن واترمارک با استفاده از فونت پیش‌فرض"""
     try:
-        font = ImageFont.truetype("assets/fonts/Vazirmatn.ttf", font_size)
-    except Exception:
-        try:
-            font = ImageFont.truetype("Vazirmatn.ttf", font_size)
-        except:
-            font = ImageFont.load_default()
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
+        watermark_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
+        draw = ImageDraw.Draw(watermark_layer)
+        
+        # استفاده از فونت پیش‌فرض
+        font = ImageFont.load_default()
+        watermark_text = "Gold_Iran_Market"
+        
+        # محاسبه سایز متن (تقریبی با فونت دیفالت)
+        bbox = draw.textbbox((0, 0), watermark_text, font=font)
+        w_txt = bbox[2] - bbox[0]
+        h_txt = bbox[3] - bbox[1]
+        
+        txt_img = Image.new("RGBA", (w_txt + 20, h_txt + 20), (255, 255, 255, 0))
+        txt_draw = ImageDraw.Draw(txt_img)
+        txt_draw.text((10, 10), watermark_text, font=font, fill=(255, 255, 255, 100))
+        
+        rotated = txt_img.rotate(45, expand=True)
+        x = (img.width - rotated.width) // 2
+        y = (img.height - rotated.height) // 2
+        watermark_layer.paste(rotated, (x, y), rotated)
+        img = Image.alpha_composite(img, watermark_layer)
+        
+        output = io.BytesIO()
+        img.save(output, format="PNG", optimize=True, quality=85)
+        return output.getvalue()
+    except Exception as e:
+        logger.error(f"خطا در واترمارک: {e}")
+        return img_bytes
 
-    watermark_text = "Gold_Iran_Market"
-    bbox = draw.textbbox((0, 0), watermark_text, font=font)
-    txt_img = Image.new(
-        "RGBA", (bbox[2] - bbox[0] + 40, bbox[3] - bbox[1] + 40), (255, 255, 255, 0)
-    )
-    txt_draw = ImageDraw.Draw(txt_img)
-    txt_draw.text((20, 20), watermark_text, font=font, fill=(255, 255, 255, 100))
-    rotated = txt_img.rotate(45, expand=True)
-    x = (img.width - rotated.width) // 2
-    y = (img.height - rotated.height) // 2
-    watermark_layer.paste(rotated, (x, y), rotated)
-    img = Image.alpha_composite(img, watermark_layer)
-
-    output = io.BytesIO()
-    img.save(output, format="PNG", optimize=True, quality=85)
-    return output.getvalue()
-
-
-def create_simple_caption(
-    data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
-):
-    """ساخت کپشن برای تلگرام با محاسبات وزنی کامل"""
+def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time):
+    """ساخت کپشن"""
     tehran_tz = pytz.timezone("Asia/Tehran")
     now = JalaliDateTime.now(tehran_tz)
     current_time = now.strftime("%Y/%m/%d - %H:%M:%S")
-
-    try:
-        dollar_time = gold_time.strftime("%H:%M") if gold_time else "نامشخص"
-    except:
-        dollar_time = "نامشخص"
-
+    
     df_funds = data["Fund_df"]
-
-    # --- محاسبات آماری صندوق‌ها ---
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
-
-    # محاسبات وزنی
+    
     if total_value > 0:
-        # 1. میانگین قیمت وزنی
-        avg_price_weighted = (
-            df_funds["close_price"] * df_funds["value"]
-        ).sum() / total_value
-
-        # 2. میانگین درصد تغییر وزنی
-        avg_change_percent_weighted = (
-            df_funds["close_price_change_percent"] * df_funds["value"]
-        ).sum() / total_value
-
-        # 3. میانگین حباب وزنی
-        avg_bubble_weighted = (
-            df_funds["nominal_bubble"] * df_funds["value"]
-        ).sum() / total_value
+        avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
+        avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
+        avg_bubble_weighted = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value
     else:
         avg_price_weighted = 0
         avg_change_percent_weighted = 0
         avg_bubble_weighted = 0
 
-    # --- سایر محاسبات ---
-    dollar_change = (
-        ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100)
-        if yesterday_close and yesterday_close != 0
-        else 0
-    )
-    gold_change = (
-        ((gold_price - gold_yesterday) / gold_yesterday * 100)
-        if gold_yesterday and gold_yesterday != 0
-        else 0
-    )
+    dollar_last = dollar_prices.get("last_trade", 0)
+    dollar_change = ((dollar_last - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
+    gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday else 0
 
-    shams = data["dfp"].loc["شمش-طلا"]
-    gold_24 = data["dfp"].loc["طلا-گرم-24-عیار"]
-    gold_18 = data["dfp"].loc["طلا-گرم-18-عیار"]
-    sekeh = data["dfp"].loc["سکه-امامی-طرح-جدید"]
-
-    def calc_diffs(asset_row, dollar_current, gold_current):
-        try:
-            d_calc = asset_row["pricing_dollar"]
-            d_diff = d_calc - dollar_current
-        except:
-            d_calc = 0
-            d_diff = 0
-
-        try:
-            o_calc = asset_row["pricing_Gold"]
-            o_diff = o_calc - gold_current
-        except:
-            o_calc = 0
-            o_diff = 0
-        return d_calc, d_diff, o_calc, o_diff
-
-    d_shams, diff_shams, o_shams, diff_o_shams = calc_diffs(
-        shams, dollar_prices["last_trade"], gold_price
-    )
-    d_24, diff_24, _, _ = calc_diffs(gold_24, dollar_prices["last_trade"], gold_price)
-    d_18, diff_18, _, _ = calc_diffs(gold_18, dollar_prices["last_trade"], gold_price)
-    d_sekeh, diff_sekeh, _, _ = calc_diffs(
-        sekeh, dollar_prices["last_trade"], gold_price
-    )
-
-    gold_24_price = gold_24["close_price"] / 10
-    gold_18_price = gold_18["close_price"] / 10
+    shams = get_asset_safe(data["dfp"], "شمش-طلا")
+    sekeh = get_asset_safe(data["dfp"], "سکه-امامی-طرح-جدید")
+    
+    def get_pricing_dollar(row):
+        try: return row["pricing_dollar"]
+        except: return 0
+        
+    d_shams = get_pricing_dollar(shams)
+    diff_shams = d_shams - dollar_last
+    d_sekeh = get_pricing_dollar(sekeh)
+    diff_sekeh = d_sekeh - dollar_last
+    
     sekeh_price = sekeh["close_price"] / 10
-
     pol_to_value_ratio = (total_pol / total_value * 100) if total_value != 0 else 0
 
     caption = f"""
 📅 <b>{current_time}</b>
-
 ━━━━━━━━━━━━━━━━━━━━━━━━
-<b>💵 دلار</b>
-💰 آخرین معامله: <b>{dollar_prices['last_trade']:,} تومان</b> ({dollar_change:+.2f}%)
-🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
+<b>💵 دلار بازار</b>
+💰 قیمت: <b>{dollar_last:,} تومان</b> ({dollar_change:+.2f}%)
 ━━━━━━━━━━━━━━━━━━━━━━━━
-<b>🔆 اونس طلا </b>
+<b>🔆 اونس جهانی طلا</b>
 💰 قیمت: <b>${gold_price:,.2f}</b> ({gold_change:+.2f}%)
 ━━━━━━━━━━━━━━━━━━━━━━━━
 <b>📊 آمار صندوق‌های طلا</b>
 💰 ارزش معاملات: <b>{total_value:,.0f}</b> میلیارد تومان
 💸 ورود پول حقیقی: <b>{total_pol:+,.0f}</b> میلیارد تومان
-📊 پول حقیقی به ارزش معاملات: <b>{pol_to_value_ratio:+.0f}%</b>
-📈 آخرین قیمت: <b>{avg_price_weighted:,.0f}</b> ({avg_change_percent_weighted:+.2f}%)
-🎈 میانگین حباب: <b>{avg_bubble_weighted:+.2f}%</b>
+📊 نسبت خریدار حقیقی: <b>{pol_to_value_ratio:+.0f}%</b>
+📈 میانگین قیمت وزنی: <b>{avg_price_weighted:,.0f}</b> ({avg_change_percent_weighted:+.2f}%)
+🎈 میانگین حباب وزنی: <b>{avg_bubble_weighted:+.2f}%</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━
 ✨ <b>شمش طلا</b>
 💰 قیمت: <b>{shams['close_price']:,}</b> ریال
 📊 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
 💵 دلار محاسباتی: {d_shams:,.0f} ({diff_shams:+,.0f})
-🔆 اونس محاسباتی: ${o_shams:,.0f} ({diff_o_shams:+.0f})
-
-🔸 <b>طلا ۲۴ عیار</b>
-💰 قیمت: <b>{gold_24_price:,.0f}</b> تومان
-📊 تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:+,.0f})
-
-🔸 <b>طلا ۱۸ عیار</b>
-💰 قیمت: <b>{gold_18_price:,.0f}</b> تومان
-📊 تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+,.0f})
 
 🪙 <b>سکه امامی</b>
 💰 قیمت: <b>{sekeh_price:,.0f}</b> تومان
