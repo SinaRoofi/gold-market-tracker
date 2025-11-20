@@ -188,8 +188,8 @@ def create_market_charts():
 
         for annotation in fig['layout']['annotations']:
             # فقط عنوان‌های subplot را تنظیم کن، نه annotation‌های جدید
-            if annotation.xref != 'paper':
-                annotation.font = dict(size=25, color='#8B949E', family=chart_font_family)
+            if annotation.xref is None:
+                annotation.font = dict(size=30, color='#8B949E', family=chart_font_family)
 
         # تولید تصویر
         img_bytes = fig.to_image(format='png', width=1400, height=2200, scale=2)
