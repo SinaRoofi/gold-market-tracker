@@ -9,23 +9,29 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
+      - name: Install Vazirmatn font
+        run: |
+          mkdir -p ~/.fonts
+          wget -O ~/.fonts/Vazirmatn.ttf https://github.com/rastikerdar/vazir-font/releases/download/v30.1.0/Vazirmatn-FD-WOL.ttf
+          fc-cache -f -v
+
       - name: Restore gold yesterday cache
         uses: actions/cache@v4
         with:
           path: gold_yesterday_cache.json
           key: gold-yesterday-cache
-          
+
       - name: Run Gold Tracker
         env:
           TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
@@ -37,13 +43,13 @@ jobs:
           SHEETS_SERVICE_ACCOUNT: ${{ secrets.SHEETS_SERVICE_ACCOUNT }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
         run: python main.py
-        
+
       - name: Save gold yesterday cache
         uses: actions/cache@v4
         with:
           path: gold_yesterday_cache.json
           key: gold-yesterday-cache
-          
+
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
