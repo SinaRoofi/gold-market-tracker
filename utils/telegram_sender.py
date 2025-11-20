@@ -124,7 +124,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
             text=[f"<b>{i}</b>" for i in df_sorted.index],
             textinfo="text",
             textposition="middle center",
-            textfont=dict(size=20, color="white", family=treemap_font_family),
+            textfont=dict(size=30, color="white", family=treemap_font_family),
             hoverinfo="skip",
             marker=dict(
                 colors=df_sorted["color_value"],
