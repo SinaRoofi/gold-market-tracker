@@ -125,14 +125,9 @@ def create_combined_image(
         PDF = "\u202C"  # Pop Directional Formatting
         
         name = row.name
-        price = f"{row['close_price']:,.0f}"
-        change_pct = f"{row['close_price_change_percent']:+.2f}%"
-        bubble = f"{row['nominal_bubble']:+.2f}% حباب"
 
         return (
             f"{RLE}<b>{name}</b>{PDF}<br>"
-
-            f"({change_pct}){PDF}"
         )
 
     df_sorted["display_text"] = df_sorted.apply(create_text_html, axis=1)
@@ -161,7 +156,7 @@ def create_combined_image(
             textinfo="text",
             textposition="middle center",
             textfont=dict(
-                size=16,
+                size=20,
                 color="white",
             ),
             hoverinfo="skip",
@@ -230,7 +225,7 @@ def create_combined_image(
                 align="center",
                 font=dict(
                     color="white", 
-                    size=FONT_BIG - 3
+                    size=FONT_BIG - 2
                 ),
                 height=32,
             ),
@@ -256,7 +251,7 @@ def create_combined_image(
         width=1400,
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
-            text="<b>📊 نقشه بازار وجدول ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
+            text="<b> نقشه بازار وجدول ۱۰ صندوق طلا با ارزش معاملات بالا </b>",
             font=dict(size=32, color="#FFD700"),
             x=0.5,
             y=1.0,
