@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from persiantools.jdatetime import JalaliDateTime
 from PIL import Image, ImageDraw, ImageFont
-from utils.chart_creator import create_market_charts # فرض می‌کنیم این تابع در یک فایل دیگر تعریف شده است.
+from utils.chart_creator import create_market_charts  # فرض می‌کنیم این تابع در یک فایل دیگر تعریف شده است.
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +23,15 @@ def send_to_telegram(
     gold_time,
     yesterday_close,
 ):
+    """
+    مدیریت کلی تولید تصاویر و کپشن و ارسال به تلگرام
+    """
     if data is None:
         logger.error("❌ داده‌های پردازش‌شده (data) مقدار None دارد. ارسال متوقف شد.")
         return False
+
     try:
+        # 1. ایجاد تصویر اول (Treemap + جدول)
         img1_bytes = create_combined_image(
             data["Fund_df"],
             dollar_prices["last_trade"],
@@ -35,10 +40,16 @@ def send_to_telegram(
             data["dfp"],
             yesterday_close,
         )
+
+        # 2. ایجاد تصویر دوم (نمودارها)
         img2_bytes = create_market_charts()
+
+        # 3. ایجاد کپشن (شامل تمام محاسبات وزنی)
         caption = create_simple_caption(
             data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
         )
+
+        # 4. تصمیم‌گیری برای ارسال
         if img2_bytes:
             return send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption)
         else:
@@ -46,17 +57,22 @@ def send_to_telegram(
             url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
             files = {"photo": ("market_report.png", io.BytesIO(img1_bytes), "image/png")}
             params = {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"}
+
             response = requests.post(url, files=files, data=params, timeout=60)
+
             if response.status_code == 200:
                 return True
             else:
                 logger.error(f"❌ خطا در ارسال تک عکس: {response.text}")
                 return False
+
     except Exception as e:
         logger.error(f"❌ خطا در فرآیند ارسال به تلگرام: {e}", exc_info=True)
         return False
 
+
 def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
+    """ارسال 2 عکس + کپشن به صورت Media Group"""
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMediaGroup"
         files = {
@@ -79,11 +95,13 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
         logger.error(f"❌ خطا در ارسال Media Group: {e}", exc_info=True)
         return False
 
-# --- تابع ایجاد تصویر ترکیبی (Treemap + جدول) ---
+
+# --- تابع ایجاد تصویر ترکیبی Treemap + جدول ---
 
 def create_combined_image(
     Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close
 ):
+    """تولید تصویر ترکیبی شامل Treemap و جدول"""
     fig = make_subplots(
         rows=2, cols=1, row_heights=[0.65, 0.35], vertical_spacing=0.02,
         specs=[[{"type": "treemap"}], [{"type": "table"}]],
@@ -91,16 +109,17 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-    FONT_BIG = 16  # سایز ثابت و مناسب
+    FONT_BIG = 22  # ← سایز فونت
 
-    # --- متن وسط مربع‌ها ساده و مرتب ---
-    def create_display_text(row):
-        line1 = row.name.upper()
-        line2 = f"{row['close_price_change_percent']:+.2f}%"
-        line3 = f"حباب: {row['nominal_bubble']:+.2f}%"
-        return f"{line1}\n{line2}\n{line3}"
+    def create_text(row):
+        """متن وسط مربع‌ها: اسم بولد، قیمت + درصد تغییر، حباب"""
+        return (
+            f"<b>{row.name}</b><br>"
+            f"{row['close_price']:,.0f} ({row['close_price_change_percent']:+.2f}%)<br>"
+            f"حباب: {row['nominal_bubble']:+.2f}%"
+        )
 
-    df_sorted["display_text"] = df_sorted.apply(create_display_text, axis=1)
+    df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
 
     colorscale = [
@@ -117,9 +136,8 @@ def create_combined_image(
             text=df_sorted["display_text"], 
             textinfo="text", 
             textposition="middle center",
-            textfont=dict(size=FONT_BIG, color="white", family="Vazirmatn, Arial"),
-            hovertext=df_sorted["hover_text"],  # همه جزئیات در Hover
-            hoverinfo="text",
+            textfont=dict(size=FONT_BIG, family="Vazirmatn, Arial", color="white"),
+            hoverinfo="skip",  # حذف hover_text
             marker=dict(
                 colors=df_sorted["color_value"], 
                 colorscale=colorscale, 
@@ -132,7 +150,7 @@ def create_combined_image(
         row=1, col=1,
     )
 
-    # --- جدول (بدون تغییر) ---
+    # جدول (بدون تغییر)
     top_10 = df_sorted.head(10)
     table_header = ["نماد", "قیمت", "NAV", "تغییر %", "حباب %", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"]
     table_cells = [
@@ -170,14 +188,14 @@ def create_combined_image(
                 values=[f"<b>{h}</b>" for h in table_header], 
                 fill_color="#242F3D", 
                 align="center", 
-                font=dict(color="white", size=FONT_BIG - 2, family="Vazirmatn, Arial"), 
+                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
                 height=32
             ),
             cells=dict(
                 values=table_cells, 
                 fill_color=cell_colors, 
                 align="center", 
-                font=dict(color="white", size=FONT_BIG - 2, family="Vazirmatn, Arial"), 
+                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
                 height=35
             ),
         ),
@@ -228,22 +246,28 @@ def create_combined_image(
     img.save(output, format="PNG", optimize=True, quality=85)
     return output.getvalue()
 
+
 # --- تابع کپشن (بدون تغییر) ---
 
 def create_simple_caption(
     data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
 ):
-    # همان تابع قبلی بدون تغییر
+    """ساخت کپشن برای تلگرام با محاسبات وزنی کامل"""
     tehran_tz = pytz.timezone("Asia/Tehran")
     now = JalaliDateTime.now(tehran_tz)
     current_time = now.strftime("%Y/%m/%d - %H:%M:%S")
+
     try:
         dollar_time = gold_time.strftime("%H:%M") if gold_time else "نامشخص"
     except:
         dollar_time = "نامشخص"
+
     df_funds = data["Fund_df"]
+
+    # --- محاسبات آماری صندوق‌ها ---
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
+    
     if total_value > 0:
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
@@ -252,6 +276,7 @@ def create_simple_caption(
         avg_price_weighted = 0
         avg_change_percent_weighted = 0
         avg_bubble_weighted = 0
+
     dollar_change = (
         ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100)
         if yesterday_close and yesterday_close != 0
@@ -260,6 +285,7 @@ def create_simple_caption(
     gold_change = (
         ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday and gold_yesterday != 0 else 0
     )
+
     shams = data["dfp"].loc["شمش-طلا"]
     gold_24 = data["dfp"].loc["طلا-گرم-24-عیار"]
     gold_18 = data["dfp"].loc["طلا-گرم-18-عیار"]
@@ -272,6 +298,7 @@ def create_simple_caption(
         except:
             d_calc = 0
             d_diff = 0
+        
         try:
             o_calc = asset_row["pricing_Gold"]
             o_diff = o_calc - gold_current
@@ -313,7 +340,7 @@ def create_simple_caption(
 💰 قیمت: <b>{shams['close_price']:,}</b> ریال
 📊 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
 💵 دلار محاسباتی: {d_shams:,.0f} ({diff_shams:+,.0f})
-🔆 اونس محاسباتی: ${o_shams:,.0f} ({diff_o_shams:+.0f})
+🔆 اونس محاسباتی: ${o_shams:,.0f} ({diff_o_shams:+,.0f})
 
 🔸 <b>طلا ۲۴ عیار</b>
 💰 قیمت: <b>{gold_24_price:,.0f}</b> تومان
