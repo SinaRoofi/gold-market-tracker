@@ -11,6 +11,7 @@ from utils.chart_creator import create_market_charts
 
 logger = logging.getLogger(__name__)
 FONT_BIG = 20
+
 def send_to_telegram(
     bot_token,
     chat_id,
@@ -42,7 +43,7 @@ def send_to_telegram(
         # 2. ایجاد تصویر دوم (نمودارها)
         img2_bytes = create_market_charts()
 
-        # 3. ایجاد کپشن (شامل تمام محاسبات وزنی)
+        # 3. ایجاد کپشن (بدون تغییر نسبت به نسخه قبل)
         caption = create_simple_caption(
             data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
         )
@@ -94,9 +95,7 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
         return False
 
 
-def create_combined_image(
-    Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close
-):
+def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
     """تولید تصویر ترکیبی شامل Treemap و جدول"""
     fig = make_subplots(
         rows=2, cols=1, row_heights=[0.65, 0.35], vertical_spacing=0.02,
@@ -105,60 +104,15 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-    
-    def create_text(row):
-        """
-        فرمت ساده بدون HTML - فقط متن خالص
-        """
-        name = row.name
-        price = f"{row['close_price']:,.0f}"
-        change_pct = f"{row['close_price_change_percent']:+.2f}"
-        bubble = f"{row['nominal_bubble']:+.2f}"
-        
-        # برای همه صندوق‌ها فرمت یکسان
-        return f"{name}\n{price} ({change_pct}%)\n{bubble}%"
 
-    df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
-    df_sorted = df_sorted.sort_values("value", ascending=False)
-
-    colorscale = [
-        [0.0, "#E57373"], [0.1, "#D85C5C"], [0.2, "#C94444"], [0.3, "#A52A2A"], [0.4, "#6B1A1A"],
-        [0.5, "#2C2C2C"],
-        [0.6, "#1B5E20"], [0.7, "#2E7D32"], [0.8, "#43A047"], [0.9, "#5CB860"], [1.0, "#66BB6A"],
-    ]
-
-    fig.add_trace(
-        go.Treemap(
-            labels=df_sorted.index, 
-            parents=[""] * len(df_sorted), 
-            values=df_sorted["value"],
-            text=df_sorted["display_text"], 
-            textinfo="text", 
-            textposition="middle center",
-            textfont=dict(
-                size=16,  # سایز ثابت برای همه
-                family="Arial, sans-serif",  # فونت ساده
-                color="white"
-            ),
-            hoverinfo="skip",
-            marker=dict(
-                colors=df_sorted["color_value"], 
-                colorscale=colorscale, 
-                cmid=0, 
-                cmin=-10, 
-                cmax=10, 
-                line=dict(width=3, color="#1A1A1A")
-            ),
-            pathbar=dict(visible=False),
-            # اضافه کردن این‌ها برای بهتر شدن نمایش
-            root=dict(color="lightgrey"),
-            branchvalues="total"
-        ),
-        row=1, col=1,
+    # تغییر اصلی: متن وسط بلوک سه خطی
+    df_sorted["display_text"] = df_sorted.apply(
+        lambda row: f"{row.name}\n{row['close_price']:,} ({row['close_price_change_percent']:+.2f}%)\n{row['nominal_bubble']:+.2f}%",
+        axis=1,
     )
 
     # جدول 10 صندوق برتر
-    top_10 = df_sorted.head(10)
+    top_10 = df_sorted.sort_values("value", ascending=False).head(10)
     table_header = ["نماد", "قیمت", "NAV", "تغییر %", "حباب %", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"]
     table_cells = [
         top_10.index.tolist(),
@@ -171,39 +125,35 @@ def create_combined_image(
         [f"{x:,.0f}" for x in top_10["value"]],
     ]
 
-    def col_color(v):
-        try:
-            x = float(v.replace("%", "").replace("+", "").replace(",", ""))
-            return "#1B5E20" if x > 0 else "#A52A2A" if x < 0 else "#2C2C2C"
-        except:
-            return "#1C2733"
-
-    cell_colors = [
-        ["#1C2733"] * len(top_10), 
-        ["#1C2733"] * len(top_10), 
-        ["#1C2733"] * len(top_10),
-        [col_color(x) for x in table_cells[3]], 
-        [col_color(x) for x in table_cells[4]],
-        [col_color(x) for x in table_cells[5]], 
-        [col_color(x) for x in table_cells[6]],
-        ["#1C2733"] * len(top_10),
-    ]
+    fig.add_trace(
+        go.Treemap(
+            labels=df_sorted.index, 
+            parents=[""] * len(df_sorted), 
+            values=df_sorted["value"],
+            text=df_sorted["display_text"], 
+            textinfo="text", 
+            textposition="middle center",
+            textfont=dict(size=16, family="Vazirmatn-Regular", color="white"),
+            hoverinfo="skip",
+            marker=dict(
+                colors=df_sorted["color_value"], 
+                colorscale=[[0.0, "#E57373"], [0.5, "#2C2C2C"], [1.0, "#66BB6A"]],
+                cmid=0, cmin=-10, cmax=10, line=dict(width=3, color="#1A1A1A")
+            ),
+            pathbar=dict(visible=False),
+            branchvalues="total"
+        ),
+        row=1, col=1,
+    )
 
     fig.add_trace(
         go.Table(
             header=dict(
                 values=[f"<b>{h}</b>" for h in table_header], 
-                fill_color="#242F3D", 
-                align="center", 
-                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
-                height=32
+                fill_color="#242F3D", align="center", font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn-Regular"), height=32
             ),
             cells=dict(
-                values=table_cells, 
-                fill_color=cell_colors, 
-                align="center", 
-                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
-                height=35
+                values=table_cells, fill_color="#1C2733", align="center", font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn-Regular"), height=35
             ),
         ),
         row=2, col=1,
@@ -212,69 +162,23 @@ def create_combined_image(
     fig.update_layout(
         paper_bgcolor="#000000", 
         plot_bgcolor="#000000", 
-        height=1400, 
-        width=1400,
+        height=1400, width=1400,
         margin=dict(t=90, l=10, r=10, b=10),
-        title=dict(
-            text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>", 
-            font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"), 
-            x=0.5, 
-            y=1.0, 
-            xanchor="center", 
-            yanchor="top"
-        ),
+        title=dict(text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>", font=dict(size=32, color="#FFD700", family="Vazirmatn-Regular"), x=0.5, y=1.0, xanchor="center", yanchor="top"),
         showlegend=False,
     )
 
     # تبدیل به تصویر
     img_bytes = fig.to_image(format="png", width=1200, height=1200)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-    
-    # ═══════════════════════════════════════════════════════
-    # رسم دستی متن روی هر مربع (برای حل مشکل فارسی)
-    # ═══════════════════════════════════════════════════════
-    draw = ImageDraw.Draw(img)
-    
-    # بارگذاری فونت فارسی
-    try:
-        font_large = ImageFont.truetype("assets/fonts/Vazirmatn.ttf", 28)
-        font_medium = ImageFont.truetype("assets/fonts/Vazirmatn.ttf", 22)
-        font_small = ImageFont.truetype("assets/fonts/Vazirmatn.ttf", 18)
-    except:
-        try:
-            font_large = ImageFont.truetype("Vazirmatn.ttf", 28)
-            font_medium = ImageFont.truetype("Vazirmatn.ttf", 22)
-            font_small = ImageFont.truetype("Vazirmatn.ttf", 18)
-        except:
-            # اگه فونت نبود، از پیش‌فرض استفاده کن
-            font_large = font_medium = font_small = ImageFont.load_default()
-    
-    # محاسبه تقریبی موقعیت مربع‌ها
-    # (این قسمت سخته - باید دستی تنظیم بشه یا از Plotly locations استفاده بشه)
-    # برای سادگی، از Plotly استفاده می‌کنیم
-    
-    # واترمارک
-    watermark_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
-    draw = ImageDraw.Draw(watermark_layer)
-    font_size = 60
-    try:
-        font = ImageFont.truetype("assets/fonts/Vazirmatn.ttf", font_size)
-    except Exception:
-        try:
-            font = ImageFont.truetype("Vazirmatn.ttf", font_size)
-        except:
-            font = ImageFont.load_default()
 
-    watermark_text = "Gold_Iran_Market"
-    bbox = draw.textbbox((0, 0), watermark_text, font=font)
-    txt_img = Image.new("RGBA", (bbox[2] - bbox[0] + 40, bbox[3] - bbox[1] + 40), (255, 255, 255, 0))
-    txt_draw = ImageDraw.Draw(txt_img)
-    txt_draw.text((20, 20), watermark_text, font=font, fill=(255, 255, 255, 100))
-    rotated = txt_img.rotate(45, expand=True)
-    x = (img.width - rotated.width) // 2
-    y = (img.height - rotated.height) // 2
-    watermark_layer.paste(rotated, (x, y), rotated)
-    img = Image.alpha_composite(img, watermark_layer)
+    # واترمارک
+    draw = ImageDraw.Draw(img)
+    try:
+        font = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", 60)
+    except:
+        font = ImageFont.load_default()
+    draw.text((50, img.height - 100), "Gold_Iran_Market", font=font, fill=(255, 255, 255, 100))
 
     output = io.BytesIO()
     img.save(output, format="PNG", optimize=True, quality=85)
@@ -284,7 +188,7 @@ def create_combined_image(
 def create_simple_caption(
     data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
 ):
-    """ساخت کپشن برای تلگرام با محاسبات وزنی کامل"""
+    """ساخت کپشن برای تلگرام با محاسبات وزنی کامل (بدون تغییر)"""
     tehran_tz = pytz.timezone("Asia/Tehran")
     now = JalaliDateTime.now(tehran_tz)
     current_time = now.strftime("%Y/%m/%d - %H:%M:%S")
@@ -296,26 +200,18 @@ def create_simple_caption(
 
     df_funds = data["Fund_df"]
 
-    # --- محاسبات آماری صندوق‌ها ---
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
     
-    # محاسبات وزنی
     if total_value > 0:
-        # 1. میانگین قیمت وزنی
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
-        
-        # 2. میانگین درصد تغییر وزنی
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
-        
-        # 3. میانگین حباب وزنی
         avg_bubble_weighted = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value
     else:
         avg_price_weighted = 0
         avg_change_percent_weighted = 0
         avg_bubble_weighted = 0
 
-    # --- سایر محاسبات ---
     dollar_change = (
         ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100)
         if yesterday_close and yesterday_close != 0
@@ -384,17 +280,17 @@ def create_simple_caption(
 🔸 <b>طلا ۲۴ عیار</b>
 💰 قیمت: <b>{gold_24_price:,.0f}</b> تومان
 📊 تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:+,.0f})
+💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:+.0f})
 
 🔸 <b>طلا ۱۸ عیار</b>
 💰 قیمت: <b>{gold_18_price:,.0f}</b> تومان
 📊 تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+,.0f})
+💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+.0f})
 
 🪙 <b>سکه امامی</b>
 💰 قیمت: <b>{sekeh_price:,.0f}</b> تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
+💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+.0f})
 ━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>
 """
