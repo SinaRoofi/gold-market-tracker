@@ -68,11 +68,11 @@ def create_market_charts():
 
         # ابتدا فونت تیتر‌های subplot را تنظیم کن (قبل از اضافه کردن annotation‌های جدید)
         for annotation in fig['layout']['annotations']:
-            annotation.font = dict(size=35, color='#8B949E', family=chart_font_family)
+            annotation.font = dict(size=32, color='#8B949E', family=chart_font_family)
 
         gold_current = df['gold_price_usd'].iloc[-1]
-        gold_min = gold_current * 0.97
-        gold_max = gold_current * 1.03
+        gold_min = gold_current * 0.98
+        gold_max = gold_current * 1.02
 
         fig.add_trace(go.Scatter(
             x=df['timestamp'], 
@@ -149,7 +149,7 @@ def create_market_charts():
             yref='paper',
             xanchor='right',
             yanchor='top',
-            font=dict(size=38, color='#FFD700', family=chart_font_family),
+            font=dict(size=40, color='#FFD700', family=chart_font_family),
             showarrow=False
         )
 
@@ -162,7 +162,7 @@ def create_market_charts():
             yref='paper',
             xanchor='left',
             yanchor='top',
-            font=dict(size=38, color='#FFFFFF', family=chart_font_family),
+            font=dict(size=40, color='#FFFFFF', family=chart_font_family),
             showarrow=False
         )
 
