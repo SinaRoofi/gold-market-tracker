@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 from utils.chart_creator import create_market_charts
 
 logger = logging.getLogger(__name__)
-
+FONT_BIG = 20
 def send_to_telegram(
     bot_token,
     chat_id,
