@@ -126,7 +126,7 @@ def create_market_charts():
             height=2200,
             paper_bgcolor='#0D1117',
             plot_bgcolor='#0D1117',
-            font=dict(color='#C9D1D9', family=chart_font_family, size=25),
+            font=dict(color='#C9D1D9', family=chart_font_family, size=30),
             hovermode='x unified',
             showlegend=False,
             margin=dict(l=60, r=60, t=120, b=40),
@@ -141,7 +141,7 @@ def create_market_charts():
             yref='paper',
             xanchor='right',
             yanchor='top',
-            font=dict(size=36, color='#FFD700', family=chart_font_family),
+            font=dict(size=38, color='#FFD700', family=chart_font_family),
             showarrow=False
         )
 
@@ -189,7 +189,7 @@ def create_market_charts():
         for annotation in fig['layout']['annotations']:
             # فقط عنوان‌های subplot را تنظیم کن، نه annotation‌های جدید
             if annotation.xref != 'paper':
-                annotation.font = dict(size=28, color='#8B949E', family=chart_font_family)
+                annotation.font = dict(size=25, color='#8B949E', family=chart_font_family)
 
         # تولید تصویر
         img_bytes = fig.to_image(format='png', width=1400, height=2200, scale=2)
