@@ -69,8 +69,8 @@ def create_market_charts():
         # ۱. قیمت طلا - فقط طلایی زیبا با محدوده ±5%
         # ═══════════════════════════════════════════════════════
         gold_current = df['gold_price_usd'].iloc[-1]
-        gold_min = gold_current * 0.93 # -5%
-        gold_max = gold_current * 1.03  # +5%
+        gold_min = gold_current * 0.93 #
+        gold_max = gold_current * 1.03  #
         
         fig.add_trace(go.Scatter(
             x=df['timestamp'], 
