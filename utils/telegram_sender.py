@@ -127,15 +127,14 @@ def create_combined_image(
         """
         name = row.name
         price = f"{row['close_price']:,.0f}"
-        change_pct = f"{row['close_price_change_percent']:+.2f}"
-        bubble = f"{row['nominal_bubble']:+.2f}"
+        change_pct = f"{row['close_price_change_percent']:+.2f}%"
+        bubble = f"({row['nominal_bubble']:+.2f})حباب: "
 
-        text = f"{name}\n{price} ({change_pct}%)\n{bubble}% حباب"
+        text = f"{name}\n{price} ({change_pct})\n{bubble}"
 
         reshaped_text = arabic_reshaper.reshape(text)
         bidi_text = get_display(reshaped_text)
         return bidi_text
-
 
     df_sorted["display_text"] = df_sorted.apply(create_text, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
