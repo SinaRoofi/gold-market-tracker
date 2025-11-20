@@ -111,17 +111,34 @@ def create_combined_image(
 
     # --------- اصلاح متن وسط مربع‌ها ---------
     def create_display_text(row):
-        """
-        سه خط مرتب:
-        خط1: اسم نماد بولد
-        خط2: قیمت + درصد تغییر
-        خط3: حباب
-        """
-        return (
-            f"<b>{row.name}</b><br>"  # خط 1: اسم نماد
-            f"{row['close_price']:,.0f} ({row['close_price_change_percent']:+.2f}%)<br>"  # خط 2
-            f"حباب: {row['nominal_bubble']:+.2f}%"  # خط 3
-        )
+
+        if row["value"] > 100:
+        name_size = FONT_BIG + 3
+        price_size = FONT_BIG
+        change_size = FONT_BIG - 1
+        bubble_size = FONT_BIG - 2
+        show_bubble = True
+    elif row["value"] > 50:
+        name_size = FONT_BIG + 1
+        price_size = FONT_BIG - 1
+        change_size = FONT_BIG - 2
+        show_bubble = False
+    else:
+        name_size = FONT_BIG
+        change_size = FONT_BIG - 2
+        show_bubble = False
+
+    result = f"<b style='font-size:{name_size}px'>{row.name}</b><br>"
+
+    if row["value"] > 50:
+        result += f"<span style='font-size:{price_size}px'>{row['close_price']:,.0f}</span><br>"
+    
+    result += f"<span style='font-size:{change_size}px'>{row['close_price_change_percent']:+.2f}%</span>"
+
+    if show_bubble:
+        result += f"<br><span style='font-size:{bubble_size}px'>حباب: {row['nominal_bubble']:+.2f}%</span>"
+
+    return result
 
     df_sorted["display_text"] = df_sorted.apply(create_display_text, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
