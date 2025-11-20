@@ -66,10 +66,10 @@ def create_market_charts():
         )
         
         # ═══════════════════════════════════════════════════════
-        # ۱. قیمت طلا - فقط طلایی زیبا با محدوده ±5%
+        # ۱. قیمت طلا - فقط طلایی زیبا  
         # ═══════════════════════════════════════════════════════
         gold_current = df['gold_price_usd'].iloc[-1]
-        gold_min = gold_current * 0.93 #
+        gold_min = gold_current * 0.97 #
         gold_max = gold_current * 1.03  #
         
         fig.add_trace(go.Scatter(
@@ -122,7 +122,7 @@ def create_market_charts():
         ), row=6, col=1)
         
         # اختلاف سرانه - بار چارت با رنگ شرطی کم‌رنگ
-        colors_sarane = ['rgba(0,230,118,0.4)' if x >= 0 else 'rgba(255,23,68,0.4)' 
+        colors_sarane = ['rgba(0,230,118,0.75)' if x >= 0 else 'rgba(255,23,68,0.75)' 
                          for x in df['ekhtelaf_sarane_weighted']]
         
         fig.add_trace(go.Bar(
@@ -140,7 +140,7 @@ def create_market_charts():
             height=2200,
             paper_bgcolor='#0D1117',
             plot_bgcolor='#0D1117',
-            font=dict(color='#C9D1D9', family='Vazirmatn, Arial', size=25),  # ← فونت بزرگتر (17→20)
+            font=dict(color='#C9D1D9', family='Vazirmatn, Arial', size=25),
             hovermode='x unified',
             showlegend=False,
             margin=dict(l=60, r=30, t=100, b=40),  # ← فضای بالا بیشتر برای تیتر
@@ -193,7 +193,7 @@ def create_market_charts():
         
         # تنظیم عنوان‌های subplot
         for annotation in fig['layout']['annotations']:
-            annotation['font'] = dict(size=22, color='#8B949E')  # ← فونت بزرگتر (19→22)
+            annotation['font'] = dict(size=25, color='#8B949E')
         
         # تبدیل به عکس
         img_bytes = fig.to_image(format='png', width=1400, height=2200)
