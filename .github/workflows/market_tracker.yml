@@ -20,12 +20,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-      - name: Install Vazirmatn font
-        run: |
-          mkdir -p ~/.fonts
-          wget -O ~/.fonts/Vazirmatn.ttf https://github.com/rastikerdar/vazirmatn/releases/download/v33.003/fonts/ttf/Vazirmatn-Regular.ttf
-          fc-cache -f -v
-
       - name: Restore gold yesterday cache
         uses: actions/cache@v4
         with:
