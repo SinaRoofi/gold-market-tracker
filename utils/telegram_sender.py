@@ -141,7 +141,7 @@ def create_combined_image(
             text=df_sorted["display_text"],
             textinfo="text",
             textposition="middle center",
-            textfont=dict(size=20, color="white"),
+            textfont=dict(size=22, color="white"),
             hoverinfo="skip",
             marker=dict(
                 colors=df_sorted["color_value"],
@@ -188,9 +188,9 @@ def create_combined_image(
 
     fig.add_trace(go.Table(
         header=dict(values=[f"<b>{h}</b>" for h in table_header],
-                    fill_color="#242F3D", font=dict(color="white", size=19), height=35, align="center"),
+                    fill_color="#242F3D", font=dict(color="white", size=20), height=35, align="center"),
         cells=dict(values=table_cells, fill_color=cell_colors,
-                   font=dict(color="white", size=17), height=35, align="center")
+                   font=dict(color="white", size=18), height=35, align="center")
     ), row=2, col=1)
 
     fig.update_layout(
@@ -201,7 +201,7 @@ def create_combined_image(
         margin=dict(t=140, l=20, r=20, b=20),
         title=dict(
             text="<b>نقشه بازار صندوق‌های طلا</b>",
-            font=dict(size=32, color="#FFD700"),
+            font=dict(size=35, color="#FFD700"),
             x=0.5, y=0.96, xanchor="center", yanchor="top"
         ),
         showlegend=False,
@@ -226,7 +226,7 @@ def create_combined_image(
 
     # نوشتن تاریخ و توضیح سفید در بالا چپ
     draw.text((50, 30), date_time_str, font=font_date, fill="#FFFFFF")
-    draw.text((50, 105), "اندازه ارزش معاملات", font=font_desc, fill="#FFFFFF")
+    draw.text((50, 105), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
 
     # واترمارک مورب Gold_Iran_Market
     watermark_layer = Image.new("RGBA", img.size, (0,0,0,0))
