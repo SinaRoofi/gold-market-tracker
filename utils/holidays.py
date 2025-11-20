@@ -94,7 +94,7 @@ def is_iranian_holiday(date_obj):
         return True
 
     # پنج‌شنبه و جمعه تعطیل هستند
-    return date_obj.weekday() in (1, 4)  # 0=دوشنبه ... 3=پنج‌شنبه, 4=جمعه
+    return date_obj.weekday() in (3, 4)  # 0=دوشنبه ... 3=پنج‌شنبه, 4=جمعه
 
 
 def is_working_day(date_obj):
@@ -108,3 +108,4 @@ def is_working_day(date_obj):
         bool: True اگر روز کاری باشد
     """
     return not is_iranian_holiday(date_obj)
+
