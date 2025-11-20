@@ -1,4 +1,4 @@
-# utils/chart_creator.py — نسخه نهایی با تیتر راست‌بالا (زرد) + تاریخ سفید چپ‌بالا
+# utils/chart_creator.py — نسخه نهایی با تاریخ سفید چپ بالا + واترمارک امن پایین راست
 
 import logging
 import pytz
@@ -133,9 +133,9 @@ def create_market_charts():
             title=dict(
                 text=f'<b style="color:#FFFFFF; font-size:34px">{date_time_str}</b><br>'
                      f'<b style="color:#FFD700; font-size:36px">📊 روند بازار</b>',
-                x=0.98,           # راست بالا
+                x=0.02,       # انتقال کامل به چپ
                 y=0.995,
-                xanchor='right',  # تراز به راست
+                xanchor='left',
                 yanchor='top',
                 font=dict(family=chart_font_family)
             )
@@ -176,14 +176,20 @@ def create_market_charts():
         img_bytes = fig.to_image(format='png', width=1400, height=2200, scale=2)
         img = Image.open(io.BytesIO(img_bytes)).convert('RGBA')
 
-        # واترمارک مرکزی
+        # واترمارک — پایین راست (مکان امن)
         try:
             draw = ImageDraw.Draw(img)
-            font = ImageFont.truetype('assets/fonts/Vazirmatn-Regular.ttf', 38)
+            font = ImageFont.truetype('assets/fonts/Vazirmatn-Regular.ttf', 46)
             text = 'Gold_Iran_Market'
             bbox = draw.textbbox((0, 0), text, font=font)
             w = bbox[2] - bbox[0]
-            draw.text(((1400-w)/2, 15), text, fill=(201,209,217,180), font=font)
+            h = bbox[3] - bbox[1]
+
+            # امن‌ترین نقطه
+            x = img.width - w - 25
+            y = img.height - h - 25
+
+            draw.text((x, y), text, fill=(201,209,217,160), font=font)
         except:
             pass
 
