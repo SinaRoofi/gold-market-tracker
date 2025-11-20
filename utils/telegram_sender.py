@@ -380,6 +380,6 @@ def create_simple_caption(
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
 💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+.0f})
 ━━━━━━━━━━━━━━━━━━━━━━━━
-🔗 <a href='https://t.me/Gold_Iran
+🔗 <a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a> 
 """
     return caption
