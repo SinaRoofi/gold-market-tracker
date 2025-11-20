@@ -107,7 +107,7 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-    FONT_BIG = 22  # سایز ثابت فونت
+    FONT_BIG = 15  # سایز ثابت فونت
 
     # --------- اصلاح متن وسط مربع‌ها ---------
     def create_display_text(row):
