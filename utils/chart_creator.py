@@ -85,9 +85,16 @@ def create_market_charts():
         fig.update_yaxes(range=[gold_min, gold_max], row=1, col=1)
 
         add_conditional_line(fig, df, 'dollar_change_percent', 2)
+        set_y_range(fig, df, 'dollar_change_percent', 2)
+        
         add_conditional_line(fig, df, 'shams_change_percent', 3)
+        set_y_range(fig, df, 'shams_change_percent', 3)
+        
         add_conditional_line(fig, df, 'fund_weighted_change_percent', 4)
+        set_y_range(fig, df, 'fund_weighted_change_percent', 4)
+        
         add_conditional_line(fig, df, 'fund_weighted_bubble_percent', 5)
+        set_y_range(fig, df, 'fund_weighted_bubble_percent', 5)
 
         fig.add_trace(go.Scatter(
             x=df['timestamp'], 
@@ -116,6 +123,13 @@ def create_market_charts():
             hovertemplate='اختلاف: <b>%{y:.2f}</b><extra></extra>'
         ), row=6, col=1)
 
+        # تنظیم محدوده Y برای سرانه‌ها
+        sarane_cols = ['sarane_kharid_weighted', 'sarane_forosh_weighted', 'ekhtelaf_sarane_weighted']
+        all_sarane_min = df[sarane_cols].min().min()
+        all_sarane_max = df[sarane_cols].max().max()
+        sarane_padding = (all_sarane_max - all_sarane_min) * 0.3
+        fig.update_yaxes(range=[all_sarane_min - sarane_padding, all_sarane_max + sarane_padding], row=6, col=1)
+
         fig.update_layout(
             height=2200,
             paper_bgcolor='#0D1117',
@@ -135,7 +149,7 @@ def create_market_charts():
             yref='paper',
             xanchor='right',
             yanchor='top',
-            font=dict(size=40, color='#FFD700', family=chart_font_family),
+            font=dict(size=38, color='#FFD700', family=chart_font_family),
             showarrow=False
         )
 
@@ -148,7 +162,7 @@ def create_market_charts():
             yref='paper',
             xanchor='left',
             yanchor='top',
-            font=dict(size=40, color='#FFFFFF', family=chart_font_family),
+            font=dict(size=38, color='#FFFFFF', family=chart_font_family),
             showarrow=False
         )
 
@@ -190,7 +204,6 @@ def create_market_charts():
             text = 'Gold_Iran_Market'
             bbox = draw.textbbox((0, 0), text, font=font)
             w = bbox[2] - bbox[0]
-            h = bbox[3] - bbox[1]
             x = img.width - w - 25
             y = int(img.height * 0.83)
             draw.text((x, y), text, fill=(201,209,217,160), font=font)
@@ -205,6 +218,17 @@ def create_market_charts():
     except Exception as e:
         logger.error(f'خطا در ساخت نمودار: {e}', exc_info=True)
         return None
+
+
+def set_y_range(fig, df, column, row, padding_percent=0.3):
+    """تنظیم محدوده Y برای نمایش واضح‌تر تغییرات"""
+    col_min = df[column].min()
+    col_max = df[column].max()
+    if col_min == col_max:
+        padding = 0.1
+    else:
+        padding = (col_max - col_min) * padding_percent
+    fig.update_yaxes(range=[col_min - padding, col_max + padding], row=row, col=1)
 
 
 def add_conditional_line(fig, df, column, row):
