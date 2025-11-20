@@ -136,8 +136,8 @@ def create_combined_image(
             textinfo="text", 
             textposition="middle center",
             textfont=dict(
-                size=FONT_BIG, 
-                family="Vazirmatn, Arial", 
+                size=14,
+                family="Arial",
                 color="white"
             ),
             hoverinfo="skip",
@@ -147,7 +147,7 @@ def create_combined_image(
                 cmid=0, 
                 cmin=-10, 
                 cmax=10, 
-                line=dict(width=2, color="#1A1A1A")
+                line=dict(width=3, color="#1A1A1A")
             ),
             pathbar=dict(visible=False)
         ),
@@ -192,14 +192,14 @@ def create_combined_image(
                 values=[f"<b>{h}</b>" for h in table_header], 
                 fill_color="#242F3D", 
                 align="center", 
-                font=dict(color="white", size=17, family="Vazirmatn, Arial"),  # ← سایز ثابت
+                font=dict(color="white", size=17, family="Vazirmatn, Arial"),
                 height=32
             ),
             cells=dict(
                 values=table_cells, 
                 fill_color=cell_colors, 
                 align="center", 
-                font=dict(color="white", size=17, family="Vazirmatn, Arial"),  # ← سایز ثابت
+                font=dict(color="white", size=17, family="Vazirmatn, Arial"),
                 height=35
             ),
         ),
@@ -275,13 +275,8 @@ def create_simple_caption(
     
     # محاسبات وزنی
     if total_value > 0:
-        # 1. میانگین قیمت وزنی
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
-        
-        # 2. میانگین درصد تغییر وزنی
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
-        
-        # 3. میانگین حباب وزنی
         avg_bubble_weighted = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value
     else:
         avg_price_weighted = 0
