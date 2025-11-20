@@ -11,6 +11,9 @@ from utils.chart_creator import create_market_charts  # فرض می‌کنیم �
 
 logger = logging.getLogger(__name__)
 
+# مسیر فونت وزیر
+VAZIR_FONT_PATH = "assets/fonts/Vazirmatn-Regular.ttf"
+
 # --- توابع ارسال تلگرام (بدون تغییر) ---
 
 def send_to_telegram(
@@ -136,8 +139,8 @@ def create_combined_image(
             text=df_sorted["display_text"], 
             textinfo="text", 
             textposition="middle center",
-            textfont=dict(size=FONT_BIG, family="Vazirmatn, Arial", color="white"),
-            hoverinfo="skip",  # حذف hover_text
+            textfont=dict(size=FONT_BIG, family=VAZIR_FONT_PATH, color="white"),
+            hoverinfo="skip",
             marker=dict(
                 colors=df_sorted["color_value"], 
                 colorscale=colorscale, 
@@ -188,14 +191,14 @@ def create_combined_image(
                 values=[f"<b>{h}</b>" for h in table_header], 
                 fill_color="#242F3D", 
                 align="center", 
-                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
+                font=dict(color="white", size=FONT_BIG - 3, family=VAZIR_FONT_PATH), 
                 height=32
             ),
             cells=dict(
                 values=table_cells, 
                 fill_color=cell_colors, 
                 align="center", 
-                font=dict(color="white", size=FONT_BIG - 3, family="Vazirmatn, Arial"), 
+                font=dict(color="white", size=FONT_BIG - 3, family=VAZIR_FONT_PATH), 
                 height=35
             ),
         ),
@@ -210,7 +213,7 @@ def create_combined_image(
         margin=dict(t=90, l=10, r=10, b=10),
         title=dict(
             text="<b>📊 نقشه بازار ۱۰ صندوق طلا با ارزش معاملات بالا </b>", 
-            font=dict(size=32, color="#FFD700", family="Vazirmatn, Arial"), 
+            font=dict(size=32, color="#FFD700", family=VAZIR_FONT_PATH), 
             x=0.5, 
             y=1.0, 
             xanchor="center", 
@@ -222,12 +225,12 @@ def create_combined_image(
     img_bytes = fig.to_image(format="png", width=1200, height=1200)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
 
-    # --- واترمارک با فونت وزیر از پوشه assets/fonts ---
+    # واترمارک
     watermark_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(watermark_layer)
     font_size = 60
     try:
-        font = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", font_size)
+        font = ImageFont.truetype(VAZIR_FONT_PATH, font_size)
     except Exception:
         font = ImageFont.load_default()
 
