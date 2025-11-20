@@ -1,4 +1,4 @@
-# utils/chart_creator.py — نسخه نهایی با تاریخ سفید چپ بالا + تیتر زرد راست بالا
+# utils/chart_creator.py — نسخه نهایی
 
 import logging
 import pytz
@@ -66,6 +66,10 @@ def create_market_charts():
         except:
             chart_font_family = "Vazirmatn, Arial, sans-serif"
 
+        # ابتدا فونت تیتر‌های subplot را تنظیم کن (قبل از اضافه کردن annotation‌های جدید)
+        for annotation in fig['layout']['annotations']:
+            annotation.font = dict(size=35, color='#8B949E', family=chart_font_family)
+
         gold_current = df['gold_price_usd'].iloc[-1]
         gold_min = gold_current * 0.97
         gold_max = gold_current * 1.03
@@ -122,6 +126,7 @@ def create_market_charts():
             margin=dict(l=60, r=60, t=120, b=40),
         )
 
+        # تیتر "روند بازار" — سمت راست بالا (زرد)
         fig.add_annotation(
             text='<b>📊 روند بازار</b>',
             x=0.98,
@@ -134,6 +139,7 @@ def create_market_charts():
             showarrow=False
         )
 
+        # تاریخ و ساعت — سمت چپ بالا (سفید)
         fig.add_annotation(
             text=f'<b>{date_time_str}</b>',
             x=0.02,
@@ -174,10 +180,6 @@ def create_market_charts():
 
             if i > 1:
                 fig.add_hline(y=0, line_dash='dot', line_color='#484F58', line_width=2, row=i, col=1)
-
-        for annotation in fig['layout']['annotations']:
-            if 'domain' in str(annotation.xref):
-                annotation.font = dict(size=35, color='#8B949E', family=chart_font_family)
 
         img_bytes = fig.to_image(format='png', width=1400, height=2200, scale=2)
         img = Image.open(io.BytesIO(img_bytes)).convert('RGBA')
