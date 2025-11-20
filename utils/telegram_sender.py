@@ -11,6 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 from utils.chart_creator import create_market_charts
 
 logger = logging.getLogger(__name__)
+pd.set_option('future.no_silent_downcasting', True)
 
 
 def send_to_telegram(
@@ -77,17 +78,17 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
 
 
 def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
-    """Treemap + جدول + تاریخ + اندازه: ارزش معاملات — همه با فونت Vazirmatn"""
+    """Treemap + جدول + تاریخ سفید + اندازه: ارزش معاملات — با فونت Vazirmatn-Medium از assets"""
 
     # تاریخ و ساعت شمسی
     tehran_tz = pytz.timezone("Asia/Tehran")
     now_jalali = JalaliDateTime.now(tehran_tz)
-    date_time_str = now_jalali.strftime("%Y/%m/%d - %H:%M")
+    date_time_str = now_jalali = now_jalali.strftime("%Y/%m/%d - %H:%M")
 
     fig = make_subplots(
         rows=2, cols=1,
         row_heights=[0.65, 0.35],
-        vertical_spacing=0.02,
+        vertical_spacing=0.025,
         specs=[[{"type": "treemap"}], [{"type": "table"}]],
     )
 
@@ -96,13 +97,15 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     df["display_text"] = df.apply(lambda row: f"\u202B<b>{row.name}</b>\u202C", axis=1)
     df = df.sort_values("value", ascending=False)
 
-    # === استفاده از فونت Vazirmatn در Treemap ===
-    treemap_font = dict(
-        size=24,
-        color="white",
-        family="Vazirmatn, sans-serif"  # اولویت با Vazirmatn
-    )
+    # فونت اصلی از پوشه assets
+    try:
+        medium_font_path = "assets/fonts/Vazirmatn-Medium.ttf"
+        medium_font = ImageFont.truetype(medium_font_path, 48)  # فقط برای اطمینان از وجود فایل
+        treemap_font_family = "Vazirmatn-Medium, sans-serif"
+    except:
+        treemap_font_family = "sans-serif"
 
+    # Treemap — فونت Vazirmatn-Medium
     fig.add_trace(go.Treemap(
         labels=df.index,
         parents=[""] * len(df),
@@ -110,16 +113,18 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         text=df["display_text"],
         textinfo="text",
         textposition="middle center",
-        textfont=treemap_font,
+        textfont=dict(size=25, color="white", family=treemap_font_family),
         marker=dict(
             colors=df["color_value"],
             colorscale=[
-                [0.0, "#E57373"], [0.2, "#C94444"], [0.4, "#6B1A1A"],
-                [0.5, "#2C2C2C"],
-                [0.6, "#1B5E20"], [0.8, "#43A047"], [1.0, "#66BB6A"],
+                [0.0, "#FF5555"],     # قرمز ملایم
+                [0.4, "#FF9999"],
+                [0.5, "#333333"],
+                [0.6, "#66BB6A"],
+                [1.0, "#00AA55"],     # سبز تیره و شیک
             ],
             cmid=0, cmin=-10, cmax=10,
-            line=dict(width=3, color="#111111"),
+            line=dict(width=3, color="#000000"),
         ),
         pathbar=dict(visible=False),
         hoverinfo="skip",
@@ -128,96 +133,111 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     # جدول ۱۰ تایی
     top10 = df.head(10)
     headers = ["نماد","قیمت","NAV","تغییر %","حباب %","اختلاف سرانه","پول حقیقی","ارزش معاملات"]
+
     cells = [
         top10.index.tolist(),
         [f"{x:,.0f}" for x in top10["close_price"]],
         [f"{x:,.0f}" for x in top10["NAV"]],
         [f"{x:+.2f}%" for x in top10["close_price_change_percent"]],
         [f"{x:+.2f}%" for x in top10["nominal_bubble"]],
-        [f"{x:+.2f}" if pd.notna(x) else "-" for x in top10.get("ekhtelaf_sarane", [0]*10)],
+        [f"{x:+.2f}" if pd.notna(x) and x != 0 else "۰" for x in top10.get("ekhtelaf_sarane", [0]*10)],
         [f"{x:+,.0f}" for x in top10["pol_hagigi"]],
         [f"{x:,.0f}" for x in top10["value"]],
     ]
 
-    def cell_color(val):
+    # رنگ‌های جدید و خیلی خوشگل
+    def cell_bg_color(val):
         try:
-            n = float(str(val).replace("%","").replace("+","").replace(",","").replace("-",""))
-            return "#1B5E20" if n > 0 else "#A52A2A" if n < 0 else "#2C2C2C"
+            n = float(str(val).replace("%","").replace("+","").replace(",","").replace("-","").strip())
+            if n > 0:
+                return "#003300"      # سبز تیره شیک
+            elif n < 0:
+                return "#660000"      # قرمز ملایم و لوکس
+            else:
+                return "#222222"      # خاکستری تیره برای صفر
         except:
-            return "#1C2733"
+            return "#222222"
 
-    colors = [
-        ["#1C2733"]*10, ["#1C2733"]*10, ["#1C2733"]*10,
-        [cell_color(v) for v in cells[3]],
-        [cell_color(v) for v in cells[4]],
-        [cell_color(v) for v in cells[5]],
-        [cell_color(v) for v in cells[6]],
-        ["#1C2733"]*10,
+    cell_colors = [
+        ["#1a1a1a"]*10,  # نماد
+        ["#1a1a1a1"]*10,  # قیمت
+        ["#1a1a1a"]*10,  # NAV
+        [cell_bg_color(v) for v in cells[3]],  # تغییر %
+        [cell_bg_color(v) for v in cells[4]],  # حباب
+        [cell_bg_color(v) for v in cells[5]],  # اختلاف سرانه
+        [cell_bg_color(v) for v in cells[6]],  # پول حقیقی
+        ["#1a1a1a"]*10,  # ارزش معاملات
     ]
 
     fig.add_trace(go.Table(
-        header=dict(values=[f"<b>{h}</b>" for h in headers],
-                    fill_color="#242F3D", font=dict(color="white", size=20, family="Vazirmatn"), height=38, align="center"),
-        cells=dict(values=cells, fill_color=colors,
-                   font=dict(color="white", size=18, family="Vazirmatn"), height=36, align="center")
+        header=dict(
+            values=[f"<b>{h}</b>" for h in headers],
+            fill_color="#00AA88",          # هدر سبز زمردی فوق‌العاده جذاب
+            font=dict(color="#FFFFFF", size=22, family=treemap_font_family),
+            height=48,
+            align="center"
+        ),
+        cells=dict(
+            values=cells,
+            fill_color=cell_colors,
+            font=dict(color="#FFFFFF", size=19, family=treemap_font_family),
+            height=40,
+            align="center"
+        )
     ), row=2, col=1)
 
     fig.update_layout(
-        height=1350, width=1350,
+        height=1380, width=1380,
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
         margin=dict(t=150, l=20, r=20, b=20),
         title=dict(
             text="<b>نقشه بازار صندوق‌های طلا</b>",
-            font=dict(size=35, color="#FFD700", family="Vazirmatn"),
+            font=dict(size=36, color="#FFD700", family=treemap_font_family),
             x=0.5, y=0.96, xanchor="center", yanchor="top"
         ),
         showlegend=False,
     )
 
-    # تولید تصویر
-    img_bytes = fig.to_image(format="png", width=1350, height=1350, scale=2.0)
+    # تولید تصویر با کیفیت بالا
+    img_bytes = fig.to_image(format="png", width=1380, height=1380, scale=2.2)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    # فونت‌های PIL برای متن بالا چپ
+    # فونت تاریخ و توضیح از پوشه assets
     try:
-        font_date = ImageFont.truetype("assets/fonts/Vazirmatn-Bold.ttf", 64)
-        font_desc = ImageFont.truetype("assets/fonts/Vazirmatn-Medium.ttf", 50)
+        font_date = ImageFont.truetype("assets/fonts/Vazirmatn-Bold.ttf", 66)
+        font_desc = ImageFont.truetype("assets/fonts/Vazirmatn-Medium.ttf", 52)
     except:
-        try:
-            font_date = ImageFont.truetype("Vazirmatn-Bold.ttf", 64)
-            font_desc = ImageFont.truetype("Vazirmatn-Medium.ttf", 50)
-        except:
-            font_date = ImageFont.load_default()
-            font_desc = ImageFont.load_default()
+        font_date = font_desc = ImageFont.load_default()
 
-    draw.text((60, 35), date_time_str, font=font_date, fill="#FFFFFF")
-    draw.text((60, 110), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
+    draw.text((65, 32), date_time_str, font=font_date, fill="#FFFFFF")
+    draw.text((65, 108), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
 
     # واترمارک
     overlay = Image.new("RGBA", img.size, (0,0,0,0))
     d = ImageDraw.Draw(overlay)
     try:
-        wf = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", 72)
+        wf = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", 75)
     except:
         wf = ImageFont.load_default()
     txt = "Gold_Iran_Market"
     bbox = d.textbbox((0,0), txt, font=wf)
-    w = bbox[2]-bbox[0] + 80
-    h = bbox[3]-bbox[1] + 80
+    w = bbox[2]-bbox[0] + 100
+    h = bbox[3]-bbox[1] + 100
     txtimg = Image.new("RGBA", (w,h), (0,0,0,0))
     td = ImageDraw.Draw(txtimg)
-    td.text((40,40), txt, font=wf, fill=(255,255,255,100))
+    td.text((50,50), txt, font=wf, fill=(255,255,255,100))
     rotated = txtimg.rotate(45, expand=True)
     img.paste(rotated, ((img.width-rotated.width)//2, (img.height-rotated.height)//2), rotated)
 
     out = io.BytesIO()
-    img.save(out, format="PNG", optimize=True, quality=93)
+    img.save(out, format="PNG", optimize=True, quality=95)
     out.seek(0)
     return out.getvalue()
 
 
+# کپشن بدون تغییر (همونی که قبلاً کار می‌کرد)
 def create_simple_caption(
     data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
 ):
@@ -231,6 +251,7 @@ def create_simple_caption(
         dollar_time = "نامشخص"
 
     df_funds = data["Fund_df"]
+
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
 
@@ -241,8 +262,8 @@ def create_simple_caption(
     else:
         avg_price_weighted = avg_change_percent_weighted = avg_bubble_weighted = 0
 
-    dollar_change = ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
-    gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday else 0
+    dollar_change = ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100) if yesterday_close and yesterday_close != 0 else 0
+    gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday and gold_yesterday != 0 else 0
 
     shams = data["dfp"].loc["شمش-طلا"]
     gold_24 = data["dfp"].loc["طلا-گرم-24-عیار"]
