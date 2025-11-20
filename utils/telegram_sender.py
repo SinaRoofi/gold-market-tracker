@@ -381,3 +381,5 @@ def create_simple_caption(
 💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+.0f})
 ━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 <a href='https://t.me/Gold_Iran
+"""
+    return caption
