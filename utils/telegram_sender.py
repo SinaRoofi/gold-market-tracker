@@ -221,13 +221,13 @@ def create_combined_image(
 
     img_bytes = fig.to_image(format="png", width=1200, height=1200)
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
-    
-    # واترمارک
+
+    # --- واترمارک با فونت وزیر از پوشه assets/fonts ---
     watermark_layer = Image.new("RGBA", img.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(watermark_layer)
     font_size = 60
     try:
-        font = ImageFont.truetype("Vazirmatn.ttf", font_size)
+        font = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", font_size)
     except Exception:
         font = ImageFont.load_default()
 
@@ -267,7 +267,7 @@ def create_simple_caption(
     # --- محاسبات آماری صندوق‌ها ---
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
-    
+
     if total_value > 0:
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
@@ -298,7 +298,7 @@ def create_simple_caption(
         except:
             d_calc = 0
             d_diff = 0
-        
+
         try:
             o_calc = asset_row["pricing_Gold"]
             o_diff = o_calc - gold_current
