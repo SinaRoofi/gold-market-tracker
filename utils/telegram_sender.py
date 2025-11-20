@@ -14,14 +14,6 @@ logger = logging.getLogger(__name__)
 FONT_BIG = 20
 
 
-def to_persian_numbers(text):
-    """تبدیل اعداد انگلیسی به فارسی"""
-    persian_digits = '۰۱۲۳۴۵۶۷۸۹'
-    english_digits = '0123456789'
-    translation_table = str.maketrans(english_digits, persian_digits)
-    return str(text).translate(translation_table)
-
-
 def send_to_telegram(
     bot_token,
     chat_id,
@@ -126,18 +118,12 @@ def create_combined_image(
 
     df_sorted = Fund_df.copy()
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
-
-    def create_text_html(row):
-        """متن برای Treemap با اعداد فارسی"""
-        name = row.name
-        price = to_persian_numbers(f"{row['close_price']:,.0f}")
-        change_pct = to_persian_numbers(f"{row['close_price_change_percent']:+.2f}")
-        bubble = to_persian_numbers(f"{row['nominal_bubble']:+.2f}")
-
-        return f"<b>{name}</b><br>{price} ({change_pct}%)<br>حباب {bubble}%"
-
-    df_sorted["display_text"] = df_sorted.apply(create_text_html, axis=1)
     df_sorted = df_sorted.sort_values("value", ascending=False)
+
+    # آماده‌سازی customdata برای texttemplate
+    df_sorted['price_formatted'] = df_sorted['close_price'].apply(lambda x: f"{x:,.0f}")
+    df_sorted['change_formatted'] = df_sorted['close_price_change_percent'].apply(lambda x: f"{x:+.2f}")
+    df_sorted['bubble_formatted'] = df_sorted['nominal_bubble'].apply(lambda x: f"{x:+.2f}")
 
     colorscale = [
         [0.0, "#E57373"],
@@ -158,14 +144,18 @@ def create_combined_image(
             labels=df_sorted.index,
             parents=[""] * len(df_sorted),
             values=df_sorted["value"],
-            text=df_sorted["display_text"],
-            textinfo="text",
+            customdata=df_sorted[['price_formatted', 'change_formatted', 'bubble_formatted']],
+            texttemplate="<b>%{label}</b><br>%{customdata[0]} (%{customdata[1]}%%)<br>%{customdata[2]}%% حباب",
             textposition="middle center",
             textfont=dict(
-                size=15,
+                size=14,
                 color="white",
             ),
-            hoverinfo="skip",
+            hovertemplate=(
+                "<b>%{label}</b><br>"
+                "تغییر: %{customdata[1]}%%<br>"
+                "<extra></extra>"
+            ),
             marker=dict(
                 colors=df_sorted["color_value"],
                 colorscale=colorscale,
