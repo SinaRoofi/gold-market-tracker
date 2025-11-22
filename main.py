@@ -19,7 +19,7 @@ from utils.gold_cache import get_gold_yesterday
 from utils.data_processor import process_market_data
 from utils.telegram_sender import send_to_telegram
 from utils.holidays import is_iranian_holiday
-from utils.sheets_storage import save_to_sheets  # ← تغییر اصلی
+from utils.sheets_storage import save_to_sheets
 
 # تنظیمات لاگ
 logging.basicConfig(
@@ -40,7 +40,7 @@ async def main():
 
         tehran_tz = pytz.timezone('Asia/Tehran')
         now = datetime.now(tehran_tz)
-        
+
         if is_iranian_holiday(now):
             logger.info(f"امروز {now.strftime('%Y-%m-%d')} تعطیل است.")
             return
@@ -102,21 +102,29 @@ async def main():
             # محاسبه میانگین‌های وزنی
             total_value = Fund_df["value"].sum() or 1
             fund_change_weighted = (Fund_df["close_price_change_percent"] * Fund_df["value"]).sum() / total_value
-            fund_bubble_weighted = (Fund_df["nominal_bubble"] * Fund_df["value"]).sum() / total_value  # ← جدید
+            fund_bubble_weighted = (Fund_df["nominal_bubble"] * Fund_df["value"]).sum() / total_value
             sarane_kharid_w = (Fund_df["sarane_kharid"] * Fund_df["value"]).sum() / total_value
             sarane_forosh_w = (Fund_df["sarane_forosh"] * Fund_df["value"]).sum() / total_value
             ekhtelaf_sarane_w = sarane_kharid_w - sarane_forosh_w
 
             dollar_change = ((last_trade - yesterday_close) / yesterday_close) * 100 if yesterday_close else 0
-            shams_change = dfp.loc["شمش-طلا", "close_price_change_percent"] if "شمش-طلا" in dfp.index else 0
+            
+            # گرفتن shams_change و shams_date
+            if "شمش-طلا" in dfp.index:
+                shams_change = dfp.loc["شمش-طلا", "close_price_change_percent"]
+                shams_date = dfp.loc["شمش-طلا", "trade_date"]
+            else:
+                shams_change = 0
+                shams_date = None
 
             # ✅ ذخیره در Google Sheets
             save_to_sheets({
                 'gold_price': gold_today,
                 'dollar_change': dollar_change,
                 'shams_change': shams_change,
+                'shams_date': shams_date,  # ← اضافه شد
                 'fund_change_weighted': fund_change_weighted,
-                'fund_bubble_weighted': fund_bubble_weighted,  # ← جدید
+                'fund_bubble_weighted': fund_bubble_weighted,
                 'sarane_kharid_w': sarane_kharid_w,
                 'sarane_forosh_w': -sarane_forosh_w,
                 'ekhtelaf_sarane_w': ekhtelaf_sarane_w,
