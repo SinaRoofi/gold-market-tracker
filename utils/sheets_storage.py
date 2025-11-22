@@ -49,16 +49,16 @@ def ensure_header():
     """
     try:
         service = get_sheets_service()
-        
+
         # خواندن هدر فعلی
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
             range='Sheet1!A1:I1'
         ).execute()
-        
+
         existing_values = result.get('values', [])
         existing_header = existing_values[0] if existing_values else []
-        
+
         # حالت 1: هدر نداره → بساز
         if not existing_header:
             logger.info("📝 هدر وجود ندارد، در حال ساخت...")
@@ -70,40 +70,58 @@ def ensure_header():
             ).execute()
             logger.info("✅ هدر جدید با موفقیت ساخته شد")
             return True
-        
+
         # حالت 2: تعداد ستون‌ها درسته → رد شو
         if len(existing_header) == len(STANDARD_HEADER):
             logger.debug("✓ هدر معتبر است (9 ستون)")
             return True
-        
+
         # حالت 3: تعداد ستون‌ها اشتباهه → آپدیت کن
         logger.warning(f"⚠️ هدر نامعتبر ({len(existing_header)} ستون، باید {len(STANDARD_HEADER)} ستون باشه)")
         logger.info("🔄 در حال آپدیت هدر...")
-        
+
         service.spreadsheets().values().update(
             spreadsheetId=SHEET_ID,
             range='Sheet1!A1:I1',
             valueInputOption='RAW',
             body={'values': [STANDARD_HEADER]}
         ).execute()
-        
+
         logger.info("✅ هدر با موفقیت آپدیت شد")
-        
+
         # اخطار: داده‌های قدیمی ممکنه مشکل داشته باشن
         data_result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
             range='Sheet1!A2:I100'
         ).execute()
-        
+
         old_data = data_result.get('values', [])
         if old_data:
             logger.warning(f"⚠️ توجه: {len(old_data)} ردیف داده قدیمی وجود دارد که ممکن است با فرمت جدید ناسازگار باشد")
             logger.warning("💡 توصیه: ردیف‌های قدیمی را دستی پاک کنید یا از clear_old_data() استفاده کنید")
-        
+
         return True
-        
+
     except Exception as e:
         logger.error(f"❌ خطا در بررسی/ساخت هدر: {e}", exc_info=True)
+        return False
+
+
+def is_today(date_str):
+    """
+    چک می‌کنه که تاریخ داده شده مال امروز هست یا نه
+    
+    Args:
+        date_str: تاریخ به فرمت "2025-05-21"
+    
+    Returns:
+        bool: True اگه مال امروز باشه
+    """
+    try:
+        tz = pytz.timezone('Asia/Tehran')
+        today = datetime.now(tz).strftime('%Y-%m-%d')
+        return date_str == today
+    except:
         return False
 
 
@@ -116,6 +134,7 @@ def save_to_sheets(row_dict):
             - gold_price: قیمت طلا
             - dollar_change: درصد تغییر دلار
             - shams_change: درصد تغییر شمش
+            - shams_date: تاریخ داده شمش (برای چک کردن)
             - fund_change_weighted: میانگین وزنی تغییر صندوق‌ها
             - fund_bubble_weighted: میانگین وزنی حباب صندوق‌ها
             - sarane_kharid_w: سرانه خرید وزنی
@@ -125,26 +144,34 @@ def save_to_sheets(row_dict):
     try:
         # ✅ اول مطمئن شو که هدر درست هست
         ensure_header()
-        
+
         service = get_sheets_service()
-        
+
         # زمان فعلی (تهران)
         tz = pytz.timezone('Asia/Tehran')
         timestamp = datetime.now(tz).strftime('%Y-%m-%d %H:%M:%S')
+
+        # ✅ چک کردن تاریخ شمش - اگه مال امروز نبود، صفر بذار
+        shams_change = row_dict['shams_change']
+        shams_date = row_dict.get('shams_date', None)
         
+        if shams_date and not is_today(shams_date):
+            logger.warning(f"⚠️ داده شمش مال امروز نیست (تاریخ: {shams_date})، مقدار صفر ذخیره می‌شود")
+            shams_change = 0.0
+
         # آماده‌سازی ردیف جدید (9 ستون)
         new_row = [
             timestamp,
             round(row_dict['gold_price'], 2),
             round(row_dict['dollar_change'], 2),
-            round(row_dict['shams_change'], 2),
+            round(shams_change, 2),
             round(row_dict['fund_change_weighted'], 2),
             round(row_dict['fund_bubble_weighted'], 2),
             round(row_dict['sarane_kharid_w'], 2),
             round(row_dict['sarane_forosh_w'], 2),
             round(row_dict['ekhtelaf_sarane_w'], 2)
         ]
-        
+
         # اضافه کردن ردیف جدید
         service.spreadsheets().values().append(
             spreadsheetId=SHEET_ID,
@@ -153,9 +180,9 @@ def save_to_sheets(row_dict):
             insertDataOption='INSERT_ROWS',
             body={'values': [new_row]}
         ).execute()
-        
+
         logger.info(f"✅ داده با موفقیت در Sheet ذخیره شد: {timestamp}")
-        
+
     except Exception as e:
         logger.error(f"❌ خطا در ذخیره‌سازی در Google Sheet: {e}", exc_info=True)
 
@@ -173,37 +200,37 @@ def read_from_sheets(limit=1000):
     try:
         # ✅ اول مطمئن شو که هدر درست هست
         ensure_header()
-        
+
         service = get_sheets_service()
-        
+
         # خواندن تمام داده‌ها
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
             range='Sheet1!A:I'
         ).execute()
-        
+
         values = result.get('values', [])
-        
+
         if not values:
             logger.warning("⚠️ Sheet خالی است")
             return []
-        
+
         # بدون هدر برگردون (فقط داده‌ها)
         data_rows = values[1:]  # ردیف اول هدره
-        
+
         # فیلتر: فقط ردیف‌هایی که 9 ستون دارن (برای جلوگیری از خطا)
         valid_rows = [row for row in data_rows if len(row) == 9]
-        
+
         if len(valid_rows) < len(data_rows):
             logger.warning(f"⚠️ {len(data_rows) - len(valid_rows)} ردیف نامعتبر نادیده گرفته شد")
-        
+
         # فقط N ردیف آخر
         if len(valid_rows) > limit:
             valid_rows = valid_rows[-limit:]
-        
+
         logger.info(f"✅ {len(valid_rows)} ردیف معتبر از Sheet خوانده شد")
         return valid_rows
-        
+
     except Exception as e:
         logger.error(f"❌ خطا در خواندن از Google Sheet: {e}", exc_info=True)
         return []
@@ -220,17 +247,17 @@ def clear_old_data(keep_days=30):
         service = get_sheets_service()
         tz = pytz.timezone('Asia/Tehran')
         cutoff_date = datetime.now(tz) - timedelta(days=keep_days)
-        
+
         # خواندن تمام داده‌ها
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
             range='Sheet1!A:I'
         ).execute()
-        
+
         values = result.get('values', [])
         if len(values) <= 1:  # فقط هدر یا خالی
             return
-        
+
         # پیدا کردن اولین ردیف معتبر
         first_valid_row = 2  # ردیف 2 (بعد از هدر)
         for i, row in enumerate(values[1:], start=2):
@@ -244,7 +271,7 @@ def clear_old_data(keep_days=30):
                     break
             except:
                 continue
-        
+
         # اگه ردیف‌های قدیمی داریم، پاکشون کن
         if first_valid_row > 2:
             service.spreadsheets().batchUpdate(
@@ -263,7 +290,7 @@ def clear_old_data(keep_days=30):
                 }
             ).execute()
             logger.info(f"🗑️ {first_valid_row - 2} ردیف قدیمی پاک شد")
-            
+
     except Exception as e:
         logger.error(f"❌ خطا در پاک‌سازی داده‌های قدیمی: {e}", exc_info=True)
 
@@ -274,41 +301,41 @@ def clear_invalid_rows():
     """
     try:
         service = get_sheets_service()
-        
+
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
             range='Sheet1!A:I'
         ).execute()
-        
+
         values = result.get('values', [])
         if len(values) <= 1:
             logger.info("ℹ️ فقط هدر وجود دارد، نیازی به پاکسازی نیست")
             return
-        
+
         header = values[0]
         valid_rows = [header]  # هدر رو نگه دار
         invalid_count = 0
-        
+
         # فقط ردیف‌های 9 ستونی رو نگه دار
         for row in values[1:]:
             if len(row) == 9:
                 valid_rows.append(row)
             else:
                 invalid_count += 1
-        
+
         if invalid_count == 0:
             logger.info("✅ همه ردیف‌ها معتبرند")
             return
-        
+
         # پاک کردن همه و نوشتن دوباره
         logger.info(f"🧹 در حال پاکسازی {invalid_count} ردیف نامعتبر...")
-        
+
         # پاک کردن کل Sheet
         service.spreadsheets().values().clear(
             spreadsheetId=SHEET_ID,
             range='Sheet1!A:I'
         ).execute()
-        
+
         # نوشتن داده‌های معتبر
         service.spreadsheets().values().update(
             spreadsheetId=SHEET_ID,
@@ -316,8 +343,8 @@ def clear_invalid_rows():
             valueInputOption='RAW',
             body={'values': valid_rows}
         ).execute()
-        
+
         logger.info(f"✅ {invalid_count} ردیف نامعتبر پاک شد، {len(valid_rows)-1} ردیف معتبر باقی ماند")
-        
+
     except Exception as e:
         logger.error(f"❌ خطا در پاکسازی ردیف‌های نامعتبر: {e}", exc_info=True)
