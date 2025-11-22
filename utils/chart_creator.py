@@ -268,12 +268,16 @@ def create_market_charts():
             showarrow=False  
         )  
 
-        # ✅ تصحیح محور X - هر ۵ دقیقه یک tick
+        # ✅ تصحیح محور X - داده واقعی، هر 30 نقطه یکی
+        step = max(1, len(df) // 10)  # حدود 10 تا tick
+        tick_vals = df['timestamp'][::step].tolist()
+        
         for i in range(1, 7):  
             fig.update_xaxes(  
                 type='date',
                 tickformat='%H:%M',
-                dtick=1800000,  # 30 دقیقه = 1800000 میلی‌ثانیه
+                tickmode='array',
+                tickvals=tick_vals,
                 tickangle=0,
                 tickfont=dict(size=25),  
                 gridcolor='#21262D',  
