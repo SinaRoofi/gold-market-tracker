@@ -1,5 +1,3 @@
-# utils/chart_creator.py — نسخه نهایی
-
 import logging
 import pytz
 from datetime import datetime
@@ -66,19 +64,28 @@ def create_market_charts():
         except:
             chart_font_family = "Vazirmatn, Arial, sans-serif"
 
-        # ابتدا فونت تیتر‌های subplot را تنظیم کن (قبل از اضافه کردن annotation‌های جدید)
         for annotation in fig['layout']['annotations']:
             annotation.font = dict(size=32, color='#8B949E', family=chart_font_family)
+
+        # آخرین مقادیر برای نمایش
+        last_gold = df['gold_price_usd'].iloc[-1]
+        last_dollar = df['dollar_change_percent'].iloc[-1]
+        last_shams = df['shams_change_percent'].iloc[-1]
+        last_fund = df['fund_weighted_change_percent'].iloc[-1]
+        last_bubble = df['fund_weighted_bubble_percent'].iloc[-1]
+        last_kharid = df['sarane_kharid_weighted'].iloc[-1]
+        last_forosh = df['sarane_forosh_weighted'].iloc[-1]
+        last_ekhtelaf = df['ekhtelaf_sarane_weighted'].iloc[-1]
 
         gold_current = df['gold_price_usd'].iloc[-1]
         gold_min = gold_current * 0.98
         gold_max = gold_current * 1.02
 
         fig.add_trace(go.Scatter(
-            x=df['timestamp'], 
+            x=df['timestamp'],
             y=df['gold_price_usd'],
-            name='طلا', 
-            line=dict(color='#FFD700', width=5), 
+            name='طلا',
+            line=dict(color='#FFD700', width=5),
             hovertemplate='<b>%{y:.2f} $</b><extra></extra>'
         ), row=1, col=1)
 
@@ -86,49 +93,65 @@ def create_market_charts():
 
         add_conditional_line(fig, df, 'dollar_change_percent', 2)
         set_y_range(fig, df, 'dollar_change_percent', 2)
-        
+
         add_conditional_line(fig, df, 'shams_change_percent', 3)
         set_y_range(fig, df, 'shams_change_percent', 3)
-        
+
         add_conditional_line(fig, df, 'fund_weighted_change_percent', 4)
         set_y_range(fig, df, 'fund_weighted_change_percent', 4)
-        
+
         add_conditional_line(fig, df, 'fund_weighted_bubble_percent', 5)
         set_y_range(fig, df, 'fund_weighted_bubble_percent', 5)
 
         fig.add_trace(go.Scatter(
-            x=df['timestamp'], 
+            x=df['timestamp'],
             y=df['sarane_kharid_weighted'],
-            name='خرید حقیقی', 
+            name='خرید حقیقی',
             line=dict(color='#00E676', width=5),
             hovertemplate='خرید: <b>%{y:.2f}</b><extra></extra>'
         ), row=6, col=1)
 
         fig.add_trace(go.Scatter(
-            x=df['timestamp'], 
+            x=df['timestamp'],
             y=df['sarane_forosh_weighted'],
-            name='فروش حقیقی', 
+            name='فروش حقیقی',
             line=dict(color='#FF1744', width=5),
             hovertemplate='فروش: <b>%{y:.2f}</b><extra></extra>'
         ), row=6, col=1)
 
-        colors_sarane = ['rgba(0,230,118,0.75)' if x >= 0 else 'rgba(255,23,68,0.75)' 
+        colors_sarane = ['rgba(0,230,118,0.75)' if x >= 0 else 'rgba(255,23,68,0.75)'
                          for x in df['ekhtelaf_sarane_weighted']]
 
         fig.add_trace(go.Bar(
-            x=df['timestamp'], 
+            x=df['timestamp'],
             y=df['ekhtelaf_sarane_weighted'],
-            name='اختلاف سرانه', 
+            name='اختلاف سرانه',
             marker_color=colors_sarane,
             hovertemplate='اختلاف: <b>%{y:.2f}</b><extra></extra>'
         ), row=6, col=1)
 
-        # تنظیم محدوده Y برای سرانه‌ها
-        sarane_cols = ['sarane_kharid_weighted', 'sarane_forosh_weighted', 'ekhtelaf_sarane_weighted']
-        all_sarane_min = df[sarane_cols].min().min()
-        all_sarane_max = df[sarane_cols].max().max()
-        sarane_padding = (all_sarane_max - all_sarane_min) * 0.3
-        fig.update_yaxes(range=[all_sarane_min - sarane_padding, all_sarane_max + sarane_padding], row=6, col=1)
+        # محاسبه محدوده Y برای سرانه‌ها - جداگانه برای خطوط و بارها
+        kharid_min = df['sarane_kharid_weighted'].min()
+        kharid_max = df['sarane_kharid_weighted'].max()
+        forosh_min = df['sarane_forosh_weighted'].min()
+        forosh_max = df['sarane_forosh_weighted'].max()
+        ekhtelaf_min = df['ekhtelaf_sarane_weighted'].min()
+        ekhtelaf_max = df['ekhtelaf_sarane_weighted'].max()
+        
+        # محدوده کلی با در نظر گرفتن همه داده‌ها
+        all_min = min(kharid_min, forosh_min, ekhtelaf_min)
+        all_max = max(kharid_max, forosh_max, ekhtelaf_max)
+        
+        # padding بیشتر برای نمایش بهتر نوسانات
+        data_range = all_max - all_min
+        if data_range == 0:
+            data_range = abs(all_max) * 0.1 if all_max != 0 else 10
+        
+        padding = data_range * 0.15
+        y_min = all_min - padding
+        y_max = all_max + padding
+        
+        fig.update_yaxes(range=[y_min, y_max], row=6, col=1)
 
         fig.update_layout(
             height=2200,
@@ -137,7 +160,7 @@ def create_market_charts():
             font=dict(color='#C9D1D9', family=chart_font_family, size=25),
             hovermode='x unified',
             showlegend=False,
-            margin=dict(l=60, r=60, t=120, b=40),
+            margin=dict(l=60, r=120, t=120, b=40),
         )
 
         # تیتر "روند بازار" — سمت راست بالا (زرد)
@@ -163,6 +186,90 @@ def create_market_charts():
             xanchor='left',
             yanchor='top',
             font=dict(size=40, color='#FFFFFF', family=chart_font_family),
+            showarrow=False
+        )
+
+        # اضافه کردن آخرین مقادیر کنار هر نمودار
+        # نمودار ۱: طلا
+        fig.add_annotation(
+            text=f'<b>{last_gold:.2f}$</b>',
+            x=1.01, y=last_gold,
+            xref='paper', yref='y1',
+            xanchor='left', yanchor='middle',
+            font=dict(size=28, color='#FFD700', family=chart_font_family),
+            showarrow=False
+        )
+
+        # نمودار ۲: دلار
+        dollar_color = '#00E676' if last_dollar >= 0 else '#FF1744'
+        fig.add_annotation(
+            text=f'<b>{last_dollar:+.2f}%</b>',
+            x=1.01, y=last_dollar,
+            xref='paper', yref='y2',
+            xanchor='left', yanchor='middle',
+            font=dict(size=28, color=dollar_color, family=chart_font_family),
+            showarrow=False
+        )
+
+        # نمودار ۳: شمش
+        shams_color = '#00E676' if last_shams >= 0 else '#FF1744'
+        fig.add_annotation(
+            text=f'<b>{last_shams:+.2f}%</b>',
+            x=1.01, y=last_shams,
+            xref='paper', yref='y3',
+            xanchor='left', yanchor='middle',
+            font=dict(size=28, color=shams_color, family=chart_font_family),
+            showarrow=False
+        )
+
+        # نمودار ۴: صندوق
+        fund_color = '#00E676' if last_fund >= 0 else '#FF1744'
+        fig.add_annotation(
+            text=f'<b>{last_fund:+.2f}%</b>',
+            x=1.01, y=last_fund,
+            xref='paper', yref='y4',
+            xanchor='left', yanchor='middle',
+            font=dict(size=28, color=fund_color, family=chart_font_family),
+            showarrow=False
+        )
+
+        # نمودار ۵: حباب
+        bubble_color = '#00E676' if last_bubble >= 0 else '#FF1744'
+        fig.add_annotation(
+            text=f'<b>{last_bubble:+.2f}%</b>',
+            x=1.01, y=last_bubble,
+            xref='paper', yref='y5',
+            xanchor='left', yanchor='middle',
+            font=dict(size=28, color=bubble_color, family=chart_font_family),
+            showarrow=False
+        )
+
+        # نمودار ۶: سرانه‌ها - سه مقدار
+        fig.add_annotation(
+            text=f'<b>خ:{last_kharid:.0f}</b>',
+            x=1.01, y=last_kharid,
+            xref='paper', yref='y6',
+            xanchor='left', yanchor='middle',
+            font=dict(size=24, color='#00E676', family=chart_font_family),
+            showarrow=False
+        )
+
+        fig.add_annotation(
+            text=f'<b>ف:{last_forosh:.0f}</b>',
+            x=1.01, y=last_forosh,
+            xref='paper', yref='y6',
+            xanchor='left', yanchor='middle',
+            font=dict(size=24, color='#FF1744', family=chart_font_family),
+            showarrow=False
+        )
+
+        ekhtelaf_color = '#00E676' if last_ekhtelaf >= 0 else '#FF1744'
+        fig.add_annotation(
+            text=f'<b>اخ:{last_ekhtelaf:+.0f}</b>',
+            x=1.01, y=last_ekhtelaf,
+            xref='paper', yref='y6',
+            xanchor='left', yanchor='middle',
+            font=dict(size=24, color=ekhtelaf_color, family=chart_font_family),
             showarrow=False
         )
 
@@ -206,7 +313,7 @@ def create_market_charts():
             w = bbox[2] - bbox[0]
             x = img.width - w - 25
             y = int(img.height * 0.83)
-            draw.text((x, y), text, fill=(201,209,217,160), font=font)
+            draw.text((x, y), text, fill=(201, 209, 217, 160), font=font)
         except:
             pass
 
