@@ -273,7 +273,7 @@ def create_market_charts():
             fig.update_xaxes(  
                 type='date',
                 tickformat='%H:%M',
-                dtick=300000,  # 5 دقیقه = 300000 میلی‌ثانیه
+                dtick=1800000,  # 30 دقیقه = 1800000 میلی‌ثانیه
                 tickangle=0,
                 tickfont=dict(size=25),  
                 gridcolor='#21262D',  
