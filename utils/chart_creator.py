@@ -86,7 +86,7 @@ def create_market_charts():
             y=df['gold_price_usd'],
             name='طلا',
             line=dict(color='#FFD700', width=5),
-            hovertemplate='<b>%{y:.2f} $</b><extra></extra>'
+            hovertemplate='<b>%{y:.0f} $</b><extra></extra>'
         ), row=1, col=1)
 
         fig.update_yaxes(range=[gold_min, gold_max], row=1, col=1)
