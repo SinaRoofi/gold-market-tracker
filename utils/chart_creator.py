@@ -118,7 +118,7 @@ def create_market_charts():
             hovertemplate='فروش: <b>%{y:.2f}</b><extra></extra>'  
         ), row=6, col=1)  
   
-        # اختلاف سرانه با داخل شفاف و خط بیرونی پررنگ و عرض 0.8
+        # اختلاف سرانه با داخل شفاف و خط بیرونی شفاف یکسان
         colors_fill = [
             'rgba(0,230,118,0.75)' if x > 0 else 
             'rgba(255,23,68,0.75)' if x < 0 else 
@@ -126,21 +126,14 @@ def create_market_charts():
             for x in df['ekhtelaf_sarane_weighted']
         ]
 
-        colors_line = [
-            '#00E676' if x > 0 else 
-            '#FF1744' if x < 0 else 
-            '#484F58'
-            for x in df['ekhtelaf_sarane_weighted']
-        ]
-  
         fig.add_trace(go.Bar(  
             x=df['timestamp'],  
             y=df['ekhtelaf_sarane_weighted'],  
             name='اختلاف سرانه',  
-            width=0.8,  # بار کمی پهن‌تر، فاصله کمتر  
+            width=0.9,  
             marker=dict(  
-                color=colors_fill,       
-                line=dict(color=colors_line, width=4)  
+                color=colors_fill,         # داخل شفاف
+                line=dict(color=colors_fill, width=4)  # بیرونی شفاف همانند داخل
             ),  
             hovertemplate='اختلاف: <b>%{y:.2f}</b><extra></extra>'  
         ), row=6, col=1)  
