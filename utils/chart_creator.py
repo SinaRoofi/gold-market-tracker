@@ -192,7 +192,7 @@ def create_market_charts():
         # اضافه کردن آخرین مقادیر کنار هر نمودار
         # نمودار ۱: طلا
         fig.add_annotation(
-            text=f'<b>{last_gold:.2f}$</b>',
+            text=f'<b>{last_gold:,.0f}$</b>',
             x=1.01, y=last_gold,
             xref='paper', yref='y1',
             xanchor='left', yanchor='middle',
