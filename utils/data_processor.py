@@ -139,7 +139,13 @@ def process_market_data(
 
         # ترکیب و محاسبه dfp
         dfp = pd.concat([warehouse_df, assets_df])
-        dfp["last_trade_time"] = dfp["last_trade_time"].str[11:19]
+        
+        # ✅ اول تاریخ رو جدا کن (قبل از حذف)
+        dfp["trade_date"] = dfp["last_trade_time"].str[:10]  # "2025-05-21"
+        
+        # بعد ساعت رو جدا کن
+        dfp["last_trade_time"] = dfp["last_trade_time"].str[11:19]  # "14:30:25"
+        
         dfp["close_price_change_percent"] = (
             pd.to_numeric(dfp["close_price_change_percent"], errors="coerce") * 100
         )
@@ -295,11 +301,10 @@ def calculate_values(dfp, Gold, last_trade):
     dfp["Bubble"] = ((dfp["close_price"] - dfp["Value"]) / dfp["Value"]) * 100
 
     # محاسبه pricing_dollar و pricing_Gold
-    # (برای کوتاهی کد، فقط چند مورد را نمایش می‌دهم)
     for i in range(len(dfp)):
         if i < 5:
-            factor = [0.75, 0.995, 0.995,7.3197,7.3197][i]
-            multiplier = [10, 10, 1,10,10][i]
+            factor = [0.75, 0.995, 0.995, 7.3197, 7.3197][i]
+            multiplier = [10, 10, 1, 10, 10][i]
             dfp.loc[dfp.index[i], "pricing_dollar"] = (
                 (dfp.loc[dfp.index[i], "close_price"] * 31.1034768)
                 / (Gold * factor)
@@ -314,7 +319,6 @@ def calculate_values(dfp, Gold, last_trade):
     # تبدیل به int
     cols = ["Value", "close_price", "pricing_dollar", "pricing_Gold"]
     dfp = dfp.copy()
-    # FIXED: پر کردن NaN با صفر قبل از تبدیل به int
     dfp[cols] = dfp[cols].fillna(0).astype(int)
 
     dfp = dfp[
@@ -325,10 +329,9 @@ def calculate_values(dfp, Gold, last_trade):
             "close_price_change_percent",
             "pricing_dollar",
             "pricing_Gold",
+            "trade_date",
             "last_trade_time",
         ]
     ]
 
     return dfp
-
-
