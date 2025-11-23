@@ -7,7 +7,7 @@ import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
-
+pd.set_option('future.no_silent_downcasting', True)
 pd.options.display.float_format = "{:,.2f}".format
 
 
