@@ -24,17 +24,14 @@ def process_market_data(
         rahavard_data = market_data["rahavard_data"]["data"]
         traders_data = market_data["traders_data"]
 
-        # پردازش داده‌های Rahavard
         assets_df = pd.DataFrame(rahavard_data["assets"])
         warehouse_df = pd.DataFrame(rahavard_data["warehouse_receipt_systems"])
         funds_df = pd.DataFrame(rahavard_data["funds"]["values"])
 
-        # Flatten داده‌ها
         assets_df = flatten_entities(assets_df, "related_entities")
         warehouse_df = flatten_entities(warehouse_df, "related_entities")
         funds_df = flatten_entities(funds_df, "related_entities")
 
-        # پاک‌سازی assets_df
         assets_df.drop(
             [
                 "entity_id",
@@ -53,7 +50,6 @@ def process_market_data(
         )
         assets_df.set_index("slug", inplace=True)
 
-        # پاک‌سازی warehouse_df
         warehouse_df.drop(
             [
                 "entity_id",
@@ -75,7 +71,6 @@ def process_market_data(
         )
         warehouse_df.set_index("slug", inplace=True)
 
-        # پاک‌سازی funds_df
         funds_df.drop(
             [
                 "entity_id",
@@ -101,7 +96,6 @@ def process_market_data(
         )
         funds_df.set_index("slug", inplace=True)
 
-        # پردازش funds_df
         funds_df.sort_values(by="value", ascending=False, inplace=True)
         funds_df["close_price"] = pd.to_numeric(
             funds_df["close_price"], errors="coerce"
@@ -134,24 +128,20 @@ def process_market_data(
             ]
         ]
 
-        # پردازش Fund_df از TradersArena
         Fund_df = process_traders_data(traders_data)
 
-        # ترکیب و محاسبه dfp
         dfp = pd.concat([warehouse_df, assets_df])
-        
-        # ✅ اول تاریخ رو جدا کن (قبل از حذف)
-        dfp["trade_date"] = dfp["last_trade_time"].str[:10]  # "2025-05-21"
-        
-        # بعد ساعت رو جدا کن
-        dfp["last_trade_time"] = dfp["last_trade_time"].str[11:19]  # "14:30:25"
-        
+
+        dfp["trade_date"] = dfp["last_trade_time"].str[:10]
+        dfp["last_trade_time"] = dfp["last_trade_time"].str[11:19]
+
         dfp["close_price_change_percent"] = (
             pd.to_numeric(dfp["close_price_change_percent"], errors="coerce") * 100
         )
-        dfp["close_price_change_percent"] = dfp["close_price_change_percent"].round(2)
+        dfp["close_price_change_percent"] = dfp[
+            "close_price_change_percent"
+        ].round(2)
 
-        # مرتب‌سازی dfp
         dd = [
             "طلا-گرم-18-عیار",
             "طلا-گرم-24-عیار",
@@ -167,12 +157,12 @@ def process_market_data(
             "ربع-سکه",
             "سکه-1-گرمی",
         ]
+
         dfp = dfp.reindex(dd)
         dfp.insert(1, "Value", np.nan)
         dfp["pricing_dollar"] = np.nan
         dfp["pricing_Gold"] = np.nan
 
-        # محاسبات ارزش
         calculate_values(dfp, gold_price, last_trade)
 
         return {
@@ -190,7 +180,6 @@ def process_market_data(
 
 
 def flatten_entities(df, list_col="related_entities"):
-    """Flatten کردن لیست‌های داخلی"""
     if list_col in df.columns:
         df_flat = pd.json_normalize(
             df.to_dict(orient="records"),
@@ -204,7 +193,6 @@ def flatten_entities(df, list_col="related_entities"):
 
 
 def process_traders_data(data):
-    """پردازش داده‌های TradersArena"""
     columns = [
         "id",
         "symbol",
@@ -264,8 +252,6 @@ def process_traders_data(data):
 
 
 def calculate_values(dfp, Gold, last_trade):
-    """محاسبه ارزش‌ها و حباب"""
-    # محاسبه Value
     dfp.loc[dfp.index[0], "Value"] = (((last_trade * Gold) / 31.1034768) * 0.75) * 10
     dfp.loc[dfp.index[1], "Value"] = ((((last_trade * Gold) / 31.1034768)) * 0.995) * 10
     dfp.loc[dfp.index[2], "Value"] = (((last_trade * Gold) / 31.1034768)) * 0.995
@@ -300,7 +286,6 @@ def calculate_values(dfp, Gold, last_trade):
 
     dfp["Bubble"] = ((dfp["close_price"] - dfp["Value"]) / dfp["Value"]) * 100
 
-    # محاسبه pricing_dollar و pricing_Gold
     for i in range(len(dfp)):
         if i < 5:
             factor = [0.75, 0.995, 0.995, 7.3197, 7.3197][i]
@@ -316,10 +301,16 @@ def calculate_values(dfp, Gold, last_trade):
                 / multiplier
             )
 
-    # تبدیل به int
     cols = ["Value", "close_price", "pricing_dollar", "pricing_Gold"]
+
     dfp = dfp.copy()
-    dfp[cols] = dfp[cols].fillna(0).astype(int)
+    dfp[cols] = (
+        dfp[cols]
+        .fillna(0)
+        .astype("float64")
+        .round(0)
+        .astype("int64")
+    )
 
     dfp = dfp[
         [
