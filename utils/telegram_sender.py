@@ -589,7 +589,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
     pol_to_value_ratio = (total_pol / total_value * 100) if total_value != 0 else 0
 
     caption = f"""
-🔄 <b>آخرین آپدیت: {current_time}</b>
+🔄 <b>آخرین آپدیت : {current_time}</b>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 <b>💵 دلار</b>
