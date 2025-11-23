@@ -1,3 +1,5 @@
+# utils/telegram_sender.py — نسخه نهایی
+
 import io
 import os
 import logging
@@ -13,7 +15,18 @@ from utils.chart_creator import create_market_charts
 from utils.sheets_storage import read_from_sheets
 
 logger = logging.getLogger(__name__)
-FONT_BIG = 25
+
+# ═══════════════════════════════════════════════════════════
+# ⚙️ تنظیمات هشدارها - اینجا عدد بذار
+# ═══════════════════════════════════════════════════════════
+
+# هشدار عبور از قیمت مشخص
+DOLLAR_ALERT_PRICE = 116000  # تومان
+SHAMS_ALERT_PRICE = 50000000  # ریال
+GOLD_ALERT_PRICE = 2700.0  # دلار (اونس)
+
+# هشدار تغییر سریع (درصد نسبت به 5 دقیقه قبل)
+ALERT_THRESHOLD_PERCENT = 0.5  # ±0.5%
 
 # Gist Settings
 GIST_ID = os.getenv("GIST_ID")
@@ -27,14 +40,24 @@ GIST_TOKEN = os.getenv("GIST_TOKEN")
 def get_gist_data():
     """خواندن message_id و date از Gist"""
     try:
+        if not GIST_ID or not GIST_TOKEN:
+            logger.error("❌ GIST_ID یا GIST_TOKEN تنظیم نشده!")
+            return {"message_id": None, "date": None}
+        
         url = f"https://api.github.com/gists/{GIST_ID}"
         headers = {"Authorization": f"token {GIST_TOKEN}"}
         response = requests.get(url, headers=headers, timeout=10)
+        
         if response.status_code == 200:
             content = response.json()["files"]["message_id.json"]["content"]
-            return json.loads(content)
+            data = json.loads(content)
+            logger.info(f"📖 Gist خوانده شد: {data}")
+            return data
+        else:
+            logger.error(f"❌ خطا در خواندن Gist: HTTP {response.status_code}")
     except Exception as e:
         logger.error(f"❌ خطا در خواندن Gist: {e}")
+    
     return {"message_id": None, "date": None}
 
 
@@ -68,33 +91,46 @@ def get_today_date():
 
 def get_previous_state_from_sheet():
     """
-    خواندن آخرین ردیف از Sheet برای مقایسه هشدارها
+    خواندن آخرین ردیف از Sheet
     
-    ستون‌های Sheet:
+    ستون‌های Sheet (11 ستون):
     0: timestamp
     1: gold_price_usd
-    2: dollar_change_percent
-    3: shams_change_percent
-    4: fund_weighted_change_percent
-    5: fund_weighted_bubble_percent
-    6: sarane_kharid_weighted
-    7: sarane_forosh_weighted
-    8: ekhtelaf_sarane_weighted
+    2: dollar_price
+    3: shams_price
+    4: dollar_change_percent
+    5: shams_change_percent
+    6: fund_weighted_change_percent
+    7: fund_weighted_bubble_percent
+    8: sarane_kharid_weighted
+    9: sarane_forosh_weighted
+    10: ekhtelaf_sarane_weighted
     """
     try:
         rows = read_from_sheets(limit=1)
         if rows and len(rows) > 0:
             last_row = rows[-1]
             return {
-                "dollar_change": float(last_row[2]) if len(last_row) > 2 else None,
+                "dollar_price": float(last_row[2]) if len(last_row) > 2 else None,
+                "shams_price": float(last_row[3]) if len(last_row) > 3 else None,
+                "dollar_change": float(last_row[4]) if len(last_row) > 4 else None,
+                "shams_change": float(last_row[5]) if len(last_row) > 5 else None,
                 "gold_price": float(last_row[1]) if len(last_row) > 1 else None,
-                "fund_change": float(last_row[4]) if len(last_row) > 4 else None,
-                "ekhtelaf_sarane": float(last_row[8]) if len(last_row) > 8 else None,
+                "fund_change": float(last_row[6]) if len(last_row) > 6 else None,
+                "ekhtelaf_sarane": float(last_row[10]) if len(last_row) > 10 else None,
             }
     except Exception as e:
         logger.error(f"❌ خطا در خواندن وضعیت قبلی از Sheet: {e}")
     
-    return {"dollar_change": None, "gold_price": None, "fund_change": None, "ekhtelaf_sarane": None}
+    return {
+        "dollar_price": None,
+        "shams_price": None,
+        "dollar_change": None,
+        "shams_change": None,
+        "gold_price": None,
+        "fund_change": None,
+        "ekhtelaf_sarane": None
+    }
 
 
 # ═══════════════════════════════════════════════════════════
@@ -132,7 +168,7 @@ def send_to_telegram(
             data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time
         )
 
-        # چک کردن و ارسال هشدارها (از Sheet میخونه)
+        # چک کردن و ارسال هشدارها
         check_and_send_alerts(
             bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday
         )
@@ -247,19 +283,17 @@ def pin_message(bot_token, chat_id, message_id):
 
 
 # ═══════════════════════════════════════════════════════════
-# توابع هشدار (از Sheet میخونه)
+# توابع هشدار
 # ═══════════════════════════════════════════════════════════
 
 def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday):
-    """چک کردن شرایط هشدار با خواندن از Sheet"""
+    """چک کردن شرایط هشدار"""
     
-    # خواندن وضعیت قبلی از Sheet
     prev = get_previous_state_from_sheet()
     
     df_funds = data["Fund_df"]
     total_value = df_funds["value"].sum()
 
-    # محاسبه مقادیر فعلی
     if total_value > 0:
         current_fund_change = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
         current_ekhtelaf = (df_funds["ekhtelaf_sarane"] * df_funds["value"]).sum() / total_value
@@ -267,76 +301,139 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
         current_fund_change = 0
         current_ekhtelaf = 0
 
-    current_dollar_change = ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
-    current_gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday else 0
+    current_dollar_price = dollar_prices["last_trade"]
+    current_dollar_change = ((current_dollar_price - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
+    
+    if "شمش-طلا" in data["dfp"].index:
+        current_shams_price = data["dfp"].loc["شمش-طلا", "close_price"]
+        current_shams_change = data["dfp"].loc["شمش-طلا", "close_price_change_percent"]
+    else:
+        current_shams_price = 0
+        current_shams_change = 0
 
-    # هشدار دلار (±0.5%)
+    # ═══════════════════════════════════════════════════════
+    # هشدار تغییر سریع (±0.5% نسبت به 5 دقیقه قبل)
+    # ═══════════════════════════════════════════════════════
+    
+    # هشدار دلار - تغییر درصد
     if prev["dollar_change"] is not None:
-        if abs(current_dollar_change - prev["dollar_change"]) >= 0.5:
-            send_alert_dollar(bot_token, chat_id, dollar_prices["last_trade"], current_dollar_change)
-            logger.info(f"🚨 هشدار دلار: {prev['dollar_change']:.2f}% → {current_dollar_change:.2f}%")
+        dollar_diff = abs(current_dollar_change - prev["dollar_change"])
+        if dollar_diff >= ALERT_THRESHOLD_PERCENT:
+            send_alert_dollar_fast(bot_token, chat_id, current_dollar_price, current_dollar_change, dollar_diff)
+    
+    # هشدار شمش - تغییر درصد
+    if prev["shams_change"] is not None and current_shams_price > 0:
+        shams_diff = abs(current_shams_change - prev["shams_change"])
+        if shams_diff >= ALERT_THRESHOLD_PERCENT:
+            send_alert_shams_fast(bot_token, chat_id, current_shams_price, current_shams_change, shams_diff)
 
-    # هشدار اونس (±0.5%)
-    if prev["gold_price"] is not None and gold_yesterday:
+    # هشدار اونس - تغییر سریع
+    if prev["gold_price"] is not None and gold_yesterday and prev["gold_price"] > 0:
         prev_gold_change = ((prev["gold_price"] - gold_yesterday) / gold_yesterday * 100)
-        if abs(current_gold_change - prev_gold_change) >= 0.5:
-            send_alert_gold(bot_token, chat_id, gold_price, current_gold_change)
-            logger.info(f"🚨 هشدار اونس: {prev_gold_change:.2f}% → {current_gold_change:.2f}%")
+        current_gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100)
+        gold_diff = abs(current_gold_change - prev_gold_change)
+        if gold_diff >= ALERT_THRESHOLD_PERCENT:
+            send_alert_gold_fast(bot_token, chat_id, gold_price, current_gold_change, gold_diff)
 
-    # هشدار میانگین وزنی صندوق‌ها (±0.5%)
+    # هشدار صندوق‌ها - تغییر سریع
     if prev["fund_change"] is not None:
-        if abs(current_fund_change - prev["fund_change"]) >= 0.5:
-            send_alert_funds(bot_token, chat_id, current_fund_change, current_ekhtelaf, df_funds["pol_hagigi"].sum())
-            logger.info(f"🚨 هشدار صندوق: {prev['fund_change']:.2f}% → {current_fund_change:.2f}%")
+        fund_diff = abs(current_fund_change - prev["fund_change"])
+        if fund_diff >= ALERT_THRESHOLD_PERCENT:
+            send_alert_funds_fast(bot_token, chat_id, current_fund_change, current_ekhtelaf, df_funds["pol_hagigi"].sum())
 
-    # هشدار اختلاف سرانه - تغییر علامت
+    # ═══════════════════════════════════════════════════════
+    # هشدار عبور از قیمت مشخص
+    # ═══════════════════════════════════════════════════════
+    
+    # هشدار دلار - عبور از آستانه
+    if prev["dollar_price"] is not None:
+        if prev["dollar_price"] < DOLLAR_ALERT_PRICE <= current_dollar_price:
+            send_alert_dollar_threshold(bot_token, chat_id, current_dollar_price, above=True)
+        elif prev["dollar_price"] > DOLLAR_ALERT_PRICE >= current_dollar_price:
+            send_alert_dollar_threshold(bot_token, chat_id, current_dollar_price, above=False)
+    
+    # هشدار شمش - عبور از آستانه
+    if prev["shams_price"] is not None and current_shams_price > 0:
+        if prev["shams_price"] < SHAMS_ALERT_PRICE <= current_shams_price:
+            send_alert_shams_threshold(bot_token, chat_id, current_shams_price, above=True)
+        elif prev["shams_price"] > SHAMS_ALERT_PRICE >= current_shams_price:
+            send_alert_shams_threshold(bot_token, chat_id, current_shams_price, above=False)
+    
+    # هشدار اونس - عبور از آستانه
+    if prev["gold_price"] is not None and gold_price > 0:
+        if prev["gold_price"] < GOLD_ALERT_PRICE <= gold_price:
+            send_alert_gold_threshold(bot_token, chat_id, gold_price, above=True)
+        elif prev["gold_price"] > GOLD_ALERT_PRICE >= gold_price:
+            send_alert_gold_threshold(bot_token, chat_id, gold_price, above=False)
+
+    # ═══════════════════════════════════════════════════════
+    # هشدارهای اختلاف سرانه
+    # ═══════════════════════════════════════════════════════
+    
+    # تغییر علامت
     if prev["ekhtelaf_sarane"] is not None:
         prev_sign = prev["ekhtelaf_sarane"] >= 0
         current_sign = current_ekhtelaf >= 0
         if prev_sign != current_sign:
             send_alert_ekhtelaf_sign(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change)
-            logger.info(f"🚨 هشدار تغییر علامت سرانه: {prev['ekhtelaf_sarane']:.2f} → {current_ekhtelaf:.2f}")
 
-    # هشدار اختلاف سرانه - رد از +20
+    # رد از +20
     if prev["ekhtelaf_sarane"] is not None:
         if prev["ekhtelaf_sarane"] < 20 and current_ekhtelaf >= 20:
-            send_alert_ekhtelaf_threshold(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change, above=True)
-            logger.info(f"🚨 هشدار سرانه بالای +20: {current_ekhtelaf:.2f}")
+            send_alert_ekhtelaf_20(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change, above=True)
 
-    # هشدار اختلاف سرانه - رد از -20
+    # رد از -20
     if prev["ekhtelaf_sarane"] is not None:
         if prev["ekhtelaf_sarane"] > -20 and current_ekhtelaf <= -20:
-            send_alert_ekhtelaf_threshold(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change, above=False)
-            logger.info(f"🚨 هشدار سرانه زیر -20: {current_ekhtelaf:.2f}")
+            send_alert_ekhtelaf_20(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change, above=False)
 
 
-def send_alert_dollar(bot_token, chat_id, price, change):
+# ═══════════════════════════════════════════════════════════
+# پیام‌های هشدار - تغییر سریع
+# ═══════════════════════════════════════════════════════════
+
+def send_alert_dollar_fast(bot_token, chat_id, price, change_percent, diff):
     caption = f"""
-🚨 <b>دلار | تغییر شدید</b>
+🚨 <b>دلار | تغییر سریع</b>
 
 💵 قیمت: <b>{price:,} تومان</b>
-📈 تغییر: <b>{change:+.2f}%</b>
+📈 تغییر امروز: <b>{change_percent:+.2f}%</b>
+⚡ تغییر ۵ دقیقه: <b>{diff:+.2f}%</b>
 
 🔗 @Gold_Iran_Market
 """
     send_alert_message(bot_token, chat_id, caption)
 
 
-def send_alert_gold(bot_token, chat_id, price, change):
+def send_alert_shams_fast(bot_token, chat_id, price, change_percent, diff):
     caption = f"""
-🚨 <b>اونس طلا | تغییر شدید</b>
+🚨 <b>شمش طلا | تغییر سریع</b>
+
+✨ قیمت: <b>{price:,} ریال</b>
+📈 تغییر امروز: <b>{change_percent:+.2f}%</b>
+⚡ تغییر ۵ دقیقه: <b>{diff:+.2f}%</b>
+
+🔗 @Gold_Iran_Market
+"""
+    send_alert_message(bot_token, chat_id, caption)
+
+
+def send_alert_gold_fast(bot_token, chat_id, price, change, diff):
+    caption = f"""
+🚨 <b>اونس طلا | تغییر سریع</b>
 
 🔆 قیمت: <b>${price:,.2f}</b>
-📈 تغییر: <b>{change:+.2f}%</b>
+📈 تغییر امروز: <b>{change:+.2f}%</b>
+⚡ تغییر ۵ دقیقه: <b>{diff:+.2f}%</b>
 
 🔗 @Gold_Iran_Market
 """
     send_alert_message(bot_token, chat_id, caption)
 
 
-def send_alert_funds(bot_token, chat_id, avg_change, ekhtelaf, pol_hagigi):
+def send_alert_funds_fast(bot_token, chat_id, avg_change, ekhtelaf, pol_hagigi):
     caption = f"""
-🚨 <b>صندوق‌های طلا | تغییر شدید</b>
+🚨 <b>صندوق‌های طلا | تغییر سریع</b>
 
 📈 میانگین قیمت وزنی: <b>{avg_change:+.2f}%</b>
 📊 اختلاف سرانه: <b>{ekhtelaf:+.2f}</b>
@@ -346,6 +443,74 @@ def send_alert_funds(bot_token, chat_id, avg_change, ekhtelaf, pol_hagigi):
 """
     send_alert_message(bot_token, chat_id, caption)
 
+
+# ═══════════════════════════════════════════════════════════
+# پیام‌های هشدار - عبور از آستانه قیمتی
+# ═══════════════════════════════════════════════════════════
+
+def send_alert_dollar_threshold(bot_token, chat_id, price, above=True):
+    if above:
+        emoji = "📈"
+        text = f"بالاتر از {DOLLAR_ALERT_PRICE:,} تومان"
+    else:
+        emoji = "📉"
+        text = f"پایین‌تر از {DOLLAR_ALERT_PRICE:,} تومان"
+
+    caption = f"""
+{emoji} <b>دلار | عبور از آستانه</b>
+
+💵 قیمت: <b>{price:,} تومان</b>
+🎯 آستانه: <b>{DOLLAR_ALERT_PRICE:,} تومان</b>
+📊 وضعیت: {text}
+
+🔗 @Gold_Iran_Market
+"""
+    send_alert_message(bot_token, chat_id, caption)
+
+
+def send_alert_shams_threshold(bot_token, chat_id, price, above=True):
+    if above:
+        emoji = "📈"
+        text = f"بالاتر از {SHAMS_ALERT_PRICE:,} ریال"
+    else:
+        emoji = "📉"
+        text = f"پایین‌تر از {SHAMS_ALERT_PRICE:,} ریال"
+
+    caption = f"""
+{emoji} <b>شمش طلا | عبور از آستانه</b>
+
+✨ قیمت: <b>{price:,} ریال</b>
+🎯 آستانه: <b>{SHAMS_ALERT_PRICE:,} ریال</b>
+📊 وضعیت: {text}
+
+🔗 @Gold_Iran_Market
+"""
+    send_alert_message(bot_token, chat_id, caption)
+
+
+def send_alert_gold_threshold(bot_token, chat_id, price, above=True):
+    if above:
+        emoji = "📈"
+        text = f"بالاتر از ${GOLD_ALERT_PRICE:,.2f}"
+    else:
+        emoji = "📉"
+        text = f"پایین‌تر از ${GOLD_ALERT_PRICE:,.2f}"
+
+    caption = f"""
+{emoji} <b>اونس طلا | عبور از آستانه</b>
+
+🔆 قیمت: <b>${price:,.2f}</b>
+🎯 آستانه: <b>${GOLD_ALERT_PRICE:,.2f}</b>
+📊 وضعیت: {text}
+
+🔗 @Gold_Iran_Market
+"""
+    send_alert_message(bot_token, chat_id, caption)
+
+
+# ═══════════════════════════════════════════════════════════
+# پیام‌های هشدار - اختلاف سرانه
+# ═══════════════════════════════════════════════════════════
 
 def send_alert_ekhtelaf_sign(bot_token, chat_id, ekhtelaf, pol_hagigi, avg_change):
     if ekhtelaf >= 0:
@@ -367,7 +532,7 @@ def send_alert_ekhtelaf_sign(bot_token, chat_id, ekhtelaf, pol_hagigi, avg_chang
     send_alert_message(bot_token, chat_id, caption)
 
 
-def send_alert_ekhtelaf_threshold(bot_token, chat_id, ekhtelaf, pol_hagigi, avg_change, above=True):
+def send_alert_ekhtelaf_20(bot_token, chat_id, ekhtelaf, pol_hagigi, avg_change, above=True):
     if above:
         emoji = "🚀"
         text = "بالای +۲۰ میلیون"
@@ -524,7 +689,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     draw.text((60, 35), date_time_str, font=font_date, fill="#FFFFFF")
     draw.text((60, 110), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
 
-    # واترمارک
     try:
         wfont = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", 70)
     except:
@@ -589,7 +753,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
     pol_to_value_ratio = (total_pol / total_value * 100) if total_value != 0 else 0
 
     caption = f"""
-🔄 <b>آخرین آپدیت : {current_time}</b>
+🔄 <b>آخرین آپدیت: {current_time}</b>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 <b>💵 دلار</b>
