@@ -21,12 +21,12 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════
 
 # هشدار عبور از قیمت مشخص
-DOLLAR_ALERT_PRICE = 116000  # تومان
-SHAMS_ALERT_PRICE = 50000000  # ریال
-GOLD_ALERT_PRICE = 2700.0  # دلار (اونس)
+DOLLAR_ALERT_PRICE = 114000  # تومان
+SHAMS_ALERT_PRICE = 15_000_000  # ریال
+GOLD_ALERT_PRICE = 4100 # دلار (اونس)
 
 # هشدار تغییر سریع (درصد نسبت به 5 دقیقه قبل)
-ALERT_THRESHOLD_PERCENT = 0.5  # ±0.5%
+ALERT_THRESHOLD_PERCENT = 0.1  # ±0.5%
 
 # Gist Settings
 GIST_ID = os.getenv("GIST_ID")
