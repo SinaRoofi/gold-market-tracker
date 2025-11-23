@@ -1,4 +1,4 @@
-# main.py — نسخه Google Sheets
+# main.py — نسخه نهایی
 
 import os
 import sys
@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 async def main():
     try:
         logger.info("=" * 60)
-        logger.info("شروع اجرای Gold Market Tracker با Google Sheets")
+        logger.info("شروع اجرای Gold Market Tracker")
         logger.info("=" * 60)
 
         tehran_tz = pytz.timezone('Asia/Tehran')
@@ -108,21 +108,25 @@ async def main():
             ekhtelaf_sarane_w = sarane_kharid_w - sarane_forosh_w
 
             dollar_change = ((last_trade - yesterday_close) / yesterday_close) * 100 if yesterday_close else 0
-            
-            # گرفتن shams_change و shams_date
+
+            # گرفتن shams_change، shams_price و shams_date
             if "شمش-طلا" in dfp.index:
                 shams_change = dfp.loc["شمش-طلا", "close_price_change_percent"]
+                shams_price = dfp.loc["شمش-طلا", "close_price"]
                 shams_date = dfp.loc["شمش-طلا", "trade_date"]
             else:
                 shams_change = 0
+                shams_price = 0
                 shams_date = None
 
             # ✅ ذخیره در Google Sheets
             save_to_sheets({
                 'gold_price': gold_today,
+                'dollar_price': last_trade,
+                'shams_price': shams_price,
                 'dollar_change': dollar_change,
                 'shams_change': shams_change,
-                'shams_date': shams_date,  # ← اضافه شد
+                'shams_date': shams_date,
                 'fund_change_weighted': fund_change_weighted,
                 'fund_bubble_weighted': fund_bubble_weighted,
                 'sarane_kharid_w': sarane_kharid_w,
