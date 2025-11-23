@@ -303,14 +303,9 @@ def calculate_values(dfp, Gold, last_trade):
 
     cols = ["Value", "close_price", "pricing_dollar", "pricing_Gold"]
 
+    # حذف FutureWarning مربوط به downcasting
     dfp = dfp.copy()
-    dfp[cols] = (
-        dfp[cols]
-        .fillna(0)
-        .astype("float64")
-        .round(0)
-        .astype("int64")
-    )
+    dfp[cols] = dfp[cols].fillna(0).infer_objects().astype(int)
 
     dfp = dfp[
         [
