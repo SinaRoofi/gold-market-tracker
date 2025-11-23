@@ -25,8 +25,8 @@ DOLLAR_ALERT_PRICE_HIGH = 114000  # تومان (صعودی)
 DOLLAR_ALERT_PRICE_LOW = 113000   # تومان (نزولی)
 
 # هشدار عبور از قیمت مشخص - شمش
-SHAMS_ALERT_PRICE_HIGH = 15000000  # ریال (صعودی)
-SHAMS_ALERT_PRICE_LOW = 14900000  # ریال (نزولی)
+SHAMS_ALERT_PRICE_HIGH = 15_000_000  # ریال (صعودی)
+SHAMS_ALERT_PRICE_LOW = 14_900_000   # ریال (نزولی)
 
 # هشدار عبور از قیمت مشخص - اونس
 GOLD_ALERT_PRICE_HIGH = 4100  # دلار (صعودی)
@@ -34,6 +34,9 @@ GOLD_ALERT_PRICE_LOW = 4050   # دلار (نزولی)
 
 # هشدار تغییر سریع (درصد نسبت به 5 دقیقه قبل)
 ALERT_THRESHOLD_PERCENT = 0.5  # ±0.5%
+
+# هشدار تغییر شدید اختلاف سرانه (واحد)
+EKHTELAF_THRESHOLD = 10  # ±10 واحد
 
 # Gist Settings
 GIST_ID = os.getenv("GIST_ID")
@@ -410,31 +413,29 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
             send_alert_gold_threshold(bot_token, chat_id, gold_price, GOLD_ALERT_PRICE_LOW, above=True)
 
     # ═══════════════════════════════════════════════════════
-    # هشدارهای اختلاف سرانه (فقط وقتی عبور کنه)
+    # هشدارهای اختلاف سرانه (تغییر شدید ±10 واحد)
     # ═══════════════════════════════════════════════════════
     
-    # تغییر علامت (عبور از صفر)
     if prev["ekhtelaf_sarane"] is not None:
-        # از منفی به مثبت
-        if prev["ekhtelaf_sarane"] < 0 <= current_ekhtelaf:
-            send_alert_ekhtelaf_sign(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change, positive=True)
-        # از مثبت به منفی
-        elif prev["ekhtelaf_sarane"] >= 0 > current_ekhtelaf:
-            send_alert_ekhtelaf_sign(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change, positive=False)
-
-    # عبور از +20
-    if prev["ekhtelaf_sarane"] is not None:
-        if prev["ekhtelaf_sarane"] < 20 <= current_ekhtelaf:
-            send_alert_ekhtelaf_20(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change, above=True)
-        elif prev["ekhtelaf_sarane"] >= 20 > current_ekhtelaf:
-            send_alert_ekhtelaf_20(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change, above=False, threshold=20)
-
-    # عبور از -20
-    if prev["ekhtelaf_sarane"] is not None:
-        if prev["ekhtelaf_sarane"] > -20 >= current_ekhtelaf:
-            send_alert_ekhtelaf_20(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change, above=False, threshold=-20)
-        elif prev["ekhtelaf_sarane"] <= -20 < current_ekhtelaf:
-            send_alert_ekhtelaf_20(bot_token, chat_id, current_ekhtelaf, df_funds["pol_hagigi"].sum(), current_fund_change, above=True, threshold=-20)
+        ekhtelaf_diff = current_ekhtelaf - prev["ekhtelaf_sarane"]
+        
+        # صعودی (به سمت مثبت)
+        if ekhtelaf_diff >= EKHTELAF_THRESHOLD:
+            send_alert_ekhtelaf_movement(
+                bot_token, chat_id, 
+                prev["ekhtelaf_sarane"], current_ekhtelaf, 
+                df_funds["pol_hagigi"].sum(), current_fund_change,
+                ascending=True
+            )
+        
+        # نزولی (به سمت منفی)
+        elif ekhtelaf_diff <= -EKHTELAF_THRESHOLD:
+            send_alert_ekhtelaf_movement(
+                bot_token, chat_id, 
+                prev["ekhtelaf_sarane"], current_ekhtelaf, 
+                df_funds["pol_hagigi"].sum(), current_fund_change,
+                ascending=False
+            )
 
 
 # ═══════════════════════════════════════════════════════════
@@ -484,9 +485,9 @@ def send_alert_funds_fast(bot_token, chat_id, avg_change, ekhtelaf, pol_hagigi):
     caption = f"""
 🚨 <b>صندوق‌های طلا | تغییر سریع</b>
 
-📈 درصد آخرین : <b>{avg_change:+.2f}%</b>
+📈 درصد آخرین: <b>{avg_change:+.2f}%</b>
 📊 اختلاف سرانه: <b>{ekhtelaf:+.2f}</b>
-💸 پول حقیقی: <b>{pol_hagigi:+,.0f}</b> میلیارد
+💸 پول حقیقی: <b>{pol_hagigi:+,.0f}</b> میلیارد تومان
 
 🔗 @Gold_Iran_Market
 """
@@ -500,17 +501,15 @@ def send_alert_funds_fast(bot_token, chat_id, avg_change, ekhtelaf, pol_hagigi):
 def send_alert_dollar_threshold(bot_token, chat_id, price, threshold, above=True):
     if above:
         emoji = "📈"
-        text = f"بالاتر از {threshold:,} تومان"
+        text = f"دلار از {threshold:,} تومان عبور کرد"
     else:
         emoji = "📉"
-        text = f"پایین‌تر از {threshold:,} تومان"
+        text = f"دلار از {threshold:,} تومان پایین‌تر شد"
 
     caption = f"""
-{emoji} <b>دلار | عبور از آستانه</b>
+{emoji} <b>{text}</b>
 
-💵 قیمت: <b>{price:,} تومان</b>
-🎯 آستانه: <b>{threshold:,} تومان</b>
-📊 وضعیت: {text}
+💵 قیمت فعلی: <b>{price:,} تومان</b>
 
 🔗 @Gold_Iran_Market
 """
@@ -520,17 +519,15 @@ def send_alert_dollar_threshold(bot_token, chat_id, price, threshold, above=True
 def send_alert_shams_threshold(bot_token, chat_id, price, threshold, above=True):
     if above:
         emoji = "📈"
-        text = f"بالاتر از {threshold:,} ریال"
+        text = f"شمش طلا از {threshold:,} ریال عبور کرد"
     else:
         emoji = "📉"
-        text = f"پایین‌تر از {threshold:,} ریال"
+        text = f"شمش طلا از {threshold:,} ریال پایین‌تر شد"
 
     caption = f"""
-{emoji} <b>شمش طلا | عبور از آستانه</b>
+{emoji} <b>{text}</b>
 
-✨ قیمت: <b>{price:,} ریال</b>
-🎯 آستانه: <b>{threshold:,} ریال</b>
-📊 وضعیت: {text}
+✨ قیمت فعلی: <b>{price:,} ریال</b>
 
 🔗 @Gold_Iran_Market
 """
@@ -540,17 +537,15 @@ def send_alert_shams_threshold(bot_token, chat_id, price, threshold, above=True)
 def send_alert_gold_threshold(bot_token, chat_id, price, threshold, above=True):
     if above:
         emoji = "📈"
-        text = f"بالاتر از ${threshold:,.2f}"
+        text = f"اونس طلا از ${threshold:,.2f} عبور کرد"
     else:
         emoji = "📉"
-        text = f"پایین‌تر از ${threshold:,.2f}"
+        text = f"اونس طلا از ${threshold:,.2f} پایین‌تر شد"
 
     caption = f"""
-{emoji} <b>اونس طلا | عبور از آستانه</b>
+{emoji} <b>{text}</b>
 
-🔆 قیمت: <b>${price:,.2f}</b>
-🎯 آستانه: <b>${threshold:,.2f}</b>
-📊 وضعیت: {text}
+🔆 قیمت فعلی: <b>${price:,.2f}</b>
 
 🔗 @Gold_Iran_Market
 """
@@ -573,7 +568,7 @@ def send_alert_ekhtelaf_sign(bot_token, chat_id, ekhtelaf, pol_hagigi, avg_chang
 {emoji} <b>اختلاف سرانه {text}</b>
 
 📊 اختلاف سرانه: <b>{ekhtelaf:+.2f}</b>
-💸 پول حقیقی: <b>{pol_hagigi:+,.0f}</b> میلیارد
+💸 پول حقیقی: <b>{pol_hagigi:+,.0f}</b> میلیارد تومان
 📈 درصد آخرین: <b>{avg_change:+.2f}%</b>
 
 🔗 @Gold_Iran_Market
@@ -585,22 +580,22 @@ def send_alert_ekhtelaf_20(bot_token, chat_id, ekhtelaf, pol_hagigi, avg_change,
     if above:
         emoji = "🚀"
         if threshold > 0:
-            text = f"بالای +{abs(threshold)} میلیون"
+            text = f"بالای +{abs(threshold)} میلیون تومان"
         else:
-            text = f"بالاتر از {threshold} میلیون"
+            text = f"بالاتر از {threshold} میلیون تومان"
     else:
         emoji = "⚠️"
         if threshold > 0:
-            text = f"پایین‌تر از +{abs(threshold)} میلیون"
+            text = f"پایین‌تر از +{abs(threshold)} میلیون تومان"
         else:
-            text = f"زیر {threshold} میلیون"
+            text = f"زیر {threshold} میلیون تومان"
 
     caption = f"""
 {emoji} <b>اختلاف سرانه {text}</b>
 
 📊 اختلاف سرانه: <b>{ekhtelaf:+.2f}</b>
-💸 پول حقیقی: <b>{pol_hagigi:+,.0f}</b> میلیارد
-📈 درصد آخرین: <b>{avg_change:+.2f}%</b>
+💸 پول حقیقی: <b>{pol_hagigi:+,.0f}</b>  میلیارد تومان
+📈 میانگین تغییر قیمت وزنی: <b>{avg_change:+.2f}%</b>
 
 🔗 @Gold_Iran_Market
 """
