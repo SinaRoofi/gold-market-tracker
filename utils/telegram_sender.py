@@ -29,8 +29,8 @@ SHAMS_ALERT_PRICE_HIGH = 15_000_000  # ریال (صعودی)
 SHAMS_ALERT_PRICE_LOW = 14_900_000   # ریال (نزولی)
 
 # هشدار عبور از قیمت مشخص - اونس
-GOLD_ALERT_PRICE_HIGH = 4100  # دلار (صعودی)
-GOLD_ALERT_PRICE_LOW = 4050   # دلار (نزولی)
+GOLD_ALERT_PRICE_HIGH = 4200  # دلار (صعودی)
+GOLD_ALERT_PRICE_LOW = 4080   # دلار (نزولی)
 
 # هشدار تغییر سریع (درصد نسبت به 5 دقیقه قبل)
 ALERT_THRESHOLD_PERCENT = 0.5  # ±0.5%
