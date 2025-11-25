@@ -3,7 +3,7 @@ import numpy as np
 import logging
 
 logger = logging.getLogger(__name__)
-pd.set_option('future.no_silent_downcasting', True)
+pd.set_option("future.no_silent_downcasting", True)
 pd.options.display.float_format = "{:,.2f}".format
 
 
@@ -12,24 +12,22 @@ def process_market_data(
 ):
     """
     پردازش داده‌های بازار و محاسبه شاخص‌ها
-
-    Returns:
-        dict: شامل dfp و Fund_df
     """
     try:
         rahavard_data = market_data["rahavard_data"]["data"]
         traders_data = market_data["traders_data"]
 
+        # تبدیل لیست‌ها به دیتافریم
         assets_df = pd.DataFrame(rahavard_data["assets"])
         warehouse_df = pd.DataFrame(rahavard_data["warehouse_receipt_systems"])
         funds_df = pd.DataFrame(rahavard_data["funds"]["values"])
 
-        # فلت کردن موجودیت‌های تودرتو
+        # فلت کردن related_entities
         assets_df = flatten_entities(assets_df, "related_entities")
         warehouse_df = flatten_entities(warehouse_df, "related_entities")
         funds_df = flatten_entities(funds_df, "related_entities")
 
-        # پاکسازی ستون‌های غیرضروری و تنظیم ایندکس
+        # حذف ستون‌های غیرضروری و تنظیم ایندکس
         assets_df.drop(
             columns=[
                 "entity_id", "type", "asset_id", "short_name", "intrinsic_value",
@@ -63,7 +61,7 @@ def process_market_data(
         )
         funds_df.set_index("slug", inplace=True)
 
-        # پردازش صندوق‌ها
+        # پردازش صندوق‌های با درآمد ثابت
         funds_df.sort_values(by="value", ascending=False, inplace=True)
         funds_df["close_price"] = pd.to_numeric(funds_df["close_price"], errors="coerce")
         funds_df["nav"] = pd.to_numeric(funds_df["nav"], errors="coerce")
@@ -89,23 +87,23 @@ def process_market_data(
             ]
         ]
 
-        # پردازش داده‌های معامله‌گران (صندوق‌های قابل معامله)
+        # پردازش صندوق‌های سهامی/اختلاف و ...
         Fund_df = process_traders_data(traders_data)
 
-        # ترکیب انبارداری + دارایی‌های صندوق با حذف ایندکس تکراری (مهم!)
+        # ترکیب داده‌های انبارداری و دارایی‌های صندوق + رفع مشکل ایندکس تکراری
         dfp = pd.concat([warehouse_df, assets_df])
-        dfp = dfp.groupby(level=0).last()  # این خط کلید حل مشکل تکراری بودن ایندکس است
+        dfp = dfp.groupby(level=0).last()  # این خط کلید حل مشکل duplicate index است
 
-        # استخراج تاریخ و ساعت معامله
+        # استخراج تاریخ و ساعت
         dfp["trade_date"] = dfp["last_trade_time"].str[:10]
         dfp["last_trade_time"] = dfp["last_trade_time"].str[11:19]
 
-        # تبدیل درصد تغییر قیمت
+        # تبدیل درصد تغییر
         dfp["close_price_change_percent"] = (
             pd.to_numeric(dfp["close_price_change_percent"], errors="coerce") * 100
         ).round(2)
 
-        # لیست ثابت نمادهای مورد نیاز (ترتیب مهم است!)
+        # لیست نمادهای مورد نظر (ترتیب مهم است)
         dd = [
             "طلا-گرم-18-عیار",
             "طلا-گرم-24-عیار",
@@ -122,15 +120,12 @@ def process_market_data(
             "سکه-1-گرمی",
         ]
 
-        # حالا reindex کاملاً امن است — دیگر هیچ‌وقت ارور duplicate labels نمی‌دهد
         dfp = dfp.reindex(dd)
-
-        # ستون‌های محاسباتی
         dfp.insert(1, "Value", np.nan)
         dfp["pricing_dollar"] = np.nan
         dfp["pricing_Gold"] = np.nan
 
-        # محاسبه ارزش واقعی و حباب
+        # محاسبات نهایی
         calculate_values(dfp, gold_price, last_trade)
 
         return {
@@ -171,7 +166,6 @@ def process_traders_data(data):
 
     Fund_df = Fund_df.rename(columns={
         "price2": "close_price",
-  NAV": "NAV",
         "col40": "NAV",
         "col41": "nominal_bubble",
         "price2_change": "close_price_change_percent",
@@ -190,13 +184,20 @@ def process_traders_data(data):
     Fund_df.sort_values(by="value", ascending=False, inplace=True)
 
     return Fund_df[[
-        "close_price", "NAV", "nominal_bubble", "close_price_change_percent",
-        "sarane_kharid", "sarane_forosh", "ekhtelaf_sarane", "pol_hagigi", "value"
+        "close_price",
+        "NAV",
+        "nominal_bubble",
+        "close,close_price_change_percent",
+        "sarane_kharid",
+        "sarane_forosh",
+        "ekhtelaf_sarane",
+        "pol_hagigi",
+        "value"
     ]]
 
 
 def calculate_values(dfp, Gold, last_trade):
-    # محاسبه ارزش واقعی هر نماد
+    # محاسبه Value واقعی هر نماد
     dfp.loc[dfp.index[0], "Value"] = (((last_trade * Gold) / 31.1034768) * 0.75) * 10
     dfp.loc[dfp.index[1], "Value"] = ((((last_trade * Gold) / 31.1034768)) * 0.995) * 10
     dfp.loc[dfp.index[2], "Value"] = (((last_trade * Gold) / 31.1034768)) * 0.995
@@ -213,7 +214,7 @@ def calculate_values(dfp, Gold, last_trade):
 
     dfp["Bubble"] = ((dfp["close_price"] - dfp["Value"]) / dfp["Value"]) * 100
 
-    # محاسبه دلار ضمنی و طلا ضمنی
+    # دلار ضمنی و طلا ضمنی (فقط ۵ نماد اول)
     for i in range(min(5, len(dfp))):
         factor = [0.75, 0.995, 0.995, 7.3197, 7.3197][i]
         multiplier = [10, 10, 1, 10, 10][i]
@@ -229,8 +230,14 @@ def calculate_values(dfp, Gold, last_trade):
     dfp[cols] = dfp[cols].fillna(0).infer_objects().astype(int)
 
     dfp = dfp[[
-        "close_price", "Value", "Bubble", "close_price_change_percent",
-        "pricing_dollar", "pricing_Gold", "trade_date", "last_trade_time"
+        "close_price",
+        "Value",
+        "Bubble",
+        "close_price_change_percent",
+        "pricing_dollar",
+        "pricing_Gold",
+        "trade_date",
+        "last_trade_time"
     ]]
 
     return dfp
