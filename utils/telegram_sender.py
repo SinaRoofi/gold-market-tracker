@@ -1,5 +1,3 @@
-# utils/telegram_sender.py
-
 import io
 import os
 import logging
@@ -17,22 +15,23 @@ from utils.sheets_storage import read_from_sheets
 logger = logging.getLogger(__name__)
 
 # ────────────────── تنظیمات آستانه‌ها ──────────────────
+
 DOLLAR_HIGH = 114_000
-DOLLAR_LOW  = 113_000
-SHAMS_HIGH  = 15_000_000
-SHAMS_LOW   = 14_900_000
-GOLD_HIGH   = 4200
-GOLD_LOW    = 4080
+DOLLAR_LOW = 113_000
+SHAMS_HIGH = 15_000_000
+SHAMS_LOW = 14_900_000
+GOLD_HIGH = 4200
+GOLD_LOW = 4080
 
-ALERT_THRESHOLD_PERCENT = 0.5   # تغییر سریع دلار
-EKHTELAF_THRESHOLD      = 10    # تغییر اختلاف سرانه (میلیون تومان)
+ALERT_THRESHOLD_PERCENT = 0.5  # تغییر سریع دلار
+EKHTELAF_THRESHOLD = 10        # تغییر اختلاف سرانه (میلیون تومان)
 
-GIST_ID    = os.getenv("GIST_ID")
+GIST_ID = os.getenv("GIST_ID")
 GIST_TOKEN = os.getenv("GIST_TOKEN")
 ALERT_STATUS_FILE = "alert_status.json"
 
+# ────────────────── مدیریت وضعیت هشدارهای قیمتی ──────────────────
 
-# ────────────────── مدیریت وضعیت هشدارهای قیمتی (یک‌بار در هر عبور) ──────────────────
 def get_alert_status():
     try:
         url = f"https://api.github.com/gists/{GIST_ID}"
@@ -54,8 +53,8 @@ def save_alert_status(status):
     except Exception as e:
         logger.error(f"خطا در ذخیره alert_status: {e}")
 
-
 # ────────────────── توابع Gist قدیمی (message_id) ──────────────────
+
 def get_gist_data():
     try:
         if not GIST_ID or not GIST_TOKEN:
@@ -68,7 +67,7 @@ def get_gist_data():
             return json.loads(content)
     except Exception as e:
         logger.error(f"خطا در خواندن Gist: {e}")
-    return {"message_id": None, "date": None}
+        return {"message_id": None, "date": None}
 
 def save_gist_data(message_id, date):
     try:
@@ -82,25 +81,25 @@ def save_gist_data(message_id, date):
 def get_today_date():
     return datetime.now(pytz.timezone("Asia/Tehran")).strftime("%Y-%m-%d")
 
-
 # ────────────────── وضعیت قبلی از شیت ──────────────────
+
 def get_previous_state_from_sheet():
     try:
         rows = read_from_sheets(limit=1)
         if rows and len(rows) > 0:
             last_row = rows[-1]
             return {
-                "dollar_price":    float(last_row[2]) if len(last_row) > 2 else None,
-                "shams_price":    float(last_row[3]) if len(last_row) > 3 else None,
-                "gold_price":     float(last_row[1]) if len(last_row) > 1 else None,
-                "ekhtelaf_sarane":float(last_row[10]) if len(last_row) > 10 else None,
+                "dollar_price": float(last_row[2]) if len(last_row) > 2 else None,
+                "shams_price": float(last_row[3]) if len(last_row) > 3 else None,
+                "gold_price": float(last_row[1]) if len(last_row) > 1 else None,
+                "ekhtelaf_sarane": float(last_row[10]) if len(last_row) > 10 else None,
             }
     except Exception as e:
         logger.error(f"خطا در خواندن وضعیت قبلی: {e}")
     return {"dollar_price": None, "shams_price": None, "gold_price": None, "ekhtelaf_sarane": None}
 
-
 # ────────────────── ارسال اصلی به تلگرام ──────────────────
+
 def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_yesterday, gold_time, yesterday_close):
     if data is None:
         logger.error("داده‌ها None است")
@@ -132,14 +131,14 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_y
             save_gist_data(new_message_id, today)
             pin_message(bot_token, chat_id, new_message_id)
             return True
-        return False
 
+        return False
     except Exception as e:
         logger.error(f"خطا در ارسال به تلگرام: {e}", exc_info=True)
         return False
 
-
 # ────────────────── MediaGroup ──────────────────
+
 def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMediaGroup"
@@ -192,16 +191,15 @@ def pin_message(bot_token, chat_id, message_id):
     except Exception as e:
         logger.error(f"خطا در پین: {e}")
 
+# ────────────────── هسته هشدارها ──────────────────
 
-# ────────────────── هسته هشدارها (فرمت نهایی تو) ──────────────────
 def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday):
     prev = get_previous_state_from_sheet()
     status = get_alert_status()
 
     current_dollar = dollar_prices["last_trade"]
-    current_shams  = data["dfp"].loc["شمش-طلا", "close_price"] if "شمش-طلا" in data["dfp"].index else 0
-    current_gold   = gold_price
-
+    current_shams = data["dfp"].loc["شمش-طلا", "close_price"] if "شمش-طلا" in data["dfp"].index else 0
+    current_gold = gold_price
     df_funds = data["Fund_df"]
     total_value = df_funds["value"].sum()
     current_ekhtelaf = (df_funds["ekhtelaf_sarane"] * df_funds["value"]).sum() / total_value if total_value > 0 else 0
@@ -218,8 +216,7 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
     if prev["ekhtelaf_sarane"] is not None:
         diff_ekhtelaf = current_ekhtelaf - prev["ekhtelaf_sarane"]
         if abs(diff_ekhtelaf) >= EKHTELAF_THRESHOLD:
-            send_alert_ekhtelaf_fast(bot_token, chat_id, prev["ekhtelaf_sarane"], current_ekhtelaf,
-                                     diff_ekhtelaf, df_funds["pol_hagigi"].sum())
+            send_alert_ekhtelaf_fast(bot_token, chat_id, prev["ekhtelaf_sarane"], current_ekhtelaf, diff_ekhtelaf, df_funds["pol_hagigi"].sum())
 
     # هشدار قیمتی دلار
     if current_dollar >= DOLLAR_HIGH and status["dollar"] == "normal":
@@ -254,45 +251,54 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
     if changed:
         save_alert_status(status)
 
+# ────────────────── پیام‌های هشدار (با ایموجی‌های جدید) ──────────────────
 
-# ────────────────── پیام‌های هشدار (فرمت دقیق تو) ──────────────────
 def send_alert_dollar_fast(bot_token, chat_id, price, change_5min):
     change_text = f"{change_5min:+.2f}%".replace("+-", "−")
     caption = f"""
-هشدار تغییر سریع دلار (۵ دقیقه)
+🚨 هشدار نوسان دلار
 
-قیمت: {int(round(price)):,} تومان
-تغییر: {change_text}
+💰 قیمت: {int(round(price)):,} تومان
+📊 تغییر: {change_text}
 
-@Gold_Iran_Market
+🔗 @Gold_Iran_Market
 """.strip()
     send_alert_message(bot_token, chat_id, caption)
 
 def send_alert_ekhtelaf_fast(bot_token, chat_id, prev_val, curr_val, diff, pol_hagigi):
     direction = "افزایش شدید (مثبت)" if diff > 0 else "کاهش شدید (منفی)"
+    dir_emoji = "🟢" if diff > 0 else "🔴"
     diff_text = f"{diff:+.1f}".replace("+-", "−")
-    pol_text  = f"{pol_hagigi:+,.0f}".replace("+-", "−")
+    pol_text = f"{pol_hagigi:+,.0f}".replace("+-", "−")
+    
     caption = f"""
-هشدار اختلاف سرانه
+🚨 هشدار اختلاف سرانه
 
-{direction}
-تغییر ۵ دقیقه: {diff_text} میلیون تومان
-ورود پول حقیقی: {pol_text} میلیارد تومان
+{dir_emoji} {direction}
+⏱ تغییر ۵ دقیقه: {diff_text} میلیون تومان
+💸 ورود پول حقیقی: {pol_text} میلیارد تومان
 
-@Gold_Iran_Market
+🔗 @Gold_Iran_Market
 """.strip()
     send_alert_message(bot_token, chat_id, caption)
 
 def send_alert_threshold(asset, price, threshold, above, bot_token, chat_id):
     direction = "بالای" if above else "زیر"
+    dir_emoji = "📈" if above else "📉"
     unit = "تومان" if asset == "دلار" else "ریال" if asset == "شمش طلا" else "دلار"
+    
+    # انتخاب ایموجی بر اساس نوع دارایی
+    asset_emoji = "💵"
+    if "شمش" in asset: asset_emoji = "✨"
+    elif "اونس" in asset: asset_emoji = "🔆"
+    
     caption = f"""
-هشدار قیمتی
+🔔 هشدار قیمتی {asset_emoji}
 
-قیمت {asset} به {direction} {threshold:,} رسید.
-قیمت فعلی: {int(round(price)):,} {unit}
+{dir_emoji} قیمت به {direction} {threshold:,} رسید.
+💰 قیمت فعلی: {int(round(price)):,} {unit}
 
-@Gold_Iran_Market
+🔗 @Gold_Iran_Market
 """.strip()
     send_alert_message(bot_token, chat_id, caption)
 
@@ -304,8 +310,8 @@ def send_alert_message(bot_token, chat_id, caption):
     except Exception as e:
         logger.error(f"خطا در ارسال هشدار: {e}")
 
+# ────────────────── ساخت تصویر ترکیبی ──────────────────
 
-# ────────────────── ساخت تصویر ترکیبی (دقیقاً کد اصلی تو) ──────────────────
 def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
     tehran_tz = pytz.timezone("Asia/Tehran")
     now_jalali = JalaliDateTime.now(tehran_tz)
@@ -323,10 +329,9 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     df_sorted = df_sorted.sort_values("value", ascending=False)
 
     colorscale = [
-        [0.0, "#E57373"], [0.1, "#D85C5C"], [0.2, "#C94444"],
-        [0.3, "#A52A2A"], [0.4, "#6B1A1A"], [0.5, "#2C2C2C"],
-        [0.6, "#1B5E20"], [0.7, "#2E7D32"], [0.8, "#43A047"],
-        [0.9, "#5CB860"], [1.0, "#66BB6A"],
+        [0.0, "#E57373"], [0.1, "#D85C5C"], [0.2, "#C94444"], [0.3, "#A52A2A"], [0.4, "#6B1A1A"],
+        [0.5, "#2C2C2C"],
+        [0.6, "#1B5E20"], [0.7, "#2E7D32"], [0.8, "#43A047"], [0.9, "#5CB860"], [1.0, "#66BB6A"],
     ]
 
     try:
@@ -348,7 +353,9 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
             marker=dict(
                 colors=df_sorted["color_value"],
                 colorscale=colorscale,
-                cmid=0, cmin=-10, cmax=10,
+                cmid=0,
+                cmin=-10,
+                cmax=10,
                 line=dict(width=3, color="#1A1A1A"),
             ),
             pathbar=dict(visible=False),
@@ -357,7 +364,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     )
 
     top_10 = df_sorted.head(10)
-    table_header = ["نماد","قیمت","NAV","تغییر %","حباب %","اختلاف سرانه","پول حقیقی","ارزش معاملات"]
+    table_header = ["نماد", "قیمت", "NAV", "تغییر %", "حباب %", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"]
     table_cells = [
         top_10.index.tolist(),
         [f"{x:,.0f}" for x in top_10["close_price"]],
@@ -377,7 +384,9 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
             return "#1C2733"
 
     cell_colors = [
-        ["#1C2733"] * 10, ["#1C2733"] * 10, ["#1C2733"] * 10,
+        ["#1C2733"] * 10,
+        ["#1C2733"] * 10,
+        ["#1C2733"] * 10,
         [col_color(x) for x in table_cells[3]],
         [col_color(x) for x in table_cells[4]],
         [col_color(x) for x in table_cells[5]],
@@ -389,13 +398,15 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         go.Table(
             header=dict(
                 values=[f"<b>{h}</b>" for h in table_header],
-                fill_color="#242F3D", align="center",
+                fill_color="#242F3D",
+                align="center",
                 font=dict(color="white", size=20, family=treemap_font_family),
                 height=38,
             ),
             cells=dict(
                 values=table_cells,
-                fill_color=cell_colors, align="center",
+                fill_color=cell_colors,
+                align="center",
                 font=dict(color="white", size=18, family=treemap_font_family),
                 height=36,
             ),
@@ -404,13 +415,17 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     )
 
     fig.update_layout(
-        paper_bgcolor="#000000", plot_bgcolor="#000000",
-        height=1350, width=1350,
+        paper_bgcolor="#000000",
+        plot_bgcolor="#000000",
+        height=1350,
+        width=1350,
         margin=dict(t=140, l=20, r=20, b=20),
         title=dict(
             text="<b>نقشه بازار صندوق‌های طلا</b>",
             font=dict(size=35, color="#FFD700"),
-            x=0.5, y=0.96, xanchor="center", yanchor="top",
+            x=0.5, y=0.96,
+            xanchor="center",
+            yanchor="top",
         ),
         showlegend=False,
     )
@@ -434,20 +449,20 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         wfont = ImageFont.load_default()
 
     wtext = "Gold_Iran_Market"
-    bbox = draw.textbbox((0,0), wtext, font=wfont)
+    bbox = draw.textbbox((0, 0), wtext, font=wfont)
     w, h = bbox[2] - bbox[0] + 80, bbox[3] - bbox[1] + 80
-    txt_img = Image.new("RGBA", (w, h), (0,0,0,0))
-    ImageDraw.Draw(txt_img).text((40, 40), wtext, font=wfont, fill=(255,255,255,100))
+    txt_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(txt_img).text((40, 40), wtext, font=wfont, fill=(255, 255, 255, 100))
     rotated = txt_img.rotate(45, expand=True)
-    img.paste(rotated, ((img.width - rotated.width)//2, (img.height - rotated.height)//2), rotated)
+    img.paste(rotated, ((img.width - rotated.width) // 2, (img.height - rotated.height) // 2), rotated)
 
     output = io.BytesIO()
     img.save(output, format="PNG", optimize=True, quality=92)
     output.seek(0)
     return output.getvalue()
 
+# ────────────────── کپشن اصلی (دقیقاً طبق درخواست شما) ──────────────────
 
-# ────────────────── کپشن اصلی (دقیقاً کد خودت) ──────────────────
 def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time):
     tehran_tz = pytz.timezone("Asia/Tehran")
     now = JalaliDateTime.now(tehran_tz)
@@ -489,44 +504,44 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
     pol_to_value_ratio = (total_pol / total_value * 100) if total_value != 0 else 0
 
     caption = f"""
-آخرین آپدیت: {current_time}
+🔄 آخرین آپدیت: {current_time}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-<b>دلار</b>
-آخرین معامله: <b>{dollar_prices['last_trade']:,} تومان</b> ({dollar_change:+.2f}%)
-خرید: {dollar_prices['bid']:,} | فروش: {dollar_prices['ask']:,}
+💵 دلار
+💰 آخرین معامله: {dollar_prices['last_trade']:,} تومان ({dollar_change:+.2f}%)
+🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
 ━━━━━━━━━━━━━━━━━━━━━━━━
-<b>اونس طلا </b>
-قیمت: <b>${gold_price:,.2f}</b> ({gold_change:+.2f}%)
+🔆 اونس طلا 
+💰 قیمت: ${gold_price:,.2f} ({gold_change:+.2f}%)
 ━━━━━━━━━━━━━━━━━━━━━━━━
-<b>آمار صندوق‌های طلا</b>
-ارزش معاملات: <b>{total_value:,.0f}</b> میلیارد تومان
-ورود پول حقیقی: <b>{total_pol:+,.0f}</b> میلیارد تومان
-پول حقیقی به ارزش معاملات: <b>{pol_to_value_ratio:+.0f}%</b>
-آخرین قیمت: <b>{avg_price_weighted:,.0f}</b> ({avg_change_percent_weighted:+.2f}%)
-میانگین حباب: <b>{avg_bubble_weighted:+.2f}%</b>
+📊 آمار صندوق‌های طلا
+💰 ارزش معاملات: {total_value:,.0f} میلیارد تومان
+💸 ورود پول حقیقی: {total_pol:+,.0f} میلیارد تومان
+📊 پول حقیقی به ارزش معاملات: {pol_to_value_ratio:+.0f}%
+📈 آخرین قیمت: {avg_price_weighted:,.0f} ({avg_change_percent_weighted:+.2f}%)
+🎈 میانگین حباب: {avg_bubble_weighted:+.2f}%
 ━━━━━━━━━━━━━━━━━━━━━━━━
-<b>شمش طلا</b>
-قیمت: <b>{shams['close_price']:,}</b> ریال
-تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
-دلار محاسباتی: {d_shams:,.0f} ({diff_shams:+,.0f})
-اونس محاسباتی: ${o_shams:,.0f} ({diff_o_shams:+.0f})
+✨ شمش طلا
+💰 قیمت: {shams['close_price']:,} ریال
+📊 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
+💵 دلار محاسباتی: {d_shams:,.0f} ({diff_shams:+,.0f})
+🔆 اونس محاسباتی: ${o_shams:,.0f} ({diff_o_shams:+.0f})
 
-<b>طلا ۲۴ عیار</b>
-قیمت: <b>{gold_24_price:,.0f}</b> تومان
-تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
-دلار محاسباتی: {d_24:,.0f} ({diff_24:+,.0f})
+🔸 طلا ۲۴ عیار
+💰 قیمت: {gold_24_price:,.0f} تومان
+📊 تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
+💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:+,.0f})
 
-<b>طلا ۱۸ عیار</b>
-قیمت: <b>{gold_18_price:,.0f}</b> تومان
-تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
-دلار محاسباتی: {d_18:,.0f} ({diff_18:+,.0f})
+🔸 طلا ۱۸ عیار
+💰 قیمت: {gold_18_price:,.0f} تومان
+📊 تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
+💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+,.0f})
 
-<b>سکه امامی</b>
-قیمت: <b>{sekeh_price:,.0f}</b> تومان
-تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
-دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
+🪙 سکه امامی
+💰 قیمت: {sekeh_price:,.0f} تومان
+📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
+💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
 ━━━━━━━━━━━━━━━━━━━━━━━━
-<a href='https://t.me/Gold_Iran_Market'>@Gold_Iran_Market</a>
+🔗 @Gold_Iran_Market
 """
     return caption.strip()
