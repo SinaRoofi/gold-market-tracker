@@ -138,7 +138,8 @@ def process_market_data(
         Fund_df = process_traders_data(traders_data)
 
         # ترکیب و محاسبه dfp
-dfp = pd.concat([warehouse_df, assets_df]).groupby(level=0).last()
+dfp = pd.concat([warehouse_df, assets_df])
+dfp = dfp[~dfp.index.duplicated(keep='first')]  
         
         # ✅ اول تاریخ رو جدا کن (قبل از حذف)
         dfp["trade_date"] = dfp["last_trade_time"].str[:10]  # "2025-05-21"
