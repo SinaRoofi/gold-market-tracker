@@ -1,10 +1,11 @@
-"""
-ماژول پردازش و تحلیل داده‌های بازار
-"""
+# utils/data_processor.py
+"""ماژول پردازش و تحلیل داده‌های بازار"""
 
 import pandas as pd
 import numpy as np
 import logging
+from config import ASSET_ORDER
+
 pd.set_option('future.no_silent_downcasting', True)
 logger = logging.getLogger(__name__)
 
@@ -17,8 +18,15 @@ def process_market_data(
     """
     پردازش داده‌های بازار و محاسبه شاخص‌ها
 
+    Args:
+        market_data: داده‌های خام از API
+        gold_price: قیمت طلای جهانی (دلار)
+        last_trade: قیمت دلار
+        yesterday_close: قیمت بسته دیروز
+        gold_yesterday: قیمت طلای دیروز
+
     Returns:
-        dict: شامل dfp و Fund_df
+        dict: شامل dfp و Fund_df و سایر اطلاعات
     """
     try:
         rahavard_data = market_data["rahavard_data"]["data"]
@@ -37,15 +45,9 @@ def process_market_data(
         # پاک‌سازی assets_df
         assets_df.drop(
             [
-                "entity_id",
-                "type",
-                "asset_id",
-                "short_name",
-                "intrinsic_value",
-                "price_bubble",
-                "price_bubble_percent",
-                "calculated_usdirr",
-                "name",
+                "entity_id", "type", "asset_id", "short_name", 
+                "intrinsic_value", "price_bubble", "price_bubble_percent",
+                "calculated_usdirr", "name",
             ],
             axis=1,
             inplace=True,
@@ -56,18 +58,10 @@ def process_market_data(
         # پاک‌سازی warehouse_df
         warehouse_df.drop(
             [
-                "entity_id",
-                "type",
-                "asset_id",
-                "short_name",
-                "intrinsic_value",
-                "price_bubble",
-                "price_bubble_percent",
-                "calculated_usdirr",
-                "trade_symbol",
-                "name",
-                "value",
-                "volume",
+                "entity_id", "type", "asset_id", "short_name",
+                "intrinsic_value", "price_bubble", "price_bubble_percent",
+                "calculated_usdirr", "trade_symbol", "name",
+                "value", "volume",
             ],
             axis=1,
             inplace=True,
@@ -78,22 +72,11 @@ def process_market_data(
         # پاک‌سازی funds_df
         funds_df.drop(
             [
-                "entity_id",
-                "type",
-                "asset_id",
-                "short_name",
-                "trade_symbol",
-                "name",
-                "other_weight",
-                "bullion_weight",
-                "coin_weight",
-                "real_bubble_percent",
-                "real_bubble",
-                "intrinsic_bubble_percent",
-                "intrinsic_bubble",
-                "nominal_bubble_percent",
-                "sum_nav",
-                "intrinsic_price",
+                "entity_id", "type", "asset_id", "short_name",
+                "trade_symbol", "name", "other_weight", "bullion_weight",
+                "coin_weight", "real_bubble_percent", "real_bubble",
+                "intrinsic_bubble_percent", "intrinsic_bubble",
+                "nominal_bubble_percent", "sum_nav", "intrinsic_price",
             ],
             axis=1,
             inplace=True,
@@ -106,23 +89,22 @@ def process_market_data(
         funds_df["close_price"] = pd.to_numeric(funds_df["close_price"], errors="coerce")
         funds_df["nav"] = pd.to_numeric(funds_df["nav"], errors="coerce")
         funds_df["value"] = pd.to_numeric(funds_df["value"], errors="coerce") / 10_000_000_000
+        
         funds_df["nominal_bubble"] = (
             (funds_df["close_price"] - funds_df["nav"]) / funds_df["nav"].replace(0, pd.NA)
         ) * 100
+        
         funds_df["last_trade_time"] = funds_df["last_trade_time"].str[11:19]
         funds_df["close_price_change_percent"] = (
             pd.to_numeric(funds_df["close_price_change_percent"], errors="coerce") * 100
         ).round(2)
         funds_df["nominal_bubble"] = funds_df["nominal_bubble"].round(2)
+        
         funds_df = funds_df[
             [
-                "close_price",
-                "nav",
-                "nominal_bubble",
-                "close_price_change",
-                "close_price_change_percent",
-                "value",
-                "last_trade_time",
+                "close_price", "nav", "nominal_bubble",
+                "close_price_change", "close_price_change_percent",
+                "value", "last_trade_time",
             ]
         ]
 
@@ -133,33 +115,16 @@ def process_market_data(
         dfp = pd.concat([warehouse_df, assets_df])
         dfp = dfp[~dfp.index.duplicated(keep='first')]
 
-        # ✅ اول تاریخ رو جدا کن (قبل از حذف)
+        # ✅ استخراج تاریخ و ساعت
         dfp["trade_date"] = dfp["last_trade_time"].str[:10]  # "2025-05-21"
-
-        # بعد ساعت رو جدا کن
         dfp["last_trade_time"] = dfp["last_trade_time"].str[11:19]  # "14:30:25"
 
         dfp["close_price_change_percent"] = (
             pd.to_numeric(dfp["close_price_change_percent"], errors="coerce") * 100
         ).round(2)
 
-        # مرتب‌سازی dfp
-        dd = [
-            "طلا-گرم-18-عیار",
-            "طلا-گرم-24-عیار",
-            "شمش-طلا",
-            "سطلا",
-            "سکه-امامی-طرح-جدید",
-            "سکه-بهار-آزادی-طرح-قدیم",
-            "طلا-مظنه-آبشده-تهران",
-            "سکه0312پ01",
-            "سکه0411پ05",
-            "سکه0412پ03",
-            "نیم-سکه",
-            "ربع-سکه",
-            "سکه-1-گرمی",
-        ]
-        dfp = dfp.reindex(dd)
+        # مرتب‌سازی dfp بر اساس ASSET_ORDER
+        dfp = dfp.reindex(ASSET_ORDER)
         dfp.insert(1, "Value", np.nan)
         dfp["pricing_dollar"] = np.nan
         dfp["pricing_Gold"] = np.nan
@@ -198,20 +163,11 @@ def flatten_entities(df, list_col="related_entities"):
 def process_traders_data(data):
     """پردازش داده‌های TradersArena"""
     columns = [
-        "id",
-        "symbol",
-        "volume",
-        "value",
-        "col5",
-        "col6",
-        "col7",
-        "col8",
-        "price1",
-        "price1_change",
-        "price2",
-        "price2_change",
-        "price3",
-        "price3_change",
+        "id", "symbol", "volume", "value",
+        "col5", "col6", "col7", "col8",
+        "price1", "price1_change",
+        "price2", "price2_change",
+        "price3", "price3_change",
         *[f"col{i}" for i in range(14, 49)],
         "category",
     ]
@@ -240,15 +196,10 @@ def process_traders_data(data):
 
     Fund_df = Fund_df[
         [
-            "close_price",
-            "NAV",
-            "nominal_bubble",
+            "close_price", "NAV", "nominal_bubble",
             "close_price_change_percent",
-            "sarane_kharid",
-            "sarane_forosh",
-            "ekhtelaf_sarane",
-            "pol_hagigi",
-            "value",
+            "sarane_kharid", "sarane_forosh", "ekhtelaf_sarane",
+            "pol_hagigi", "value",
         ]
     ]
 
@@ -256,8 +207,8 @@ def process_traders_data(data):
 
 
 def calculate_values(dfp, Gold, last_trade):
-    """محاسبه ارزش‌ها و حباب"""
-    # محاسبه Value
+    """محاسبه ارزش‌ها و حباب برای دارایی‌ها"""
+    # محاسبه Value برای هر دارایی
     dfp.loc[dfp.index[0], "Value"] = (((last_trade * Gold) / 31.1034768) * 0.75) * 10
     dfp.loc[dfp.index[1], "Value"] = ((((last_trade * Gold) / 31.1034768)) * 0.995) * 10
     dfp.loc[dfp.index[2], "Value"] = (((last_trade * Gold) / 31.1034768)) * 0.995
@@ -272,35 +223,35 @@ def calculate_values(dfp, Gold, last_trade):
     dfp.loc[dfp.index[11], "Value"] = ((0.9 * (last_trade * Gold)) / 31.1034768) * 2.03225 * 10
     dfp.loc[dfp.index[12], "Value"] = (((0.9 * (last_trade * Gold)) / 31.1034768)) * 10
 
+    # محاسبه حباب
     dfp["Bubble"] = ((dfp["close_price"] - dfp["Value"]) / dfp["Value"]) * 100
 
-    # محاسبه pricing_dollar و pricing_Gold
-    for i in range(len(dfp)):
-        if i < 5:
-            factor = [0.75, 0.995, 0.995, 7.3197, 7.3197][i]
-            multiplier = [10, 10, 1, 10, 10][i]
-            dfp.loc[dfp.index[i], "pricing_dollar"] = (
-                (dfp.loc[dfp.index[i], "close_price"] * 31.1034768) / (Gold * factor) / multiplier
-            )
-            dfp.loc[dfp.index[i], "pricing_Gold"] = (
-                ((dfp.loc[dfp.index[i], "close_price"] / factor) * 31.1034768) / last_trade / multiplier
-            )
+    # محاسبه pricing_dollar و pricing_Gold برای 5 دارایی اول
+    for i in range(min(5, len(dfp))):
+        factor = [0.75, 0.995, 0.995, 7.3197, 7.3197][i]
+        multiplier = [10, 10, 1, 10, 10][i]
+        
+        dfp.loc[dfp.index[i], "pricing_dollar"] = (
+            (dfp.loc[dfp.index[i], "close_price"] * 31.1034768) / 
+            (Gold * factor) / multiplier
+        )
+        dfp.loc[dfp.index[i], "pricing_Gold"] = (
+            ((dfp.loc[dfp.index[i], "close_price"] / factor) * 31.1034768) / 
+            last_trade / multiplier
+        )
 
     # تبدیل به int
     cols = ["Value", "close_price", "pricing_dollar", "pricing_Gold"]
     dfp = dfp.copy()
     dfp[cols] = dfp[cols].fillna(0).astype(int)
 
+    # ستون‌های نهایی
     dfp = dfp[
         [
-            "close_price",
-            "Value",
-            "Bubble",
+            "close_price", "Value", "Bubble",
             "close_price_change_percent",
-            "pricing_dollar",
-            "pricing_Gold",
-            "trade_date",
-            "last_trade_time",
+            "pricing_dollar", "pricing_Gold",
+            "trade_date", "last_trade_time",
         ]
     ]
 
