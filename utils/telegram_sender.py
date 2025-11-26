@@ -1,7 +1,9 @@
+# utils/telegram_sender.py
+"""ماژول ارسال داده‌ها به تلگرام"""
+
 import io
-import os
-import logging
 import json
+import logging
 import requests
 import pytz
 from datetime import datetime
@@ -9,109 +11,120 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from persiantools.jdatetime import JalaliDateTime
 from PIL import Image, ImageDraw, ImageFont
+
+from config import (
+    GIST_ID, GIST_TOKEN, MESSAGE_ID_FILE,
+    FONT_BOLD_PATH, FONT_MEDIUM_PATH, FONT_REGULAR_PATH,
+    TREEMAP_WIDTH, TREEMAP_HEIGHT, TREEMAP_SCALE,
+    TREEMAP_COLORSCALE, CHANNEL_HANDLE,
+    REQUEST_TIMEOUT, TIMEZONE
+)
 from utils.chart_creator import create_market_charts
-from utils.sheets_storage import read_from_sheets
+from utils.alerts import check_and_send_alerts
 
 logger = logging.getLogger(__name__)
 
-# ────────────────── تنظیمات آستانه‌ها ──────────────────
-
-DOLLAR_HIGH = 114_000
-DOLLAR_LOW = 113_000
-SHAMS_HIGH = 15_000_000
-SHAMS_LOW = 14_900_000
-GOLD_HIGH = 4200
-GOLD_LOW = 4080
-
-ALERT_THRESHOLD_PERCENT = 0.5  # تغییر سریع دلار
-EKHTELAF_THRESHOLD = 10        # تغییر اختلاف سرانه (میلیون تومان)
-
-GIST_ID = os.getenv("GIST_ID")
-GIST_TOKEN = os.getenv("GIST_TOKEN")
-ALERT_STATUS_FILE = "alert_status.json"
-
-# ────────────────── مدیریت وضعیت هشدارهای قیمتی ──────────────────
-
-def get_alert_status():
-    try:
-        url = f"https://api.github.com/gists/{GIST_ID}"
-        headers = {"Authorization": f"token {GIST_TOKEN}"}
-        r = requests.get(url, headers=headers, timeout=10)
-        if r.status_code == 200 and ALERT_STATUS_FILE in r.json()["files"]:
-            return json.loads(r.json()["files"][ALERT_STATUS_FILE]["content"])
-    except Exception as e:
-        logger.error(f"خطا در خواندن alert_status: {e}")
-    return {"dollar": "normal", "shams": "normal", "gold": "normal"}
-
-def save_alert_status(status):
-    try:
-        url = f"https://api.github.com/gists/{GIST_ID}"
-        headers = {"Authorization": f"token {GIST_TOKEN}"}
-        requests.patch(url, headers=headers, json={
-            "files": {ALERT_STATUS_FILE: {"content": json.dumps(status)}}
-        }, timeout=10)
-    except Exception as e:
-        logger.error(f"خطا در ذخیره alert_status: {e}")
-
-# ────────────────── توابع Gist قدیمی (message_id) ──────────────────
+# ────────────────── توابع Gist (message_id) ──────────────────
 
 def get_gist_data():
+    """دریافت message_id از GitHub Gist"""
     try:
         if not GIST_ID or not GIST_TOKEN:
             return {"message_id": None, "date": None}
         url = f"https://api.github.com/gists/{GIST_ID}"
         headers = {"Authorization": f"token {GIST_TOKEN}"}
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         if response.status_code == 200:
-            content = response.json()["files"]["message_id.json"]["content"]
+            content = response.json()["files"][MESSAGE_ID_FILE]["content"]
             return json.loads(content)
     except Exception as e:
         logger.error(f"خطا در خواندن Gist: {e}")
         return {"message_id": None, "date": None}
 
+
 def save_gist_data(message_id, date):
+    """ذخیره message_id در GitHub Gist"""
     try:
         url = f"https://api.github.com/gists/{GIST_ID}"
         headers = {"Authorization": f"token {GIST_TOKEN}"}
-        data = {"files": {"message_id.json": {"content": json.dumps({"message_id": message_id, "date": date})}}}
-        requests.patch(url, headers=headers, json=data, timeout=10)
+        data = {
+            "files": {
+                MESSAGE_ID_FILE: {
+                    "content": json.dumps({"message_id": message_id, "date": date})
+                }
+            }
+        }
+        requests.patch(url, headers=headers, json=data, timeout=REQUEST_TIMEOUT)
     except Exception as e:
         logger.error(f"خطا در ذخیره Gist: {e}")
 
+
 def get_today_date():
-    return datetime.now(pytz.timezone("Asia/Tehran")).strftime("%Y-%m-%d")
+    """دریافت تاریخ امروز به فرمت YYYY-MM-DD"""
+    return datetime.now(pytz.timezone(TIMEZONE)).strftime("%Y-%m-%d")
 
-# ────────────────── وضعیت قبلی از شیت ──────────────────
-
-def get_previous_state_from_sheet():
-    try:
-        rows = read_from_sheets(limit=1)
-        if rows and len(rows) > 0:
-            last_row = rows[-1]
-            return {
-                "dollar_price": float(last_row[2]) if len(last_row) > 2 else None,
-                "shams_price": float(last_row[3]) if len(last_row) > 3 else None,
-                "gold_price": float(last_row[1]) if len(last_row) > 1 else None,
-                "ekhtelaf_sarane": float(last_row[10]) if len(last_row) > 10 else None,
-            }
-    except Exception as e:
-        logger.error(f"خطا در خواندن وضعیت قبلی: {e}")
-    return {"dollar_price": None, "shams_price": None, "gold_price": None, "ekhtelaf_sarane": None}
 
 # ────────────────── ارسال اصلی به تلگرام ──────────────────
 
-def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_yesterday, gold_time, yesterday_close):
+def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, 
+                     gold_yesterday, gold_time, yesterday_close):
+    """
+    ارسال داده‌ها به کانال تلگرام
+    
+    Args:
+        bot_token: توکن ربات
+        chat_id: شناسه چت
+        data: داده‌های پردازش شده
+        dollar_prices: قیمت‌های دلار
+        gold_price: قیمت طلا
+        gold_yesterday: قیمت طلای دیروز
+        gold_time: زمان قیمت طلا
+        yesterday_close: قیمت بسته دیروز
+    
+    Returns:
+        bool: موفقیت ارسال
+    """
     if data is None:
-        logger.error("داده‌ها None است")
+        logger.error("❌ داده‌ها None است")
         return False
 
     try:
-        img1_bytes = create_combined_image(data["Fund_df"], dollar_prices["last_trade"], gold_price, gold_yesterday, data["dfp"], yesterday_close)
+        # ساخت تصاویر
+        logger.info("🎨 در حال ساخت تصویر Treemap...")
+        img1_bytes = create_combined_image(
+            data["Fund_df"], 
+            dollar_prices["last_trade"], 
+            gold_price, 
+            gold_yesterday, 
+            data["dfp"], 
+            yesterday_close
+        )
+        
+        logger.info("📊 در حال ساخت نمودارهای بازار...")
         img2_bytes = create_market_charts()
-        caption = create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time)
+        
+        # ساخت کپشن
+        logger.info("📝 در حال ساخت کپشن...")
+        caption = create_simple_caption(
+            data, 
+            dollar_prices, 
+            gold_price, 
+            gold_yesterday, 
+            yesterday_close, 
+            gold_time
+        )
 
-        # هشدارها
-        check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday)
+        # ارسال هشدارها
+        logger.info("🚨 بررسی و ارسال هشدارها...")
+        check_and_send_alerts(
+            bot_token, 
+            chat_id, 
+            data, 
+            dollar_prices, 
+            gold_price, 
+            yesterday_close, 
+            gold_yesterday
+        )
 
         # مدیریت پیام پین‌شده
         gist_data = get_gist_data()
@@ -119,27 +132,42 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, gold_y
         saved_date = gist_data.get("date")
         today = get_today_date()
 
+        # اگر تاریخ عوض شده، message_id رو ریست کن
         if saved_date != today:
+            logger.info(f"📅 روز جدید ({today}) - ریست message_id")
             saved_message_id = None
 
+        # اگر message_id داریم، سعی کن آپدیت کنی
         if saved_message_id:
-            if update_media_group_correctly(bot_token, chat_id, saved_message_id, img1_bytes, img2_bytes, caption):
+            logger.info(f"🔄 در حال آپدیت پیام پین‌شده (ID: {saved_message_id})...")
+            if update_media_group_correctly(bot_token, chat_id, saved_message_id, 
+                                           img1_bytes, img2_bytes, caption):
+                logger.info("✅ پیام پین‌شده آپدیت شد")
                 return True
+            else:
+                logger.warning("⚠️ آپدیت پیام ناموفق بود، پیام جدید ارسال می‌شود")
 
+        # اگر آپدیت نشد، پیام جدید بفرست
+        logger.info("📤 ارسال پیام جدید...")
         new_message_id = send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption)
         if new_message_id:
             save_gist_data(new_message_id, today)
             pin_message(bot_token, chat_id, new_message_id)
+            logger.info(f"✅ پیام جدید ارسال و پین شد (ID: {new_message_id})")
             return True
 
+        logger.error("❌ ارسال پیام ناموفق بود")
         return False
+        
     except Exception as e:
-        logger.error(f"خطا در ارسال به تلگرام: {e}", exc_info=True)
+        logger.error(f"❌ خطا در ارسال به تلگرام: {e}", exc_info=True)
         return False
+
 
 # ────────────────── MediaGroup ──────────────────
 
 def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
+    """ارسال MediaGroup (دو عکس) به تلگرام"""
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMediaGroup"
         files = {
@@ -147,173 +175,109 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
             "photo2": ("charts.png", io.BytesIO(img2_bytes), "image/png"),
         }
         media = [
-            {"type": "photo", "media": "attach://photo1", "caption": caption, "parse_mode": "HTML"},
-            {"type": "photo", "media": "attach://photo2"},
+            {
+                "type": "photo", 
+                "media": "attach://photo1", 
+                "caption": caption, 
+                "parse_mode": "HTML"
+            },
+            {
+                "type": "photo", 
+                "media": "attach://photo2"
+            },
         ]
-        response = requests.post(url, files=files, data={"chat_id": chat_id, "media": json.dumps(media)}, timeout=60)
+        response = requests.post(
+            url, 
+            files=files, 
+            data={"chat_id": chat_id, "media": json.dumps(media)}, 
+            timeout=60
+        )
         if response.status_code == 200:
             return response.json()["result"][0]["message_id"]
+        else:
+            logger.error(f"خطای ارسال MediaGroup: {response.status_code} - {response.text}")
+            
     except Exception as e:
         logger.error(f"خطا در sendMediaGroup: {e}")
     return None
 
-def update_media_group_correctly(bot_token, chat_id, first_message_id, img1_bytes, img2_bytes, caption):
+
+def update_media_group_correctly(bot_token, chat_id, first_message_id, 
+                                 img1_bytes, img2_bytes, caption):
+    """آپدیت کردن MediaGroup موجود"""
     try:
         url = f"https://api.telegram.org/bot{bot_token}/editMessageMedia"
 
-        # عکس اول
-        media1 = {"type": "photo", "media": "attach://photo1", "caption": caption, "parse_mode": "HTML"}
+        # آپدیت عکس اول (با کپشن)
+        media1 = {
+            "type": "photo", 
+            "media": "attach://photo1", 
+            "caption": caption, 
+            "parse_mode": "HTML"
+        }
         files1 = {"photo1": ("treemap.png", io.BytesIO(img1_bytes), "image/png")}
-        r1 = requests.post(url, data={
-            "chat_id": chat_id,
-            "message_id": first_message_id,
-            "media": json.dumps(media1)
-        }, files=files1, timeout=30)
+        r1 = requests.post(
+            url, 
+            data={
+                "chat_id": chat_id,
+                "message_id": first_message_id,
+                "media": json.dumps(media1)
+            }, 
+            files=files1, 
+            timeout=REQUEST_TIMEOUT
+        )
 
-        # عکس دوم
+        # آپدیت عکس دوم
         media2 = {"type": "photo", "media": "attach://photo2"}
         files2 = {"photo2": ("charts.png", io.BytesIO(img2_bytes), "image/png")}
-        r2 = requests.post(url, data={
-            "chat_id": chat_id,
-            "message_id": first_message_id + 1,
-            "media": json.dumps(media2)
-        }, files=files2, timeout=30)
+        r2 = requests.post(
+            url, 
+            data={
+                "chat_id": chat_id,
+                "message_id": first_message_id + 1,
+                "media": json.dumps(media2)
+            }, 
+            files=files2, 
+            timeout=REQUEST_TIMEOUT
+        )
+
+        if not r1.ok:
+            logger.warning(f"خطای آپدیت عکس اول: {r1.status_code} - {r1.text}")
+        if not r2.ok:
+            logger.warning(f"خطای آپدیت عکس دوم: {r2.status_code} - {r2.text}")
 
         return r1.ok and r2.ok
+        
     except Exception as e:
         logger.error(f"خطا در آپدیت عکس‌ها: {e}")
         return False
 
+
 def pin_message(bot_token, chat_id, message_id):
+    """پین کردن پیام در کانال"""
     try:
-        requests.post(f"https://api.telegram.org/bot{bot_token}/pinChatMessage",
-                      data={"chat_id": chat_id, "message_id": message_id, "disable_notification": True}, timeout=30)
+        response = requests.post(
+            f"https://api.telegram.org/bot{bot_token}/pinChatMessage",
+            data={
+                "chat_id": chat_id, 
+                "message_id": message_id, 
+                "disable_notification": True
+            }, 
+            timeout=REQUEST_TIMEOUT
+        )
+        if response.status_code == 200:
+            logger.info("📌 پیام پین شد")
+        else:
+            logger.warning(f"⚠️ خطای پین: {response.status_code}")
     except Exception as e:
         logger.error(f"خطا در پین: {e}")
 
-# ────────────────── هسته هشدارها ──────────────────
-
-def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday):
-    prev = get_previous_state_from_sheet()
-    status = get_alert_status()
-
-    current_dollar = dollar_prices["last_trade"]
-    current_shams = data["dfp"].loc["شمش-طلا", "close_price"] if "شمش-طلا" in data["dfp"].index else 0
-    current_gold = gold_price
-    df_funds = data["Fund_df"]
-    total_value = df_funds["value"].sum()
-    current_ekhtelaf = (df_funds["ekhtelaf_sarane"] * df_funds["value"]).sum() / total_value if total_value > 0 else 0
-
-    changed = False
-
-    # تغییر سریع دلار
-    if prev["dollar_price"] and prev["dollar_price"] > 0:
-        change_5min = (current_dollar - prev["dollar_price"]) / prev["dollar_price"] * 100
-        if abs(change_5min) >= ALERT_THRESHOLD_PERCENT:
-            send_alert_dollar_fast(bot_token, chat_id, current_dollar, change_5min)
-
-    # اختلاف سرانه
-    if prev["ekhtelaf_sarane"] is not None:
-        diff_ekhtelaf = current_ekhtelaf - prev["ekhtelaf_sarane"]
-        if abs(diff_ekhtelaf) >= EKHTELAF_THRESHOLD:
-            send_alert_ekhtelaf_fast(bot_token, chat_id, prev["ekhtelaf_sarane"], current_ekhtelaf, diff_ekhtelaf, df_funds["pol_hagigi"].sum())
-
-    # هشدار قیمتی دلار
-    if current_dollar >= DOLLAR_HIGH and status["dollar"] == "normal":
-        send_alert_threshold("دلار", current_dollar, DOLLAR_HIGH, above=True, bot_token=bot_token, chat_id=chat_id)
-        status["dollar"] = "above"; changed = True
-    elif current_dollar < DOLLAR_LOW and status["dollar"] == "normal":
-        send_alert_threshold("دلار", current_dollar, DOLLAR_LOW, above=False, bot_token=bot_token, chat_id=chat_id)
-        status["dollar"] = "below"; changed = True
-    elif DOLLAR_LOW <= current_dollar < DOLLAR_HIGH and status["dollar"] != "normal":
-        status["dollar"] = "normal"; changed = True
-
-    # شمش طلا
-    if current_shams >= SHAMS_HIGH and status["shams"] == "normal":
-        send_alert_threshold("شمش طلا", current_shams, SHAMS_HIGH, above=True, bot_token=bot_token, chat_id=chat_id)
-        status["shams"] = "above"; changed = True
-    elif current_shams < SHAMS_LOW and status["shams"] == "normal":
-        send_alert_threshold("شمش طلا", current_shams, SHAMS_LOW, above=False, bot_token=bot_token, chat_id=chat_id)
-        status["shams"] = "below"; changed = True
-    elif SHAMS_LOW <= current_shams < SHAMS_HIGH and status["shams"] != "normal":
-        status["shams"] = "normal"; changed = True
-
-    # اونس طلا
-    if current_gold >= GOLD_HIGH and status["gold"] == "normal":
-        send_alert_threshold("اونس طلا", current_gold, GOLD_HIGH, above=True, bot_token=bot_token, chat_id=chat_id)
-        status["gold"] = "above"; changed = True
-    elif current_gold < GOLD_LOW and status["gold"] == "normal":
-        send_alert_threshold("اونس طلا", current_gold, GOLD_LOW, above=False, bot_token=bot_token, chat_id=chat_id)
-        status["gold"] = "below"; changed = True
-    elif GOLD_LOW <= current_gold < GOLD_HIGH and status["gold"] != "normal":
-        status["gold"] = "normal"; changed = True
-
-    if changed:
-        save_alert_status(status)
-
-# ────────────────── پیام‌های هشدار (با ایموجی‌های جدید) ──────────────────
-
-def send_alert_dollar_fast(bot_token, chat_id, price, change_5min):
-    change_text = f"{change_5min:+.2f}%".replace("+-", "−")
-    caption = f"""
-🚨 هشدار نوسان دلار
-
-💰 قیمت: {int(round(price)):,} تومان
-📊 تغییر: {change_text}
-
-🔗 @Gold_Iran_Market
-""".strip()
-    send_alert_message(bot_token, chat_id, caption)
-
-def send_alert_ekhtelaf_fast(bot_token, chat_id, prev_val, curr_val, diff, pol_hagigi):
-    direction = "افزایش شدید (مثبت)" if diff > 0 else "کاهش شدید (منفی)"
-    dir_emoji = "🟢" if diff > 0 else "🔴"
-    diff_text = f"{diff:+.1f}".replace("+-", "−")
-    pol_text = f"{pol_hagigi:+,.0f}".replace("+-", "−")
-    
-    caption = f"""
-🚨 هشدار اختلاف سرانه
-
-{dir_emoji} {direction}
-⏱ تغییر ۵ دقیقه: {diff_text} میلیون تومان
-💸 ورود پول حقیقی: {pol_text} میلیارد تومان
-
-🔗 @Gold_Iran_Market
-""".strip()
-    send_alert_message(bot_token, chat_id, caption)
-
-def send_alert_threshold(asset, price, threshold, above, bot_token, chat_id):
-    direction = "بالای" if above else "زیر"
-    dir_emoji = "📈" if above else "📉"
-    unit = "تومان" if asset == "دلار" else "ریال" if asset == "شمش طلا" else "دلار"
-    
-    # انتخاب ایموجی بر اساس نوع دارایی
-    asset_emoji = "💵"
-    if "شمش" in asset: asset_emoji = "✨"
-    elif "اونس" in asset: asset_emoji = "🔆"
-    
-    caption = f"""
-🔔 هشدار قیمتی {asset_emoji}
-
-{dir_emoji} قیمت به {direction} {threshold:,} رسید.
-💰 قیمت فعلی: {int(round(price)):,} {unit}
-
-🔗 @Gold_Iran_Market
-""".strip()
-    send_alert_message(bot_token, chat_id, caption)
-
-def send_alert_message(bot_token, chat_id, caption):
-    try:
-        requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                      data={"chat_id": chat_id, "text": caption, "parse_mode": "HTML"}, timeout=30)
-        logger.info("هشدار ارسال شد")
-    except Exception as e:
-        logger.error(f"خطا در ارسال هشدار: {e}")
 
 # ────────────────── ساخت تصویر ترکیبی ──────────────────
 
 def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
-    tehran_tz = pytz.timezone("Asia/Tehran")
+    """ساخت تصویر Treemap + Table"""
+    tehran_tz = pytz.timezone(TIMEZONE)
     now_jalali = JalaliDateTime.now(tehran_tz)
     date_time_str = now_jalali.strftime("%Y/%m/%d - %H:%M")
 
@@ -328,18 +292,14 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
     df_sorted = df_sorted.sort_values("value", ascending=False)
 
-    colorscale = [
-        [0.0, "#E57373"], [0.1, "#D85C5C"], [0.2, "#C94444"], [0.3, "#A52A2A"], [0.4, "#6B1A1A"],
-        [0.5, "#2C2C2C"],
-        [0.6, "#1B5E20"], [0.7, "#2E7D32"], [0.8, "#43A047"], [0.9, "#5CB860"], [1.0, "#66BB6A"],
-    ]
-
+    # بارگذاری فونت
     try:
-        ImageFont.truetype("assets/fonts/Vazirmatn-Medium.ttf", 40)
+        ImageFont.truetype(FONT_MEDIUM_PATH, 40)
         treemap_font_family = "Vazirmatn-Medium, sans-serif"
     except:
         treemap_font_family = "sans-serif"
 
+    # Treemap
     fig.add_trace(
         go.Treemap(
             labels=df_sorted.index,
@@ -352,7 +312,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
             hoverinfo="skip",
             marker=dict(
                 colors=df_sorted["color_value"],
-                colorscale=colorscale,
+                colorscale=TREEMAP_COLORSCALE,
                 cmid=0,
                 cmin=-10,
                 cmax=10,
@@ -363,8 +323,12 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         row=1, col=1,
     )
 
+    # جدول 10 صندوق برتر
     top_10 = df_sorted.head(10)
-    table_header = ["نماد", "قیمت", "NAV", "تغییر %", "حباب %", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"]
+    table_header = [
+        "نماد", "قیمت", "NAV", "تغییر %", "حباب %", 
+        "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"
+    ]
     table_cells = [
         top_10.index.tolist(),
         [f"{x:,.0f}" for x in top_10["close_price"]],
@@ -417,8 +381,8 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     fig.update_layout(
         paper_bgcolor="#000000",
         plot_bgcolor="#000000",
-        height=1350,
-        width=1350,
+        height=TREEMAP_HEIGHT,
+        width=TREEMAP_WIDTH,
         margin=dict(t=140, l=20, r=20, b=20),
         title=dict(
             text="<b>نقشه بازار صندوق‌های طلا</b>",
@@ -430,25 +394,33 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         showlegend=False,
     )
 
-    img_bytes = fig.to_image(format="png", width=1350, height=1350, scale=2)
+    # تبدیل به تصویر
+    img_bytes = fig.to_image(
+        format="png", 
+        width=TREEMAP_WIDTH, 
+        height=TREEMAP_HEIGHT, 
+        scale=TREEMAP_SCALE
+    )
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
     draw = ImageDraw.Draw(img)
 
+    # اضافه کردن متن‌ها
     try:
-        font_date = ImageFont.truetype("assets/fonts/Vazirmatn-Bold.ttf", 64)
-        font_desc = ImageFont.truetype("assets/fonts/Vazirmatn-Medium.ttf", 50)
+        font_date = ImageFont.truetype(FONT_BOLD_PATH, 64)
+        font_desc = ImageFont.truetype(FONT_MEDIUM_PATH, 50)
     except:
         font_date = font_desc = ImageFont.load_default()
 
     draw.text((60, 35), date_time_str, font=font_date, fill="#FFFFFF")
     draw.text((60, 110), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
 
+    # واترمارک
     try:
-        wfont = ImageFont.truetype("assets/fonts/Vazirmatn-Regular.ttf", 70)
+        wfont = ImageFont.truetype(FONT_REGULAR_PATH, 70)
     except:
         wfont = ImageFont.load_default()
 
-    wtext = "Gold_Iran_Market"
+    wtext = CHANNEL_HANDLE.replace("@", "")
     bbox = draw.textbbox((0, 0), wtext, font=wfont)
     w, h = bbox[2] - bbox[0] + 80, bbox[3] - bbox[1] + 80
     txt_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
@@ -461,10 +433,13 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     output.seek(0)
     return output.getvalue()
 
-# ────────────────── کپشن اصلی (دقیقاً طبق درخواست شما) ──────────────────
 
-def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yesterday_close, gold_time):
-    tehran_tz = pytz.timezone("Asia/Tehran")
+# ────────────────── کپشن اصلی ──────────────────
+
+def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, 
+                         yesterday_close, gold_time):
+    """ساخت کپشن برای پست تلگرام"""
+    tehran_tz = pytz.timezone(TIMEZONE)
     now = JalaliDateTime.now(tehran_tz)
     current_time = now.strftime("%Y/%m/%d - %H:%M")
 
@@ -542,6 +517,6 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, yeste
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
 💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
 ━━━━━━━━━━━━━━━━━━━━━━━━
-🔗 @Gold_Iran_Market
+🔗 {CHANNEL_HANDLE}
 """
     return caption.strip()
