@@ -6,6 +6,9 @@ on:
 jobs:
   track-market:
     runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Tehran
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
