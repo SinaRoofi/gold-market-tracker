@@ -65,8 +65,8 @@ DOLLAR_HIGH = 114_000
 DOLLAR_LOW = 113_000
 
 # آستانه‌های شمش طلا (ریال)
-SHAMS_HIGH = 15_000_000
-SHAMS_LOW = 14_900_000
+SHAMS_HIGH = 15_300_000
+SHAMS_LOW = 15_000_000
 
 # آستانه‌های اونس طلا (دلار)
 GOLD_HIGH = 4200
