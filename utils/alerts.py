@@ -255,12 +255,18 @@ def check_active_funds_alert(bot_token, chat_id, df_funds):
         # ساخت پیام - همه صندوق‌ها رو نشون بده
         funds_text = ""
         for symbol, row in active_funds.iterrows():
+            # فرمت درست برای B (بدون اعشار برای ارزش معاملات)
+            value_str = f"{row['value']:.0f}B ({row['value_to_avg_ratio']:.0f}%)"
+            pol_str = f"{row['pol_hagigi']:+.1f}".replace(".", "/") + f"B ({row['pol_to_value_ratio']:+.0f}%)"
+            sarane_str = f"{row['sarane_kharid']:.0f}M"
+            ekhtelaf_str = f"{row['ekhtelaf_sarane']:+.1f}".replace(".", "/") + "M"
+            
             funds_text += f"""
 📌 <b>{symbol}</b>
-💰 ارزش معاملات: {row['value']:.1f}B (<b>{row['value_to_avg_ratio']:.0f}%</b>)
-💸 پول حقیقی: {row['pol_hagigi']:+.1f}B (<b>{row['pol_to_value_ratio']:+.0f}%</b>)
-🟢 سرانه خرید: <b>{row['sarane_kharid']:.0f}M</b>
-📊 اختلاف سرانه: <b>{row['ekhtelaf_sarane']:+.1f}M</b>
+💰 ارزش معاملات: {value_str}
+💸 ورود پول حقیقی: {pol_str}
+🟢 سرانه خرید: <b>{sarane_str}</b>
+📊 اختلاف سرانه: <b>{ekhtelaf_str}</b>
 🎈 حباب: {row['nominal_bubble']:+.1f}%
 ━━━━━━━━━━━━━━━━━━━━━━━━"""
 
