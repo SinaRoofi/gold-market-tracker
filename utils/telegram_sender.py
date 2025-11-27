@@ -99,10 +99,10 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
             data["dfp"], 
             yesterday_close
         )
-        
+
         logger.info("📊 در حال ساخت نمودارهای بازار...")
         img2_bytes = create_market_charts()
-        
+
         # ساخت کپشن
         logger.info("📝 در حال ساخت کپشن...")
         caption = create_simple_caption(
@@ -158,7 +158,7 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
 
         logger.error("❌ ارسال پیام ناموفق بود")
         return False
-        
+
     except Exception as e:
         logger.error(f"❌ خطا در ارسال به تلگرام: {e}", exc_info=True)
         return False
@@ -196,7 +196,7 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
             return response.json()["result"][0]["message_id"]
         else:
             logger.error(f"خطای ارسال MediaGroup: {response.status_code} - {response.text}")
-            
+
     except Exception as e:
         logger.error(f"خطا در sendMediaGroup: {e}")
     return None
@@ -247,7 +247,7 @@ def update_media_group_correctly(bot_token, chat_id, first_message_id,
             logger.warning(f"خطای آپدیت عکس دوم: {r2.status_code} - {r2.text}")
 
         return r1.ok and r2.ok
-        
+
     except Exception as e:
         logger.error(f"خطا در آپدیت عکس‌ها: {e}")
         return False
@@ -447,12 +447,21 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
 
+    # محاسبه میانگین ماهانه کل صندوق‌ها
+    total_avg_monthly = df_funds["avg_monthly_value"].sum()
+
     if total_value > 0:
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
         avg_bubble_weighted = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value
     else:
         avg_price_weighted = avg_change_percent_weighted = avg_bubble_weighted = 0
+
+    # محاسبه نسبت ارزش معاملات به میانگین ماهانه
+    if total_avg_monthly > 0:
+        value_to_avg_ratio = (total_value / total_avg_monthly) * 100
+    else:
+        value_to_avg_ratio = 0
 
     dollar_change = ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
     gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday else 0
@@ -490,9 +499,8 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 💰 قیمت: ${gold_price:,.2f} ({gold_change:+.2f}%)
 ━━━━━━━━━━━━━━━━━━━━━━━━
 📊 آمار صندوق‌های طلا
-💰 ارزش معاملات: {total_value:,.0f} میلیارد تومان
-💸 ورود پول حقیقی: {total_pol:+,.0f} میلیارد تومان
-📊 پول حقیقی به ارزش معاملات: {pol_to_value_ratio:+.0f}%
+💰 ارزش معاملات: {total_value:,.0f} میلیارد تومان ({value_to_avg_ratio:.0f}%)
+💸 ورود پول حقیقی: {total_pol:+,.0f} میلیارد تومان ({pol_to_value_ratio:+.0f}%)
 📈 آخرین قیمت: {avg_price_weighted:,.0f} ({avg_change_percent_weighted:+.2f}%)
 🎈 میانگین حباب: {avg_bubble_weighted:+.2f}%
 ━━━━━━━━━━━━━━━━━━━━━━━━
