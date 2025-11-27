@@ -108,14 +108,14 @@ def process_market_data(
             ]
         ]
 
-        # پردازش Fund_df از TradersArena
+        # ✅ پردازش Fund_df از TradersArena (با ستون‌های جدید)
         Fund_df = process_traders_data(traders_data)
 
         # ترکیب و محاسبه dfp
         dfp = pd.concat([warehouse_df, assets_df])
         dfp = dfp[~dfp.index.duplicated(keep='first')]
 
-        # ✅ استخراج تاریخ و ساعت
+        # استخراج تاریخ و ساعت
         dfp["trade_date"] = dfp["last_trade_time"].str[:10]  # "2025-05-21"
         dfp["last_trade_time"] = dfp["last_trade_time"].str[11:19]  # "14:30:25"
 
@@ -161,7 +161,14 @@ def flatten_entities(df, list_col="related_entities"):
 
 
 def process_traders_data(data):
-    """پردازش داده‌های TradersArena"""
+    """
+    پردازش داده‌های TradersArena با ستون‌های جدید
+    
+    ستون‌های جدید اضافه شده:
+    - avg_monthly_value (col31): میانگین ماهانه ارزش معاملات
+    - value_to_avg_ratio (col32): نسبت ارزش معاملات روز به میانگین ماهانه
+    - final_price_change (price3_change): تغییر قیمت پایانی
+    """
     columns = [
         "id", "symbol", "volume", "value",
         "col5", "col6", "col7", "col8",
@@ -174,9 +181,13 @@ def process_traders_data(data):
 
     Fund_df = pd.DataFrame(data, columns=columns)
 
+    # نام‌گذاری ستون‌ها
     Fund_df = Fund_df.rename(
         columns={
             "price2": "close_price",
+            "price3_change": "final_price_change",  # ✅ قیمت پایانی
+            "col31": "avg_monthly_value",           # ✅ میانگین ماهانه ارزش معاملات
+            "col32": "value_to_avg_ratio",          # ✅ نسبت به میانگین ماهانه
             "col40": "NAV",
             "col41": "nominal_bubble",
             "price2_change": "close_price_change_percent",
@@ -187,22 +198,55 @@ def process_traders_data(data):
     )
 
     Fund_df = Fund_df.set_index("symbol")
-    Fund_df["value"] = Fund_df["value"] / 10_000_000_000
-    Fund_df["sarane_kharid"] = Fund_df["sarane_kharid"] / 10_000_000
-    Fund_df["sarane_forosh"] = Fund_df["sarane_forosh"] / 10_000_000
+    
+    # تبدیل واحدها
+    Fund_df["value"] = Fund_df["value"] / 10_000_000_000  # به میلیارد تومان
+    Fund_df["sarane_kharid"] = Fund_df["sarane_kharid"] / 10_000_000  # به میلیون تومان
+    Fund_df["sarane_forosh"] = Fund_df["sarane_forosh"] / 10_000_000  # به میلیون تومان
+    Fund_df["pol_hagigi"] = Fund_df["pol_hagigi"] / 10_000_000_000  # به میلیارد تومان
+    Fund_df["avg_monthly_value"] = Fund_df["avg_monthly_value"] / 10_000_000_000  # به میلیارد تومان
+    
+    # محاسبات اضافی
     Fund_df["ekhtelaf_sarane"] = Fund_df["sarane_kharid"] - Fund_df["sarane_forosh"]
-    Fund_df["pol_hagigi"] = Fund_df["pol_hagigi"] / 10_000_000_000
+    
+    # ✅ محاسبه نسبت پول حقیقی به ارزش معاملات (درصد)
+    Fund_df["pol_to_value_ratio"] = (
+        (Fund_df["pol_hagigi"] / Fund_df["value"].replace(0, pd.NA)) * 100
+    ).round(2)
+    
+    # تبدیل به عددی
+    Fund_df["final_price_change"] = pd.to_numeric(
+        Fund_df["final_price_change"], errors="coerce"
+    ).round(2)
+    
+    Fund_df["value_to_avg_ratio"] = pd.to_numeric(
+        Fund_df["value_to_avg_ratio"], errors="coerce"
+    ).round(2)
+    
+    # مرتب‌سازی بر اساس ارزش معاملات
     Fund_df.sort_values(by="value", ascending=False, inplace=True)
 
+    # ستون‌های نهایی
     Fund_df = Fund_df[
         [
-            "close_price", "NAV", "nominal_bubble",
-            "close_price_change_percent",
-            "sarane_kharid", "sarane_forosh", "ekhtelaf_sarane",
-            "pol_hagigi", "value",
+            "close_price",                   # قیمت
+            "NAV",                            # خالص ارزش دارایی
+            "nominal_bubble",                 # حباب
+            "close_price_change_percent",     # درصد تغییر قیمت
+            "final_price_change",             # ✅ تغییر قیمت پایانی
+            "sarane_kharid",                  # سرانه خرید
+            "sarane_forosh",                  # سرانه فروش
+            "ekhtelaf_sarane",                # اختلاف سرانه
+            "pol_hagigi",                     # پول حقیقی
+            "pol_to_value_ratio",             # ✅ نسبت پول به ارزش معاملات (%)
+            "value",                          # ارزش معاملات امروز
+            "avg_monthly_value",              # ✅ میانگین ماهانه ارزش معاملات
+            "value_to_avg_ratio",             # ✅ نسبت به میانگین ماهانه
         ]
     ]
 
+    logger.info(f"✅ Fund_df پردازش شد - {len(Fund_df)} صندوق با {len(Fund_df.columns)} ستون")
+    
     return Fund_df
 
 
