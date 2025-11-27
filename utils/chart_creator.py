@@ -1,5 +1,5 @@
 # utils/chart_creator.py
-"""ماژول ساخت نمودارهای بازار با محور Y بهینه‌شده"""
+"""ماژول ساخت نمودارهای بازار با نمایش قیمت پایانی"""
 
 import logging
 import pytz
@@ -29,30 +29,16 @@ def round_to_nearest(value, step=50):
 
 
 def calculate_y_range_with_steps(data_min, data_max, step=50):
-    """
-    محاسبه محدوده محور Y با گام‌های مشخص
-    
-    Args:
-        data_min: کمترین مقدار داده
-        data_max: بیشترین مقدار داده
-        step: گام افزایش (پیش‌فرض 50)
-    
-    Returns:
-        tuple: (y_min, y_max)
-    """
-    # اگر همه داده‌ها صفر هستند
+    """محاسبه محدوده محور Y با گام‌های مشخص"""
     if data_min == 0 and data_max == 0:
         return -step, step
     
-    # اگر همه داده‌ها یکسان هستند
     if data_min == data_max:
         return data_min - step, data_max + step
     
-    # گرد کردن به نزدیک‌ترین مضرب step
     y_min = math.floor(data_min / step) * step
     y_max = math.ceil(data_max / step) * step
     
-    # اضافه کردن یک گام اضافی برای فاصله بهتر
     y_min -= step
     y_max += step
     
@@ -60,18 +46,19 @@ def calculate_y_range_with_steps(data_min, data_max, step=50):
 
 
 def create_market_charts():
-    """ساخت نمودارهای بازار با محور Y بهینه‌شده"""
+    """ساخت نمودارهای بازار با نمایش قیمت پایانی"""
     try:
         data_rows = read_from_sheets(limit=500)
         if not data_rows:
             logger.warning("⚠️ داده‌ای از Sheets دریافت نشد")
             return None
 
-        # تعریف DataFrame با 11 ستون
+        # تعریف DataFrame با 12 ستون (اضافه شدن fund_final_price_avg)
         df = pd.DataFrame(data_rows, columns=[
             'timestamp', 'gold_price_usd', 'dollar_price', 'shams_price',
             'dollar_change_percent', 'shams_change_percent',
-            'fund_weighted_change_percent', 'fund_weighted_bubble_percent',
+            'fund_weighted_change_percent', 'fund_final_price_avg',  # ✅ ستون جدید
+            'fund_weighted_bubble_percent',
             'sarane_kharid_weighted', 'sarane_forosh_weighted',
             'ekhtelaf_sarane_weighted'
         ])
@@ -101,7 +88,7 @@ def create_market_charts():
                 '<b>قیمت اونس طلا ($)</b>',
                 '<b>دلار آزاد (%)</b>',
                 '<b>شمش طلای بورس کالا (%)</b>',
-                '<b>آخرین قیمت صندوق‌های طلا (%)</b>',
+                '<b>آخرین قیمت و قیمت پایانی صندوق‌های طلا (%)</b>',
                 '<b>میانگین حباب صندوق‌های طلا (%)</b>',
                 '<b>سرانه خرید و فروش و اختلاف آن</b>'
             ),
@@ -124,6 +111,7 @@ def create_market_charts():
         last_dollar = df['dollar_change_percent'].iloc[-1]
         last_shams = df['shams_change_percent'].iloc[-1]
         last_fund = df['fund_weighted_change_percent'].iloc[-1]
+        last_final = df['fund_final_price_avg'].iloc[-1]  # ✅ قیمت پایانی
         last_bubble = df['fund_weighted_bubble_percent'].iloc[-1]
         last_kharid = df['sarane_kharid_weighted'].iloc[-1]
         last_forosh = df['sarane_forosh_weighted'].iloc[-1]
@@ -147,7 +135,7 @@ def create_market_charts():
         fig.update_yaxes(range=[gold_min, gold_max], row=1, col=1)
 
         # ═══════════════════════════════════════════════════════
-        # نمودار 2-5: دلار، شمش، صندوق‌ها، حباب
+        # نمودار 2-3: دلار و شمش
         # ═══════════════════════════════════════════════════════
         add_conditional_line(fig, df, 'dollar_change_percent', 2)
         set_y_range(fig, df, 'dollar_change_percent', 2)
@@ -155,9 +143,34 @@ def create_market_charts():
         add_conditional_line(fig, df, 'shams_change_percent', 3)
         set_y_range(fig, df, 'shams_change_percent', 3)
 
+        # ═══════════════════════════════════════════════════════
+        # نمودار 4: آخرین قیمت + قیمت پایانی ✅
+        # ═══════════════════════════════════════════════════════
+        
+        # خط آخرین قیمت (سبز/قرمز بسته به مثبت/منفی)
         add_conditional_line(fig, df, 'fund_weighted_change_percent', 4)
-        set_y_range(fig, df, 'fund_weighted_change_percent', 4)
+        
+        # ✅ خط قیمت پایانی (خط چین آبی)
+        fig.add_trace(go.Scatter(
+            x=df['timestamp'],
+            y=df['fund_final_price_avg'],
+            name='قیمت پایانی',
+            line=dict(color='#2196F3', width=4, dash='dash'),
+            hovertemplate='پایانی: <b>%{y:+.2f}%</b><extra></extra>'
+        ), row=4, col=1)
+        
+        # محدوده محور Y با در نظر گرفتن هر دو خط
+        all_values = pd.concat([
+            df['fund_weighted_change_percent'], 
+            df['fund_final_price_avg']
+        ])
+        set_y_range_for_series(fig, all_values, 4)
+        
+        logger.info(f"✅ نمودار 4: آخرین={last_fund:+.2f}%, پایانی={last_final:+.2f}%")
 
+        # ═══════════════════════════════════════════════════════
+        # نمودار 5: حباب
+        # ═══════════════════════════════════════════════════════
         add_conditional_line(fig, df, 'fund_weighted_bubble_percent', 5)
         set_y_range(fig, df, 'fund_weighted_bubble_percent', 5)
 
@@ -165,7 +178,6 @@ def create_market_charts():
         # نمودار 6: سرانه (با محور Y بهینه‌شده - گام 50)
         # ═══════════════════════════════════════════════════════
         
-        # خطوط خرید و فروش
         fig.add_trace(go.Scatter(
             x=df['timestamp'],
             y=df['sarane_kharid_weighted'],
@@ -182,7 +194,6 @@ def create_market_charts():
             hovertemplate='فروش: <b>%{y:.2f}</b><extra></extra>'
         ), row=6, col=1)
 
-        # میله‌های اختلاف
         colors_fill = [
             'rgba(0,230,118,0.75)' if x > 0 else
             'rgba(255,23,68,0.75)' if x < 0 else
@@ -202,7 +213,6 @@ def create_market_charts():
             hovertemplate='اختلاف: <b>%{y:.2f}</b><extra></extra>'
         ), row=6, col=1)
 
-        # ✅ محاسبه محدوده Y با گام 50 (استفاده از Y_AXIS_STEP از config)
         kharid_min = df['sarane_kharid_weighted'].min()
         kharid_max = df['sarane_kharid_weighted'].max()
         forosh_min = df['sarane_forosh_weighted'].min()
@@ -213,17 +223,9 @@ def create_market_charts():
         all_min = min(kharid_min, forosh_min, ekhtelaf_min)
         all_max = max(kharid_max, forosh_max, ekhtelaf_max)
 
-        # استفاده از تابع بهینه‌شده
         y_min, y_max = calculate_y_range_with_steps(all_min, all_max, step=Y_AXIS_STEP)
 
-        fig.update_yaxes(
-            range=[y_min, y_max],
-            dtick=Y_AXIS_STEP,  # گام از config
-            row=6, 
-            col=1
-        )
-
-        logger.info(f"📊 محدوده محور Y سرانه: [{y_min}, {y_max}] با گام {Y_AXIS_STEP}")
+        fig.update_yaxes(range=[y_min, y_max], dtick=Y_AXIS_STEP, row=6, col=1)
 
         # ═══════════════════════════════════════════════════════
         # تنظیمات کلی Layout
@@ -241,8 +243,7 @@ def create_market_charts():
         # عنوان و تاریخ
         fig.add_annotation(
             text='<b>📊 روند بازار</b>',
-            x=0.98, y=1.04,
-            xref='paper', yref='paper',
+            x=0.98, y=1.04, xref='paper', yref='paper',
             xanchor='right', yanchor='top',
             font=dict(size=40, color=COLOR_GOLD, family=chart_font_family),
             showarrow=False
@@ -250,8 +251,7 @@ def create_market_charts():
 
         fig.add_annotation(
             text=f'<b>{date_time_str}</b>',
-            x=0.02, y=1.04,
-            xref='paper', yref='paper',
+            x=0.02, y=1.04, xref='paper', yref='paper',
             xanchor='left', yanchor='top',
             font=dict(size=40, color='#FFFFFF', family=chart_font_family),
             showarrow=False
@@ -260,10 +260,11 @@ def create_market_charts():
         # ═══════════════════════════════════════════════════════
         # برچسب‌های آخرین مقدار
         # ═══════════════════════════════════════════════════════
+        
+        # نمودار 1-3
         fig.add_annotation(
             text=f'<b>{last_gold:,.0f}$</b>',
-            x=1.01, y=last_gold,
-            xref='paper', yref='y1',
+            x=1.01, y=last_gold, xref='paper', yref='y1',
             xanchor='left', yanchor='middle',
             font=dict(size=28, color=COLOR_GOLD, family=chart_font_family),
             showarrow=False
@@ -272,8 +273,7 @@ def create_market_charts():
         dollar_color = COLOR_POSITIVE if last_dollar >= 0 else COLOR_NEGATIVE
         fig.add_annotation(
             text=f'<b>{last_dollar:+.2f}%</b>',
-            x=1.01, y=last_dollar,
-            xref='paper', yref='y2',
+            x=1.01, y=last_dollar, xref='paper', yref='y2',
             xanchor='left', yanchor='middle',
             font=dict(size=28, color=dollar_color, family=chart_font_family),
             showarrow=False
@@ -282,37 +282,45 @@ def create_market_charts():
         shams_color = COLOR_POSITIVE if last_shams >= 0 else COLOR_NEGATIVE
         fig.add_annotation(
             text=f'<b>{last_shams:+.2f}%</b>',
-            x=1.01, y=last_shams,
-            xref='paper', yref='y3',
+            x=1.01, y=last_shams, xref='paper', yref='y3',
             xanchor='left', yanchor='middle',
             font=dict(size=28, color=shams_color, family=chart_font_family),
             showarrow=False
         )
 
+        # نمودار 4: دو برچسب
         fund_color = COLOR_POSITIVE if last_fund >= 0 else COLOR_NEGATIVE
         fig.add_annotation(
-            text=f'<b>{last_fund:+.2f}%</b>',
-            x=1.01, y=last_fund,
-            xref='paper', yref='y4',
+            text=f'<b>آ:{last_fund:+.2f}%</b>',
+            x=1.01, y=last_fund, xref='paper', yref='y4',
             xanchor='left', yanchor='middle',
-            font=dict(size=28, color=fund_color, family=chart_font_family),
+            font=dict(size=24, color=fund_color, family=chart_font_family),
+            showarrow=False
+        )
+        
+        final_color = COLOR_POSITIVE if last_final >= 0 else COLOR_NEGATIVE
+        fig.add_annotation(
+            text=f'<b>پ:{last_final:+.2f}%</b>',
+            x=1.01, y=last_final, xref='paper', yref='y4',
+            xanchor='left', yanchor='middle',
+            font=dict(size=24, color='#2196F3', family=chart_font_family),
             showarrow=False
         )
 
+        # نمودار 5
         bubble_color = COLOR_POSITIVE if last_bubble >= 0 else COLOR_NEGATIVE
         fig.add_annotation(
             text=f'<b>{last_bubble:+.2f}%</b>',
-            x=1.01, y=last_bubble,
-            xref='paper', yref='y5',
+            x=1.01, y=last_bubble, xref='paper', yref='y5',
             xanchor='left', yanchor='middle',
             font=dict(size=28, color=bubble_color, family=chart_font_family),
             showarrow=False
         )
 
+        # نمودار 6
         fig.add_annotation(
             text=f'<b>خ:{last_kharid:.0f}</b>',
-            x=1.01, y=last_kharid,
-            xref='paper', yref='y6',
+            x=1.01, y=last_kharid, xref='paper', yref='y6',
             xanchor='left', yanchor='middle',
             font=dict(size=24, color=COLOR_POSITIVE, family=chart_font_family),
             showarrow=False
@@ -320,8 +328,7 @@ def create_market_charts():
 
         fig.add_annotation(
             text=f'<b>ف:{last_forosh:.0f}</b>',
-            x=1.01, y=last_forosh,
-            xref='paper', yref='y6',
+            x=1.01, y=last_forosh, xref='paper', yref='y6',
             xanchor='left', yanchor='middle',
             font=dict(size=24, color=COLOR_NEGATIVE, family=chart_font_family),
             showarrow=False
@@ -330,8 +337,7 @@ def create_market_charts():
         ekhtelaf_color = COLOR_POSITIVE if last_ekhtelaf >= 0 else COLOR_NEGATIVE
         fig.add_annotation(
             text=f'<b>اخ:{last_ekhtelaf:+.0f}</b>',
-            x=1.01, y=last_ekhtelaf,
-            xref='paper', yref='y6',
+            x=1.01, y=last_ekhtelaf, xref='paper', yref='y6',
             xanchor='left', yanchor='middle',
             font=dict(size=24, color=ekhtelaf_color, family=chart_font_family),
             showarrow=False
@@ -345,53 +351,27 @@ def create_market_charts():
 
         for i in range(1, 7):
             fig.update_xaxes(
-                type='date',
-                tickformat='%H:%M',
-                tickmode='array',
-                tickvals=tick_vals,
-                tickangle=0,
-                tickfont=dict(size=25),
-                gridcolor=COLOR_GRID,
-                showgrid=True,
-                zeroline=False,
-                showline=True,
-                linewidth=1,
-                linecolor='#30363D',
+                type='date', tickformat='%H:%M', tickmode='array',
+                tickvals=tick_vals, tickangle=0, tickfont=dict(size=25),
+                gridcolor=COLOR_GRID, showgrid=True, zeroline=False,
+                showline=True, linewidth=1, linecolor='#30363D',
                 row=i, col=1
             )
 
             fig.update_yaxes(
-                tickfont=dict(size=25),
-                gridcolor=COLOR_GRID,
-                showgrid=True,
-                zeroline=True,
-                zerolinecolor='#30363D',
-                zerolinewidth=2,
-                showline=True,
-                linewidth=1,
-                linecolor='#30363D',
+                tickfont=dict(size=25), gridcolor=COLOR_GRID, showgrid=True,
+                zeroline=True, zerolinecolor='#30363D', zerolinewidth=2,
+                showline=True, linewidth=1, linecolor='#30363D',
                 row=i, col=1
             )
 
             if i > 1:
-                fig.add_hline(
-                    y=0, 
-                    line_dash='dot', 
-                    line_color='#484F58', 
-                    line_width=2, 
-                    row=i, 
-                    col=1
-                )
+                fig.add_hline(y=0, line_dash='dot', line_color='#484F58', 
+                            line_width=2, row=i, col=1)
 
-        # ═══════════════════════════════════════════════════════
-        # تبدیل به تصویر و اضافه کردن واترمارک
-        # ═══════════════════════════════════════════════════════
-        img_bytes = fig.to_image(
-            format='png', 
-            width=CHART_WIDTH, 
-            height=CHART_HEIGHT, 
-            scale=CHART_SCALE
-        )
+        # تبدیل به تصویر
+        img_bytes = fig.to_image(format='png', width=CHART_WIDTH, 
+                                 height=CHART_HEIGHT, scale=CHART_SCALE)
         img = Image.open(io.BytesIO(img_bytes)).convert('RGBA')
 
         # واترمارک
@@ -405,13 +385,13 @@ def create_market_charts():
             y = int(img.height * 0.83)
             draw.text((x, y), text, fill=(201, 209, 217, 160), font=font)
         except Exception as e:
-            logger.warning(f"⚠️ خطا در اضافه کردن واترمارک: {e}")
+            logger.warning(f"⚠️ خطا در واترمارک: {e}")
 
         output = io.BytesIO()
         img.save(output, format='PNG', optimize=True, quality=92)
         output.seek(0)
         
-        logger.info("✅ نمودارهای بازار با موفقیت ساخته شدند")
+        logger.info("✅ نمودارهای بازار با قیمت پایانی ساخته شدند")
         return output.getvalue()
 
     except Exception as e:
@@ -420,13 +400,18 @@ def create_market_charts():
 
 
 def set_y_range(fig, df, column, row, padding_percent=0.3):
-    """تنظیم محدوده محور Y برای نمودارهای درصدی"""
+    """تنظیم محدوده محور Y"""
     col_min = df[column].min()
     col_max = df[column].max()
-    if col_min == col_max:
-        padding = 0.1
-    else:
-        padding = (col_max - col_min) * padding_percent
+    padding = 0.1 if col_min == col_max else (col_max - col_min) * padding_percent
+    fig.update_yaxes(range=[col_min - padding, col_max + padding], row=row, col=1)
+
+
+def set_y_range_for_series(fig, series, row, padding_percent=0.3):
+    """تنظیم محدوده محور Y برای یک Series"""
+    col_min = series.min()
+    col_max = series.max()
+    padding = 0.1 if col_min == col_max else (col_max - col_min) * padding_percent
     fig.update_yaxes(range=[col_min - padding, col_max + padding], row=row, col=1)
 
 
@@ -440,38 +425,26 @@ def add_conditional_line(fig, df, column, row):
 
         color = COLOR_POSITIVE if curr_val >= 0 else COLOR_NEGATIVE
 
-        # اگر خط از صفر عبور می‌کنه
         if (curr_val >= 0 and next_val < 0) or (curr_val < 0 and next_val >= 0):
             t = abs(curr_val) / (abs(curr_val) + abs(next_val))
             cross_time = curr_time + (next_time - curr_time) * t
 
-            # قسمت اول تا صفر
             fig.add_trace(go.Scatter(
-                x=[curr_time, cross_time],
-                y=[curr_val, 0],
-                mode='lines',
-                line=dict(color=color, width=5, shape='spline'),
-                showlegend=False,
-                hoverinfo='skip'
+                x=[curr_time, cross_time], y=[curr_val, 0],
+                mode='lines', line=dict(color=color, width=5, shape='spline'),
+                showlegend=False, hoverinfo='skip'
             ), row=row, col=1)
 
-            # قسمت دوم از صفر
             color_next = COLOR_NEGATIVE if next_val < 0 else COLOR_POSITIVE
             fig.add_trace(go.Scatter(
-                x=[cross_time, next_time],
-                y=[0, next_val],
-                mode='lines',
-                line=dict(color=color_next, width=5, shape='spline'),
-                showlegend=False,
-                hoverinfo='skip'
+                x=[cross_time, next_time], y=[0, next_val],
+                mode='lines', line=dict(color=color_next, width=5, shape='spline'),
+                showlegend=False, hoverinfo='skip'
             ), row=row, col=1)
         else:
-            # خط عادی
             fig.add_trace(go.Scatter(
-                x=[curr_time, next_time],
-                y=[curr_val, next_val],
-                mode='lines',
-                line=dict(color=color, width=5, shape='spline'),
+                x=[curr_time, next_time], y=[curr_val, next_val],
+                mode='lines', line=dict(color=color, width=5, shape='spline'),
                 showlegend=False,
                 hovertemplate='<b>%{y:+.2f}%</b><extra></extra>' if i == 0 else None
             ), row=row, col=1)
