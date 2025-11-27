@@ -46,7 +46,7 @@ def calculate_y_range_with_steps(data_min, data_max, step=50):
 
 
 def create_market_charts():
-    """ساخت نمودارهای بازار با نمایش قیمت پایانی"""
+    """ساخت نمودارهای بازار """
     try:
         data_rows = read_from_sheets(limit=500)
         if not data_rows:
@@ -291,7 +291,7 @@ def create_market_charts():
         # نمودار 4: دو برچسب
         fund_color = COLOR_POSITIVE if last_fund >= 0 else COLOR_NEGATIVE
         fig.add_annotation(
-            text=f'<b>آ:{last_fund:+.2f}%</b>',
+            text=f'<b>{last_fund:+.2f}%</b>',
             x=1.01, y=last_fund, xref='paper', yref='y4',
             xanchor='left', yanchor='middle',
             font=dict(size=24, color=fund_color, family=chart_font_family),
@@ -300,7 +300,7 @@ def create_market_charts():
         
         final_color = COLOR_POSITIVE if last_final >= 0 else COLOR_NEGATIVE
         fig.add_annotation(
-            text=f'<b>پ:{last_final:+.2f}%</b>',
+            text=f'<b>{last_final:+.2f}%</b>',
             x=1.01, y=last_final, xref='paper', yref='y4',
             xanchor='left', yanchor='middle',
             font=dict(size=24, color='#2196F3', family=chart_font_family),
@@ -391,7 +391,7 @@ def create_market_charts():
         img.save(output, format='PNG', optimize=True, quality=92)
         output.seek(0)
         
-        logger.info("✅ نمودارهای بازار با قیمت پایانی ساخته شدند")
+        logger.info("✅ نمودارهای بازار ساخته شدند")
         return output.getvalue()
 
     except Exception as e:
