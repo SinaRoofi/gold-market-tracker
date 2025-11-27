@@ -155,7 +155,7 @@ def create_market_charts():
             x=df['timestamp'],
             y=df['fund_final_price_avg'],
             name='قیمت پایانی',
-            line=dict(color='#2196F3', width=4, dash='dash'),
+            line=dict(color='#2196F3', width=4),
             hovertemplate='پایانی: <b>%{y:+.2f}%</b><extra></extra>'
         ), row=4, col=1)
         
