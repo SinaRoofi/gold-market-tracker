@@ -20,11 +20,10 @@ from utils.data_fetcher import (
     fetch_gold_price_today, fetch_dollar_prices,
     fetch_yesterday_close, fetch_market_data
 )
-from utils.gold_cache import get_gold_yesterday
 from utils.data_processor import process_market_data
 from utils.telegram_sender import send_to_telegram
 from utils.holidays import is_iranian_holiday
-from utils.sheets_storage import save_to_sheets
+from utils.sheets_storage import save_to_sheets, read_from_sheets
 
 # ════════════════════════════════════════════════════════════════
 # تنظیمات Logging
@@ -38,6 +37,56 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+def get_gold_yesterday_from_sheet(today_date):
+    """
+    دریافت قیمت طلای آخرین روز کاری قبل از امروز
+    
+    Args:
+        today_date: تاریخ امروز به فرمت YYYY-MM-DD
+    
+    Returns:
+        tuple: (قیمت طلا، تاریخ پیدا شده، موفقیت)
+    """
+    try:
+        from datetime import datetime, timedelta
+        
+        today = datetime.strptime(today_date, "%Y-%m-%d")
+        
+        logger.info(f"🔍 جستجوی آخرین قیمت طلای قبل از {today_date}")
+        
+        # خواندن 15 رکورد آخر (برای احتمال تعطیلات طولانی)
+        rows = read_from_sheets(limit=15)
+        
+        if not rows:
+            logger.warning("⚠️ هیچ رکوردی در شیت پیدا نشد")
+            return None, None, False
+        
+        # جستجو از آخرین رکورد به قبل تا پیدا کردن اولین روز قبل از امروز
+        # فرض: ستون اول (index 0) تاریخ است به فرمت YYYY-MM-DD
+        for row in reversed(rows):
+            if len(row) > 1 and row[0]:
+                row_date_str = row[0][:10]  # اگر datetime باشه فقط تاریخ رو میگیریم
+                row_date = datetime.strptime(row_date_str, "%Y-%m-%d")
+                
+                # باید قبل از امروز باشه
+                if row_date < today:
+                    if row[1]:  # ستون دوم قیمت اونس طلا
+                        gold_price = float(row[1])
+                        days_ago = (today - row_date).days
+                        logger.info(f"✅ آخرین قیمت طلا: ${gold_price:.2f} (تاریخ {row_date_str} - {days_ago} روز پیش)")
+                        return gold_price, row_date_str, True
+                    else:
+                        logger.warning(f"⚠️ تاریخ {row_date_str} پیدا شد ولی قیمت خالی است")
+                        continue  # به دنبال رکورد قبلی میگردیم
+        
+        logger.warning(f"⚠️ هیچ رکورد معتبری قبل از {today_date} پیدا نشد")
+        return None, None, False
+        
+    except Exception as e:
+        logger.error(f"❌ خطا در خواندن قیمت طلای دیروز: {e}")
+        return None, None, False
 
 
 async def main():
@@ -74,12 +123,23 @@ async def main():
             return
 
         # ═══════════════════════════════════════════════════════
+        # دریافت قیمت طلای آخرین روز کاری از شیت
+        # ═══════════════════════════════════════════════════════
+        logger.info("📊 دریافت قیمت طلای آخرین روز کاری از Google Sheets...")
+        today_str = now.strftime("%Y-%m-%d")
+        gold_yesterday, prev_date, found = get_gold_yesterday_from_sheet(today_str)
+        
+        if not found:
+            logger.warning("⚠️ قیمت طلای قبلی پیدا نشد → تغییر صفر محاسبه می‌شود")
+            gold_yesterday = None
+
+        # ═══════════════════════════════════════════════════════
         # اتصال به Telethon و دریافت داده‌ها
         # ═══════════════════════════════════════════════════════
         async with TelegramClient(StringSession(TELEGRAM_SESSION), 
                                  TELETHON_API_ID, 
                                  TELETHON_API_HASH) as client:
-            
+
             logger.info("✅ اتصال به Telethon برقرار شد")
 
             # ───────────────────────────────────────────────────
@@ -87,21 +147,19 @@ async def main():
             # ───────────────────────────────────────────────────
             logger.info("🔆 دریافت قیمت طلای جهانی...")
             gold_today, gold_time = await fetch_gold_price_today(client)
-            
+
             if not gold_today:
                 gold_today = DEFAULT_GOLD_PRICE
                 logger.warning(f"⚠️ قیمت طلا گرفته نشد → پیش‌فرض {DEFAULT_GOLD_PRICE}")
             else:
                 logger.info(f"✅ قیمت طلا: ${gold_today:.2f}")
 
-            gold_yesterday = get_gold_yesterday() or DEFAULT_GOLD_PRICE
-
             # ───────────────────────────────────────────────────
             # 2️⃣ دریافت قیمت دلار
             # ───────────────────────────────────────────────────
             logger.info("💵 دریافت قیمت‌های دلار...")
             dollar_prices = await fetch_dollar_prices(client)
-            
+
             if not dollar_prices:
                 dollar_prices = {'last_trade': DEFAULT_DOLLAR_PRICE, 'bid': 0, 'ask': 0}
                 logger.warning(f"⚠️ قیمت دلار گرفته نشد → پیش‌فرض {DEFAULT_DOLLAR_PRICE}")
@@ -116,7 +174,7 @@ async def main():
             # ───────────────────────────────────────────────────
             logger.info("📊 دریافت قیمت بسته شدن دیروز...")
             yesterday_close = await fetch_yesterday_close(client)
-            
+
             if not yesterday_close or yesterday_close == 0:
                 yesterday_close = last_trade
                 logger.warning(f"⚠️ قیمت بسته دیروز پیدا نشد → استفاده از قیمت فعلی")
@@ -128,7 +186,7 @@ async def main():
             # ───────────────────────────────────────────────────
             logger.info("📡 دریافت داده‌های بازار از API...")
             market_data = await fetch_market_data()
-            
+
             if not market_data:
                 logger.error("❌ داده‌های بازار گرفته نشد")
                 return
@@ -146,21 +204,21 @@ async def main():
                 yesterday_close=yesterday_close,
                 gold_yesterday=gold_yesterday
             )
-            
+
             if not processed:
                 logger.error("❌ پردازش داده ناموفق")
                 return
 
             Fund_df = processed['Fund_df']
             dfp = processed['dfp']
-            
+
             logger.info(f"✅ پردازش کامل شد - {len(Fund_df)} صندوق")
 
             # ───────────────────────────────────────────────────
             # 6️⃣ محاسبه میانگین‌های وزنی و ساده
             # ───────────────────────────────────────────────────
             total_value = Fund_df["value"].sum() or 1
-            
+
             # میانگین وزنی (برای آخرین قیمت)
             fund_change_weighted = (
                 (Fund_df["close_price_change_percent"] * Fund_df["value"]).sum() / total_value
@@ -168,10 +226,10 @@ async def main():
             fund_bubble_weighted = (
                 (Fund_df["nominal_bubble"] * Fund_df["value"]).sum() / total_value
             )
-            
+
             # ✅ میانگین ساده قیمت پایانی
             fund_final_price_avg = Fund_df["final_price_change"].mean()
-            
+
             sarane_kharid_w = (
                 (Fund_df["sarane_kharid"] * Fund_df["value"]).sum() / total_value
             )
@@ -185,6 +243,14 @@ async def main():
                 if yesterday_close else 0
             )
 
+            # محاسبه تغییر قیمت طلا
+            if gold_yesterday:
+                gold_change = ((gold_today - gold_yesterday) / gold_yesterday) * 100
+                logger.info(f"📈 تغییر اونس طلا: {gold_change:+.2f}%")
+            else:
+                gold_change = 0
+                logger.info("📈 تغییر اونس طلا: 0% (قیمت دیروز نبود)")
+
             # گرفتن اطلاعات شمش
             if "شمش-طلا" in dfp.index:
                 shams_change = dfp.loc["شمش-طلا", "close_price_change_percent"]
@@ -196,6 +262,7 @@ async def main():
                 shams_date = None
 
             logger.info(f"📈 تغییر دلار: {dollar_change:+.2f}%")
+            logger.info(f"📈 تغییر اونس طلا: {gold_change:+.2f}%")
             logger.info(f"📈 تغییر شمش: {shams_change:+.2f}%")
             logger.info(f"📈 تغییر صندوق‌ها (وزنی): {fund_change_weighted:+.2f}%")
             logger.info(f"📈 قیمت پایانی (ساده): {fund_final_price_avg:+.2f}%")
@@ -213,7 +280,7 @@ async def main():
                 'shams_change': shams_change,
                 'shams_date': shams_date,
                 'fund_change_weighted': fund_change_weighted,
-                'fund_final_price_avg': fund_final_price_avg,  # ✅ قیمت پایانی
+                'fund_final_price_avg': fund_final_price_avg,
                 'fund_bubble_weighted': fund_bubble_weighted,
                 'sarane_kharid_w': sarane_kharid_w,
                 'sarane_forosh_w': -sarane_forosh_w,
@@ -248,7 +315,7 @@ async def main():
 
     except KeyboardInterrupt:
         logger.info("\n⚠️ برنامه توسط کاربر متوقف شد")
-        
+
     except Exception as e:
         logger.error("=" * 60)
         logger.error(f"❌ خطای کلی: {e}", exc_info=True)
