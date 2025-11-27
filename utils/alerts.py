@@ -27,17 +27,17 @@ def get_alert_status():
         if not GIST_ID or not GIST_TOKEN:
             logger.warning("GIST_ID یا GIST_TOKEN تنظیم نشده است")
             return {"dollar": "normal", "shams": "normal", "gold": "normal"}
-            
+
         url = f"https://api.github.com/gists/{GIST_ID}"
         headers = {"Authorization": f"token {GIST_TOKEN}"}
         r = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
-        
+
         if r.status_code == 200 and ALERT_STATUS_FILE in r.json()["files"]:
             return json.loads(r.json()["files"][ALERT_STATUS_FILE]["content"])
-            
+
     except Exception as e:
         logger.error(f"خطا در خواندن alert_status: {e}")
-        
+
     return {"dollar": "normal", "shams": "normal", "gold": "normal"}
 
 
@@ -47,15 +47,15 @@ def save_alert_status(status):
         if not GIST_ID or not GIST_TOKEN:
             logger.warning("امکان ذخیره alert_status: GIST تنظیم نشده")
             return
-            
+
         url = f"https://api.github.com/gists/{GIST_ID}"
         headers = {"Authorization": f"token {GIST_TOKEN}"}
         requests.patch(url, headers=headers, json={
             "files": {ALERT_STATUS_FILE: {"content": json.dumps(status)}}
         }, timeout=REQUEST_TIMEOUT)
-        
+
         logger.debug("✅ وضعیت هشدارها ذخیره شد")
-        
+
     except Exception as e:
         logger.error(f"خطا در ذخیره alert_status: {e}")
 
@@ -72,11 +72,11 @@ def get_previous_state_from_sheet():
                 "dollar_price": float(last_row[2]) if len(last_row) > 2 and last_row[2] else None,
                 "shams_price": float(last_row[3]) if len(last_row) > 3 and last_row[3] else None,
                 "gold_price": float(last_row[1]) if len(last_row) > 1 and last_row[1] else None,
-                "ekhtelaf_sarane": float(last_row[10]) if len(last_row) > 10 and last_row[10] else None,
+                "ekhtelaf_sarane": float(last_row[11]) if len(last_row) > 11 and last_row[11] else None,
             }
     except Exception as e:
         logger.error(f"خطا در خواندن وضعیت قبلی: {e}")
-        
+
     return {
         "dollar_price": None,
         "shams_price": None,
@@ -111,7 +111,7 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price,
         else 0
     )
     current_gold = gold_price
-    
+
     df_funds = data["Fund_df"]
     total_value = df_funds["value"].sum()
     current_ekhtelaf = (
@@ -144,7 +144,12 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price,
             )
 
     # ═══════════════════════════════════════════════════════
-    # 3️⃣ هشدار آستانه قیمتی دلار
+    # 3️⃣ هشدار صندوق‌های فعال (شرایط خرید)
+    # ═══════════════════════════════════════════════════════
+    check_active_funds_alert(bot_token, chat_id, df_funds)
+
+    # ═══════════════════════════════════════════════════════
+    # 4️⃣ هشدار آستانه قیمتی دلار
     # ═══════════════════════════════════════════════════════
     if current_dollar >= DOLLAR_HIGH and status["dollar"] == "normal":
         send_alert_threshold(
@@ -153,7 +158,7 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price,
         )
         status["dollar"] = "above"
         changed = True
-        
+
     elif current_dollar < DOLLAR_LOW and status["dollar"] == "normal":
         send_alert_threshold(
             "دلار", current_dollar, DOLLAR_LOW, above=False, 
@@ -161,13 +166,13 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price,
         )
         status["dollar"] = "below"
         changed = True
-        
+
     elif DOLLAR_LOW <= current_dollar < DOLLAR_HIGH and status["dollar"] != "normal":
         status["dollar"] = "normal"
         changed = True
 
     # ═══════════════════════════════════════════════════════
-    # 4️⃣ هشدار آستانه شمش طلا
+    # 5️⃣ هشدار آستانه شمش طلا
     # ═══════════════════════════════════════════════════════
     if current_shams >= SHAMS_HIGH and status["shams"] == "normal":
         send_alert_threshold(
@@ -176,7 +181,7 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price,
         )
         status["shams"] = "above"
         changed = True
-        
+
     elif current_shams < SHAMS_LOW and status["shams"] == "normal":
         send_alert_threshold(
             "شمش طلا", current_shams, SHAMS_LOW, above=False, 
@@ -184,13 +189,13 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price,
         )
         status["shams"] = "below"
         changed = True
-        
+
     elif SHAMS_LOW <= current_shams < SHAMS_HIGH and status["shams"] != "normal":
         status["shams"] = "normal"
         changed = True
 
     # ═══════════════════════════════════════════════════════
-    # 5️⃣ هشدار آستانه اونس طلا
+    # 6️⃣ هشدار آستانه اونس طلا
     # ═══════════════════════════════════════════════════════
     if current_gold >= GOLD_HIGH and status["gold"] == "normal":
         send_alert_threshold(
@@ -199,7 +204,7 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price,
         )
         status["gold"] = "above"
         changed = True
-        
+
     elif current_gold < GOLD_LOW and status["gold"] == "normal":
         send_alert_threshold(
             "اونس طلا", current_gold, GOLD_LOW, above=False, 
@@ -207,7 +212,7 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price,
         )
         status["gold"] = "below"
         changed = True
-        
+
     elif GOLD_LOW <= current_gold < GOLD_HIGH and status["gold"] != "normal":
         status["gold"] = "normal"
         changed = True
@@ -215,6 +220,65 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price,
     # ذخیره تغییرات وضعیت
     if changed:
         save_alert_status(status)
+
+
+# ────────────────── هشدار صندوق‌های فعال ──────────────────
+
+def check_active_funds_alert(bot_token, chat_id, df_funds):
+    """
+    بررسی و ارسال هشدار سخت خرید
+    
+    شرایط (عین فیلتر):
+    - ارزش معاملات به میانگین ماهانه >= 150%
+    - پول حقیقی به ارزش معاملات >= 50%
+    - اختلاف سرانه > 0
+    
+    این هشدار در هر اجرا چک میشه و اگه صندوقی شرایط داشته باشه ارسال میشه
+    """
+    try:
+        # فیلتر صندوق‌هایی که شرایط رو دارن
+        active_funds = df_funds[
+            (df_funds["value_to_avg_ratio"] >= 150) &
+            (df_funds["pol_to_value_ratio"] >= 50) &
+            (df_funds["ekhtelaf_sarane"] > 0)
+        ].copy()
+
+        if len(active_funds) == 0:
+            logger.debug("هیچ صندوق فعالی با شرایط هشدار پیدا نشد")
+            return
+
+        # مرتب‌سازی بر اساس ارزش معاملات (بزرگترین اول)
+        active_funds = active_funds.sort_values("value", ascending=False)
+
+        logger.info(f"🔔 {len(active_funds)} صندوق فعال با شرایط سخت خرید پیدا شد")
+
+        # ساخت پیام - همه صندوق‌ها رو نشون بده
+        funds_text = ""
+        for symbol, row in active_funds.iterrows():
+            funds_text += f"""
+📌 <b>{symbol}</b>
+💰 ارزش معاملات: {row['value']:.1f}B (<b>{row['value_to_avg_ratio']:.0f}%</b>)
+💸 پول حقیقی: {row['pol_hagigi']:+.1f}B (<b>{row['pol_to_value_ratio']:+.0f}%</b>)
+🟢 سرانه خرید: <b>{row['sarane_kharid']:.0f}M</b>
+📊 اختلاف سرانه: <b>{row['ekhtelaf_sarane']:+.1f}M</b>
+🎈 حباب: {row['nominal_bubble']:+.1f}%
+━━━━━━━━━━━━━━━━━━━━━━━━"""
+
+        caption = f"""
+🚨 <b>هشدار سخت خرید</b>
+
+<b>{len(active_funds)} صندوق</b> با شرایط سخت خرید:
+{funds_text}
+
+✅ شرایط: ارزش معاملات ≥150% میانگین، پول حقیقی ≥50% ارزش معاملات، اختلاف سرانه مثبت
+
+🔗 {CHANNEL_HANDLE}
+""".strip()
+
+        send_alert_message(bot_token, chat_id, caption)
+
+    except Exception as e:
+        logger.error(f"❌ خطا در بررسی صندوق‌های فعال: {e}")
 
 
 # ────────────────── پیام‌های هشدار ──────────────────
@@ -256,7 +320,7 @@ def send_alert_threshold(asset, price, threshold, above, bot_token, chat_id):
     """هشدار عبور از آستانه قیمتی"""
     direction = "بالای" if above else "زیر"
     dir_emoji = "📈" if above else "📉"
-    
+
     # تعیین واحد بر اساس نوع دارایی
     unit = "تومان" if asset == "دلار" else "ریال" if asset == "شمش طلا" else "دلار"
 
@@ -286,11 +350,11 @@ def send_alert_message(bot_token, chat_id, caption):
             data={"chat_id": chat_id, "text": caption, "parse_mode": "HTML"},
             timeout=REQUEST_TIMEOUT
         )
-        
+
         if response.status_code == 200:
             logger.info("✅ هشدار ارسال شد")
         else:
             logger.warning(f"⚠️ ارسال هشدار با خطا: {response.status_code}")
-            
+
     except Exception as e:
         logger.error(f"❌ خطا در ارسال هشدار: {e}")
