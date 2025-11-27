@@ -1,5 +1,5 @@
 # utils/sheets_storage.py
-"""ماژول مدیریت ذخیره‌سازی داده‌ها در Google Sheets"""
+"""ماژول مدیریت ذخیره‌سازی داده‌ها در Google Sheets - با قیمت پایانی"""
 
 import json
 import logging
@@ -8,19 +8,29 @@ import pytz
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-from config import (
-    SHEET_ID,
-    SERVICE_ACCOUNT_JSON,
-    STANDARD_HEADER,
-    KEEP_DAYS,
-    TIMEZONE
-)
+from config import SHEET_ID, SERVICE_ACCOUNT_JSON, TIMEZONE, KEEP_DAYS
 
 logger = logging.getLogger(__name__)
 
 # بررسی متغیرهای محیطی
 if not SHEET_ID or not SERVICE_ACCOUNT_JSON:
     raise Exception("⚠️ SHEET_ID یا SHEETS_SERVICE_ACCOUNT در Secrets تنظیم نشده!")
+
+# ✅ هدر جدید با 12 ستون (اضافه شدن fund_final_price_avg)
+STANDARD_HEADER = [
+    'timestamp',
+    'gold_price_usd',
+    'dollar_price',
+    'shams_price',
+    'dollar_change_percent',
+    'shams_change_percent',
+    'fund_weighted_change_percent',
+    'fund_final_price_avg',              # ✅ ستون جدید: میانگین ساده قیمت پایانی
+    'fund_weighted_bubble_percent',
+    'sarane_kharid_weighted',
+    'sarane_forosh_weighted',
+    'ekhtelaf_sarane_weighted'
+]
 
 
 def get_sheets_service():
@@ -43,7 +53,7 @@ def ensure_header():
         service = get_sheets_service()
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
-            range='Sheet1!A1:K1'
+            range='Sheet1!A1:L1'  # ✅ تغییر به 12 ستون
         ).execute()
 
         existing_values = result.get('values', [])
@@ -54,16 +64,16 @@ def ensure_header():
             logger.info("📝 هدر وجود ندارد، در حال ساخت...")
             service.spreadsheets().values().update(
                 spreadsheetId=SHEET_ID,
-                range='Sheet1!A1:K1',
+                range='Sheet1!A1:L1',
                 valueInputOption='RAW',
                 body={'values': [STANDARD_HEADER]}
             ).execute()
-            logger.info("✅ هدر جدید ساخته شد (11 ستون)")
+            logger.info("✅ هدر جدید ساخته شد (12 ستون)")
             return True
 
         # اگر تعداد ستون‌ها درسته
         if len(existing_header) == len(STANDARD_HEADER):
-            logger.debug("✓ هدر معتبر است (11 ستون)")
+            logger.debug("✓ هدر معتبر است (12 ستون)")
             return True
 
         # اگر تعداد ستون‌ها اشتباهه، آپدیت کن
@@ -71,7 +81,7 @@ def ensure_header():
         logger.info("🔄 در حال آپدیت هدر...")
         service.spreadsheets().values().update(
             spreadsheetId=SHEET_ID,
-            range='Sheet1!A1:K1',
+            range='Sheet1!A1:L1',
             valueInputOption='RAW',
             body={'values': [STANDARD_HEADER]}
         ).execute()
@@ -106,6 +116,7 @@ def save_to_sheets(row_dict):
             - shams_change: درصد تغییر شمش
             - shams_date: تاریخ معاملات شمش
             - fund_change_weighted: میانگین وزنی تغییر صندوق‌ها
+            - fund_final_price_avg: ✅ میانگین ساده قیمت پایانی
             - fund_bubble_weighted: میانگین وزنی حباب
             - sarane_kharid_w: سرانه خرید
             - sarane_forosh_w: سرانه فروش
@@ -125,7 +136,7 @@ def save_to_sheets(row_dict):
             logger.warning(f"⚠️ داده شمش مال امروز نیست (تاریخ: {shams_date})")
             shams_change = 0.0
 
-        # ساخت ردیف جدید (11 ستونی)
+        # ساخت ردیف جدید (12 ستونی)
         new_row = [
             timestamp,
             round(row_dict['gold_price'], 2),
@@ -134,6 +145,7 @@ def save_to_sheets(row_dict):
             round(row_dict['dollar_change'], 2),
             round(shams_change, 2),
             round(row_dict['fund_change_weighted'], 2),
+            round(row_dict.get('fund_final_price_avg', 0), 2),  # ✅ قیمت پایانی
             round(row_dict['fund_bubble_weighted'], 2),
             round(row_dict['sarane_kharid_w'], 2),
             round(row_dict['sarane_forosh_w'], 2),
@@ -143,7 +155,7 @@ def save_to_sheets(row_dict):
         # ذخیره در Sheet
         service.spreadsheets().values().append(
             spreadsheetId=SHEET_ID,
-            range='Sheet1!A:K',
+            range='Sheet1!A:L',  # ✅ تغییر به 12 ستون
             valueInputOption='RAW',
             insertDataOption='INSERT_ROWS',
             body={'values': [new_row]}
@@ -163,14 +175,14 @@ def read_from_sheets(limit=1000):
         limit: حداکثر تعداد ردیف‌های برگشتی (پیش‌فرض 1000)
     
     Returns:
-        list: لیستی از ردیف‌ها (هر ردیف یک لیست 11 عنصری)
+        list: لیستی از ردیف‌ها (هر ردیف یک لیست 12 عنصری)
     """
     try:
         ensure_header()
         service = get_sheets_service()
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
-            range='Sheet1!A:K'
+            range='Sheet1!A:L'  # ✅ تغییر به 12 ستون
         ).execute()
 
         values = result.get('values', [])
@@ -181,8 +193,8 @@ def read_from_sheets(limit=1000):
         # حذف هدر (ردیف اول)
         data_rows = values[1:]
         
-        # فقط ردیف‌های معتبر (11 ستونی)
-        valid_rows = [row for row in data_rows if len(row) == 11]
+        # فقط ردیف‌های معتبر (12 ستونی)
+        valid_rows = [row for row in data_rows if len(row) == 12]
 
         if len(valid_rows) < len(data_rows):
             invalid_count = len(data_rows) - len(valid_rows)
@@ -201,12 +213,7 @@ def read_from_sheets(limit=1000):
 
 
 def clear_old_data(keep_days=None):
-    """
-    پاک کردن داده‌های قدیمی‌تر از X روز
-    
-    Args:
-        keep_days: تعداد روزهای نگهداری (پیش‌فرض از config)
-    """
+    """پاک کردن داده‌های قدیمی‌تر از X روز"""
     if keep_days is None:
         keep_days = KEEP_DAYS
         
@@ -217,15 +224,15 @@ def clear_old_data(keep_days=None):
         
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
-            range='Sheet1!A:K'
+            range='Sheet1!A:L'
         ).execute()
 
         values = result.get('values', [])
-        if len(values) <= 1:  # فقط هدر یا خالی
+        if len(values) <= 1:
             logger.info("ℹ️ داده‌ای برای پاکسازی وجود ندارد")
             return
 
-        first_valid_row = 2  # ردیف اول بعد از هدر
+        first_valid_row = 2
         for i, row in enumerate(values[1:], start=2):
             if not row or len(row) < 1:
                 continue
@@ -238,7 +245,6 @@ def clear_old_data(keep_days=None):
             except:
                 continue
 
-        # اگر ردیف‌های قدیمی داریم، پاک کن
         if first_valid_row > 2:
             rows_to_delete = first_valid_row - 2
             service.spreadsheets().batchUpdate(
@@ -249,7 +255,7 @@ def clear_old_data(keep_days=None):
                             'range': {
                                 'sheetId': 0,
                                 'dimension': 'ROWS',
-                                'startIndex': 1,  # بعد از هدر
+                                'startIndex': 1,
                                 'endIndex': first_valid_row - 1
                             }
                         }
@@ -265,12 +271,12 @@ def clear_old_data(keep_days=None):
 
 
 def clear_invalid_rows():
-    """پاک کردن ردیف‌هایی که 11 ستون ندارن"""
+    """پاک کردن ردیف‌هایی که 12 ستون ندارن"""
     try:
         service = get_sheets_service()
         result = service.spreadsheets().values().get(
             spreadsheetId=SHEET_ID,
-            range='Sheet1!A:K'
+            range='Sheet1!A:L'
         ).execute()
 
         values = result.get('values', [])
@@ -283,7 +289,7 @@ def clear_invalid_rows():
         invalid_count = 0
 
         for row in values[1:]:
-            if len(row) == 11:
+            if len(row) == 12:
                 valid_rows.append(row)
             else:
                 invalid_count += 1
@@ -294,16 +300,14 @@ def clear_invalid_rows():
 
         logger.info(f"🧹 در حال پاکسازی {invalid_count} ردیف نامعتبر...")
         
-        # پاک کردن همه
         service.spreadsheets().values().clear(
             spreadsheetId=SHEET_ID,
-            range='Sheet1!A:K'
+            range='Sheet1!A:L'
         ).execute()
 
-        # نوشتن دوباره ردیف‌های معتبر
         service.spreadsheets().values().update(
             spreadsheetId=SHEET_ID,
-            range='Sheet1!A:K',
+            range='Sheet1!A:L',
             valueInputOption='RAW',
             body={'values': valid_rows}
         ).execute()
@@ -315,7 +319,7 @@ def clear_invalid_rows():
 
 
 def get_sheet_stats():
-    """دریافت آمار Sheet (تعداد ردیف‌ها، قدیمی‌ترین و جدیدترین تاریخ)"""
+    """دریافت آمار Sheet"""
     try:
         rows = read_from_sheets(limit=10000)
         if not rows:
