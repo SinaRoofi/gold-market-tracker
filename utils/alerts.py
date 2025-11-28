@@ -337,10 +337,10 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
 🟢 سرانه خرید: {sarane_str}
 📊 اختلاف سرانه: {ekhtelaf_str}
 🎈 حباب: {row['nominal_bubble']:+.1f}%
-━━━━━━━━━━━━━━━━━━━━━━━━"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
         
         main_text = f"🚨 هشدار سخت خرید\n\n{funds_text}".strip()
-        footer = f"-------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+        footer = f"--------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
         caption = f"{main_text}\n{footer}"
         
         send_alert_message(bot_token, chat_id, caption)
