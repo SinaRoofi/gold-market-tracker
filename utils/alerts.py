@@ -1,4 +1,3 @@
-# utils/alerts.py
 """سیستم هشدارهای قیمتی و نوسانی بازار — نسخه نهایی، ۴ شرط سخت خرید، بدون اسپم، با تاریخچه تمیز و قالب پیام استاندارد"""
 
 import json
@@ -180,7 +179,6 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
 # ────────────────── هشدار صندوق‌های فعال — ۴ شرط + فقط یک بار در روز + بدون ذخیره ساعت ──────────────────
 def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
     try:
-        # سرانه کل بازار از آخرین ردیف شیت
         latest_row = read_from_sheets(limit=1)[-1]
         sarane_kol = float(latest_row[9]) if len(latest_row) > 9 and latest_row[9] else 0
 
@@ -210,7 +208,6 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
             logger.debug("همه صندوق‌های فعال امروز قبلاً هشدار دادن")
             return
 
-        # ذخیره فقط نماد و نوع هشدار
         for sym in new_symbols:
             today_list.append({"symbol": sym, "alert_type": "هشدار سخت خرید"})
         fund_alerts[today] = today_list
@@ -292,8 +289,9 @@ def send_alert_threshold(asset, price, threshold, above, bot_token, chat_id):
     tz = pytz.timezone(TIMEZONE)
     now = datetime.now(tz)
     direction = "بالای" if above else "زیر"
+    dir_emoji = "📈" if above else "📉"  # اضافه شد
 
-    # تعیین واحد و ایموجی
+    # تعیین واحد و ایموجی دارایی
     if asset == "دلار":
         unit = "تومان"
         asset_emoji = "💵"
@@ -308,7 +306,7 @@ def send_alert_threshold(asset, price, threshold, above, bot_token, chat_id):
         asset_emoji = ""
 
     main_text = f"""
-🔔 هشدار قیمتی {asset_emoji} {asset}
+🔔 هشدار قیمتی {dir_emoji} {asset_emoji} {asset}
 
 📈 قیمت به {direction} {threshold:,} رسید.
 💰 قیمت فعلی: {int(round(price)):,} {unit}
