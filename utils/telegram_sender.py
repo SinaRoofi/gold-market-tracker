@@ -486,8 +486,8 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 💰 قیمت: ${gold_price:,.2f} ({gold_change:+.2f}%)
 ━━━━━━━━━━━━━━━━━━━━━━━━
 📊 آمار صندوق‌های طلا
-💰 ارزش معاملات: {total_value:,.0f} B ({value_to_avg_ratio:.0f}%)
-💸 پول حقیقی: {total_pol:+,.0f} B ({pol_to_value_ratio:+.0f}%)
+💰 ارزش معاملات: B{total_value:,.0f} ({value_to_avg_ratio:.0f}%)
+💸 پول حقیقی: B{total_pol:+,.0f} ({pol_to_value_ratio:+.0f}%)
 📈 آخرین قیمت: {avg_price_weighted:,.0f} ({avg_change_percent_weighted:+.2f}%)
 🎈 میانگین حباب: {avg_bubble_weighted:+.2f}%
 ━━━━━━━━━━━━━━━━━━━━━━━━
