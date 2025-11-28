@@ -24,6 +24,7 @@ from utils.data_processor import process_market_data
 from utils.telegram_sender import send_to_telegram
 from utils.holidays import is_iranian_holiday
 from utils.sheets_storage import save_to_sheets, read_from_sheets
+from utils.alerts import check_and_send_alerts
 
 # ════════════════════════════════════════════════════════════════
 # تنظیمات Logging
@@ -51,25 +52,25 @@ def get_gold_yesterday_from_sheet(today_date):
     """
     try:
         from datetime import datetime, timedelta
-        
+
         today = datetime.strptime(today_date, "%Y-%m-%d")
-        
+
         logger.info(f"🔍 جستجوی آخرین قیمت طلای قبل از {today_date}")
-        
+
         # خواندن 15 رکورد آخر (برای احتمال تعطیلات طولانی)
         rows = read_from_sheets(limit=15)
-        
+
         if not rows:
             logger.warning("⚠️ هیچ رکوردی در شیت پیدا نشد")
             return None, None, False
-        
+
         # جستجو از آخرین رکورد به قبل تا پیدا کردن اولین روز قبل از امروز
         # فرض: ستون اول (index 0) تاریخ است به فرمت YYYY-MM-DD
         for row in reversed(rows):
             if len(row) > 1 and row[0]:
                 row_date_str = row[0][:10]  # اگر datetime باشه فقط تاریخ رو میگیریم
                 row_date = datetime.strptime(row_date_str, "%Y-%m-%d")
-                
+
                 # باید قبل از امروز باشه
                 if row_date < today:
                     if row[1]:  # ستون دوم قیمت اونس طلا
@@ -80,10 +81,10 @@ def get_gold_yesterday_from_sheet(today_date):
                     else:
                         logger.warning(f"⚠️ تاریخ {row_date_str} پیدا شد ولی قیمت خالی است")
                         continue  # به دنبال رکورد قبلی میگردیم
-        
+
         logger.warning(f"⚠️ هیچ رکورد معتبری قبل از {today_date} پیدا نشد")
         return None, None, False
-        
+
     except Exception as e:
         logger.error(f"❌ خطا در خواندن قیمت طلای دیروز: {e}")
         return None, None, False
@@ -128,7 +129,7 @@ async def main():
         logger.info("📊 دریافت قیمت طلای آخرین روز کاری از Google Sheets...")
         today_str = now.strftime("%Y-%m-%d")
         gold_yesterday, prev_date, found = get_gold_yesterday_from_sheet(today_str)
-        
+
         if not found:
             logger.warning("⚠️ قیمت طلای قبلی پیدا نشد → تغییر صفر محاسبه می‌شود")
             gold_yesterday = None
@@ -288,9 +289,9 @@ async def main():
             })
 
             # ───────────────────────────────────────────────────
-            # 8️⃣ ارسال به تلگرام
+            # 8️⃣ ارسال گزارش اصلی به تلگرام (اول این!)
             # ───────────────────────────────────────────────────
-            logger.info("📤 ارسال به تلگرام...")
+            logger.info("📤 ارسال گزارش اصلی به تلگرام...")
             success = send_to_telegram(
                 bot_token=TELEGRAM_BOT_TOKEN,
                 chat_id=TELEGRAM_CHAT_ID,
@@ -303,13 +304,32 @@ async def main():
             )
 
             if success:
-                logger.info("=" * 60)
-                logger.info("✅ ارسال به تلگرام با موفقیت انجام شد")
-                logger.info("=" * 60)
+                logger.info("✅ ارسال گزارش اصلی موفق بود")
             else:
-                logger.error("=" * 60)
-                logger.error("❌ ارسال به تلگرام ناموفق")
-                logger.error("=" * 60)
+                logger.warning("⚠️ ارسال گزارش اصلی ناموفق")
+
+            # ───────────────────────────────────────────────────
+            # 9️⃣ بررسی و ارسال هشدارها (بعد از پیام اصلی!)
+            # ───────────────────────────────────────────────────
+            logger.info("🚨 بررسی شرایط هشدارها...")
+            try:
+                check_and_send_alerts(
+                    bot_token=TELEGRAM_BOT_TOKEN,
+                    chat_id=TELEGRAM_CHAT_ID,
+                    data=processed,
+                    dollar_prices=dollar_prices,
+                    gold_price=gold_today,
+                    yesterday_close=yesterday_close,
+                    gold_yesterday=gold_yesterday
+                )
+                logger.info("✅ بررسی هشدارها کامل شد")
+            except Exception as e:
+                logger.error(f"⚠️ خطا در سیستم هشدارها (ادامه می‌دهیم): {e}")
+
+            # ───────────────────────────────────────────────────
+            logger.info("=" * 60)
+            logger.info("✅ اجرای کامل به پایان رسید")
+            logger.info("=" * 60)
 
         logger.info("✅ اجرای موفق به پایان رسید")
 
