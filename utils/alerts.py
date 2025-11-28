@@ -290,7 +290,7 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
         
         active_funds = df_funds[
             (df_funds["value_to_avg_ratio"] >= 150) &
-            (df_funds["pol_to_value_ratio"] >= 50) &
+            (df_funds["pol_to_value_ratio"] >= 0.3) &  # ✅ 0.3 = 30%
             (df_funds["ekhtelaf_sarane"] > 0) &
             (df_funds["sarane_kharid"] >= sarane_kol)
         ].copy()
@@ -326,7 +326,7 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
         funds_text = ""
         for symbol, row in active_funds.loc[new_symbols].iterrows():
             value_str = f"{row['value']:.0f}B ({row['value_to_avg_ratio']:.0f}%)"
-            pol_str = f"{row['pol_hagigi']:+.1f}".replace(".", "/") + f"B ({row['pol_to_value_ratio']:+.0f}%)"
+            pol_str = f"{row['pol_hagigi']:+.1f}".replace(".", "/") + f"B ({row['pol_to_value_ratio']*100:+.0f}%)"  # ✅ ضرب در 100
             sarane_str = f"{row['sarane_kharid']:.0f}M (+{row['sarane_kharid_diff']:.0f}M)"
             ekhtelaf_str = f"{row['ekhtelaf_sarane']:+.1f}".replace(".", "/") + "M"
             
