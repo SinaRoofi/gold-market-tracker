@@ -290,7 +290,7 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
         
         active_funds = df_funds[
             (df_funds["value_to_avg_ratio"] >= 150) &
-            (df_funds["pol_to_value_ratio"] >= 0.3) &  # ✅ 0.3 = 30%
+            (df_funds["pol_to_value_ratio"] >= 0.3) &
             (df_funds["ekhtelaf_sarane"] > 0) &
             (df_funds["sarane_kharid"] >= sarane_kol)
         ].copy()
@@ -326,9 +326,9 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
         funds_text = ""
         for symbol, row in active_funds.loc[new_symbols].iterrows():
             value_str = f"{row['value']:.0f}B ({row['value_to_avg_ratio']:.0f}%)"
-            pol_str = f"{row['pol_hagigi']:+.1f}".replace(".", "/") + f"B ({row['pol_to_value_ratio']*100:+.0f}%)"  # ✅ ضرب در 100
+            pol_str = f"{row['pol_hagigi']:+.1f}B ({row['pol_to_value_ratio']*100:+.0f}%)"
             sarane_str = f"{row['sarane_kharid']:.0f}M (+{row['sarane_kharid_diff']:.0f}M)"
-            ekhtelaf_str = f"{row['ekhtelaf_sarane']:+.1f}".replace(".", "/") + "M"
+            ekhtelaf_str = f"{row['ekhtelaf_sarane']:+.0f}M"
             
             funds_text += f"""
 📌 {symbol}
@@ -376,7 +376,7 @@ def send_alert_ekhtelaf_fast(bot_token, chat_id, prev_val, curr_val, diff, pol_h
     now = datetime.now(tz)
     direction = "افزایش شدید (مثبت)" if diff > 0 else "کاهش شدید (منفی)"
     dir_emoji = "🟢" if diff > 0 else "🔴"
-    diff_text = f"{diff:+.1f}".replace("+-", "−")
+    diff_text = f"{diff:+.0f}".replace("+-", "−")
     pol_text = f"{pol_hagigi:+,.0f}".replace("+-", "−")
     
     main_text = f"🚨 هشدار اختلاف سرانه\n\n{dir_emoji} {direction}\n⏱ تغییر ۵ دقیقه: {diff_text} میلیون تومان\n💰 ارزش معاملات: {pol_text} میلیارد تومان"
