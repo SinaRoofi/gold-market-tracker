@@ -337,10 +337,10 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
 🟢 سرانه خرید: {sarane_str}
 📊 اختلاف سرانه: {ekhtelaf_str}
 🎈 حباب: {row['nominal_bubble']:+.1f}%
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
         
         main_text = f"🚨 هشدار سخت خرید\n\n{funds_text}".strip()
-        footer = f"-----------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+        footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
         caption = f"{main_text}\n{footer}"
         
         send_alert_message(bot_token, chat_id, caption)
@@ -363,7 +363,7 @@ def send_price_alert(bot_token, chat_id, asset_name, price, change_5min, unit="�
         price_formatted = f"{int(round(price)):,} {unit}"
     
     main_text = f"🚨 هشدار نوسان {asset_name}\n\n💰 قیمت: {price_formatted}\n📊 تغییر: {change_text}"
-    footer = f"-----------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+    footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
     
     send_alert_message(bot_token, chat_id, caption)
@@ -380,7 +380,7 @@ def send_alert_ekhtelaf_fast(bot_token, chat_id, prev_val, curr_val, diff, pol_h
     pol_text = f"{pol_hagigi:+,.0f}".replace("+-", "−")
     
     main_text = f"🚨 هشدار اختلاف سرانه\n\n{dir_emoji} {direction}\n⏱ تغییر ۵ دقیقه: {diff_text} میلیون تومان\n💰 ارزش معاملات: {pol_text} میلیارد تومان"
-    footer = f"-----------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+    footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
     
     send_alert_message(bot_token, chat_id, caption)
@@ -419,7 +419,7 @@ def send_alert_threshold(asset, price, threshold, above, bot_token, chat_id):
 💰 قیمت فعلی: {price_formatted} {unit}
 """.strip()
     
-    footer = f"-----------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+    footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
     
     send_alert_message(bot_token, chat_id, caption)
