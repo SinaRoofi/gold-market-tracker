@@ -20,7 +20,6 @@ from config import (
     REQUEST_TIMEOUT, TIMEZONE
 )
 from utils.chart_creator import create_market_charts
-from utils.alerts import check_and_send_alerts
 
 logger = logging.getLogger(__name__)
 
@@ -112,18 +111,6 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
             gold_yesterday, 
             yesterday_close, 
             gold_time
-        )
-
-        # ارسال هشدارها
-        logger.info("🚨 بررسی و ارسال هشدارها...")
-        check_and_send_alerts(
-            bot_token, 
-            chat_id, 
-            data, 
-            dollar_prices, 
-            gold_price, 
-            yesterday_close, 
-            gold_yesterday
         )
 
         # مدیریت پیام پین‌شده
@@ -499,8 +486,8 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 💰 قیمت: ${gold_price:,.2f} ({gold_change:+.2f}%)
 ━━━━━━━━━━━━━━━━━━━━━━━━
 📊 آمار صندوق‌های طلا
-💰 ارزش معاملات: {total_value:,.0f}م.ت ({value_to_avg_ratio:.0f}%)
-💸 پول حقیقی: {total_pol:+,.0f}م.ت ({pol_to_value_ratio:+.0f}%)
+💰 ارزش معاملات: {total_value:,.0f} B ({value_to_avg_ratio:.0f}%)
+💸 پول حقیقی: {total_pol:+,.0f} B ({pol_to_value_ratio:+.0f}%)
 📈 آخرین قیمت: {avg_price_weighted:,.0f} ({avg_change_percent_weighted:+.2f}%)
 🎈 میانگین حباب: {avg_bubble_weighted:+.2f}%
 ━━━━━━━━━━━━━━━━━━━━━━━━
