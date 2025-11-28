@@ -155,7 +155,7 @@ HTTP_HEADERS = {
 # 📊 تنظیمات Google Sheets
 # ════════════════════════════════════════════════════════════════
 
-# هدر استاندارد (11 ستونی)
+# هدر استاندارد (12 ستونی)
 STANDARD_HEADER = [
     'timestamp',
     'gold_price_usd',
@@ -164,6 +164,7 @@ STANDARD_HEADER = [
     'dollar_change_percent',
     'shams_change_percent',
     'fund_weighted_change_percent',
+    'fund_final_price_avg',              # ✅ ستون 7: میانگین ساده قیمت پایانی
     'fund_weighted_bubble_percent',
     'sarane_kharid_weighted',
     'sarane_forosh_weighted',
