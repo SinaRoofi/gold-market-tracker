@@ -236,6 +236,105 @@ def pin_message(bot_token, chat_id, message_id):
         logger.error(f"خطا در پین: {e}")
 
 
+# ────────────────── رنگ‌بندی گرادیانت ──────────────────
+
+def get_gradient_color(value, vmin=-10, vmax=10):
+    """
+    تبدیل مقدار عددی به رنگ گرادیانت (مثل treemap)
+    صفر: خاکستری
+    نزدیک صفر: تیره
+    دور از صفر: روشن
+    """
+    # Normalize value to [0, 1]
+    if vmax == vmin:
+        normalized = 0.5
+    else:
+        normalized = (value - vmin) / (vmax - vmin)
+        normalized = max(0, min(1, normalized))  # Clamp to [0, 1]
+    
+    if normalized < 0.5:
+        # منفی: از قرمز روشن به قرمز تیره (نزدیک صفر)
+        # normalized=0 (منفی شدید) → قرمز روشن
+        # normalized=0.5 (صفر) → خاکستری
+        t = normalized * 2  # 0 -> 1
+        # قرمز روشن (220, 50, 50) به خاکستری (100, 100, 100)
+        r = int(220 + (100 - 220) * t)
+        g = int(50 + (100 - 50) * t)
+        b = int(50 + (100 - 50) * t)
+    elif normalized == 0.5:
+        # صفر: خاکستری
+        r, g, b = 100, 100, 100
+    else:
+        # مثبت: از خاکستری (نزدیک صفر) به سبز روشن
+        # normalized=0.5 (صفر) → خاکستری
+        # normalized=1 (مثبت شدید) → سبز روشن
+        t = (normalized - 0.5) * 2  # 0 -> 1
+        # خاکستری (100, 100, 100) به سبز روشن (50, 220, 80)
+        r = int(100 + (50 - 100) * t)
+        g = int(100 + (220 - 100) * t)
+        b = int(100 + (80 - 100) * t)
+    
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def get_sarane_kharid_color(value):
+    """
+    رنگ‌بندی سرانه خرید (همیشه مثبت)
+    > 70: سبز روشن
+    30-70: سبز کم‌رنگ
+    < 30: سبز تیره متمایل به خاکستری
+    """
+    if value > 70:
+        # سبز روشن
+        return "#32DC50"
+    elif value >= 30:
+        # سبز کم‌رنگ (interpolate بین 30 و 70)
+        t = (value - 30) / 40  # 0 -> 1
+        r = int(80 + (50 - 80) * t)
+        g = int(150 + (220 - 150) * t)
+        b = int(90 + (80 - 90) * t)
+        return f"#{r:02x}{g:02x}{b:02x}"
+    else:
+        # سبز تیره متمایل به خاکستری (< 30)
+        t = value / 30  # 0 -> 1
+        r = int(100 + (80 - 100) * t)
+        g = int(100 + (150 - 100) * t)
+        b = int(100 + (90 - 100) * t)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def apply_gradient_colors(values, vmin=None, vmax=None):
+    """اعمال رنگ گرادیانت به لیست مقادیر"""
+    numeric_values = []
+    for v in values:
+        try:
+            # حذف % و , و + و تبدیل به float
+            clean = v.replace("%", "").replace("+", "").replace(",", "")
+            numeric_values.append(float(clean))
+        except:
+            numeric_values.append(0)
+    
+    if vmin is None:
+        vmin = min(numeric_values)
+    if vmax is None:
+        vmax = max(numeric_values)
+    
+    return [get_gradient_color(v, vmin, vmax) for v in numeric_values]
+
+
+def apply_sarane_kharid_colors(values):
+    """اعمال رنگ سرانه خرید"""
+    numeric_values = []
+    for v in values:
+        try:
+            clean = v.replace("+", "").replace(",", "")
+            numeric_values.append(float(clean))
+        except:
+            numeric_values.append(0)
+    
+    return [get_sarane_kharid_color(v) for v in numeric_values]
+
+
 # ────────────────── ساخت تصویر ──────────────────
 
 def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
@@ -283,38 +382,41 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         row=1, col=1,
     )
 
+    # ═══════════════════════════════════════════════════════
+    # جدول با ستون‌های جدید و رنگ‌بندی گرادیانت
+    # ═══════════════════════════════════════════════════════
     top_10 = df_sorted.head(10)
+    
     table_header = [
-        "نماد", "آخرین ", "NAV", "آخرین %", "حباب %", 
-        "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"
+        "نماد", "آخرین", "NAV", "آخرین %", "NAV %", 
+        "حباب %", "سرانه خرید", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"
     ]
+    
     table_cells = [
         top_10.index.tolist(),
         [f"{x:,.0f}" for x in top_10["close_price"]],
         [f"{x:,.0f}" for x in top_10["NAV"]],
         [f"{x:+.2f}%" for x in top_10["close_price_change_percent"]],
+        [f"{x:+.2f}%" for x in top_10["NAV_change_percent"]],
         [f"{x:+.2f}%" for x in top_10["nominal_bubble"]],
+        [f"{x:+.2f}" for x in top_10["sarane_kharid"]],
         [f"{x:+.2f}" for x in top_10["ekhtelaf_sarane"]],
         [f"{x:+,.0f}" for x in top_10["pol_hagigi"]],
         [f"{x:,.0f}" for x in top_10["value"]],
     ]
 
-    def col_color(v):
-        try:
-            x = float(v.replace("%", "").replace("+", "").replace(",", ""))
-            return "#1B5E20" if x > 0 else "#A52A2A" if x < 0 else "#2C2C2C"
-        except:
-            return "#1C27333"
-
+    # رنگ‌بندی سلول‌ها با گرادیانت
     cell_colors = [
-        ["#1C2733"] * 10,
-        ["#1C2733"] * 10,
-        ["#1C2733"] * 10,
-        [col_color(x) for x in table_cells[3]],
-        [col_color(x) for x in table_cells[4]],
-        [col_color(x) for x in table_cells[5]],
-        [col_color(x) for x in table_cells[6]],
-        ["#1C2733"] * 10,
+        ["#1C2733"] * 10,  # نماد
+        ["#1C2733"] * 10,  # آخرین
+        ["#1C2733"] * 10,  # NAV
+        apply_gradient_colors(table_cells[3], vmin=-10, vmax=10),  # آخرین % (درصدی)
+        apply_gradient_colors(table_cells[4], vmin=-10, vmax=10),  # NAV % (درصدی)
+        apply_gradient_colors(table_cells[5], vmin=-10, vmax=10),  # حباب % (درصدی)
+        apply_sarane_kharid_colors(table_cells[6]),  # سرانه خرید (قاعده خاص)
+        apply_gradient_colors(table_cells[7]),  # اختلاف سرانه (صفر محور)
+        apply_gradient_colors(table_cells[8]),  # پول حقیقی (صفر محور)
+        ["#1C2733"] * 10,  # ارزش معاملات
     ]
 
     fig.add_trace(
@@ -323,14 +425,14 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 values=[f"<b>{h}</b>" for h in table_header],
                 fill_color="#242F3D",
                 align="center",
-                font=dict(color="white", size=20, family=treemap_font_family),
+                font=dict(color="white", size=18, family=treemap_font_family),
                 height=38,
             ),
             cells=dict(
                 values=table_cells,
                 fill_color=cell_colors,
                 align="center",
-                font=dict(color="white", size=18, family=treemap_font_family),
+                font=dict(color="white", size=16, family=treemap_font_family),
                 height=36,
             ),
         ),
@@ -369,7 +471,8 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         font_date = font_desc = ImageFont.load_default()
 
     draw.text((60, 35), date_time_str, font=font_date, fill="#FFFFFF")
-    draw.text((60, 110), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
+    draw.text((60, 95), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
+    draw.text((60, 145), "رنگ‌بندی: درصد آخرین قیمت", font=font_desc, fill="#FFFFFF")
 
     try:
         wfont = ImageFont.truetype(FONT_REGULAR_PATH, 70)
@@ -480,7 +583,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 🪙 سکه امامی
 💰 قیمت: {sekeh_price:,.0f} تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
+💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+.0f})
 ━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 {CHANNEL_HANDLE}
 """
