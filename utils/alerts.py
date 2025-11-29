@@ -400,7 +400,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🎈 حباب: {row["nominal_bubble"]:+.1f}%
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
-💰 ارزش معاملات: {row["value"]:.0f}B ({row["value_to_avg_ratio"]:.0f}%)
+💰 ارزش معاملات: {row["value"]:.0f}B ({row["value_to_avg_ratio"]*100:.0f}%)
 💸 پول حقیقی: {row["pol_hagigi"]:+.0f}B ({pol_ratio:+.0f}%)
 
 """
@@ -429,7 +429,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🎈 حباب: {row["nominal_bubble"]:+.1f}%
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
-💰 ارزش معاملات: {row["value"]:.0f}B ({row["value_to_avg_ratio"]:.0f}%)
+💰 ارزش معاملات: {row["value"]:.0f}B ({row["value_to_avg_ratio"]*100:.0f}%)
 💸 پول حقیقی: {row["pol_hagigi"]:+.0f}B ({pol_ratio:+.0f}%)
 
 """
