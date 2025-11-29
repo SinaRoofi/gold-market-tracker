@@ -1,7 +1,5 @@
 # utils/chart_creator.py
 
-"""ماژول ساخت نمودارهای بازار با نمایش قیمت پایانی"""
-
 import logging
 import pytz
 import math
