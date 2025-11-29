@@ -34,11 +34,13 @@ def calculate_y_range_with_steps(data_min, data_max, step=50):
 
     if data_min == data_max:
         return data_min - step, data_max + step
-    
+
     y_min = math.floor(data_min / step) * step
     y_max = math.ceil(data_max / step) * step
-    y_min -= step
-    y_max += step
+    # فاصله اضافی رو کم می‌کنیم
+    margin = step * 0.3
+    y_min -= margin
+    y_max += margin
     return y_min, y_max
 
 def create_market_charts():
@@ -57,24 +59,24 @@ def create_market_charts():
             'fund_weighted_bubble_percent', 'sarane_kharid_weighted',
             'sarane_forosh_weighted', 'ekhtelaf_sarane_weighted'
         ])
-        
+
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         numeric_cols = df.columns[1:]
         df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
-        
+
         # فیلتر کردن داده‌های امروز
         tehran_tz = pytz.timezone(TIMEZONE)
         today = datetime.now(tehran_tz).date()
         df = df[df['timestamp'].dt.date == today].copy()
-        
+
         if df.empty:
             logger.info("ℹ️ داده‌ای برای امروز پیدا نشد")
             return None
-            
+
         df = df.sort_values('timestamp')
         jalali_now = JalaliDateTime.now(tehran_tz)
         date_time_str = jalali_now.strftime("%Y/%m/%d - %H:%M")
-        
+
         # ساخت نمودار
         fig = make_subplots(
             rows=6, cols=1,
@@ -117,14 +119,14 @@ def create_market_charts():
         gold_current = df['gold_price_usd'].iloc[-1]
         gold_min = gold_current * 0.98
         gold_max = gold_current * 1.02
-        
+
         fig.add_trace(go.Scatter(
             x=df['timestamp'], y=df['gold_price_usd'],
             name='طلا',
             line=dict(color=COLOR_GOLD, width=5),
             hovertemplate='<b>%{y:.0f} $</b><extra></extra>'
         ), row=1, col=1)
-        
+
         fig.update_yaxes(range=[gold_min, gold_max], row=1, col=1)
 
         # ═══════════════════════════════════════════════════════
@@ -165,22 +167,26 @@ def create_market_charts():
         set_y_range(fig, df, 'fund_weighted_bubble_percent', 5)
 
         # ═══════════════════════════════════════════════════════
-        # نمودار 6: سرانه (با محور Y بهینه‌شده - گام 50)
+        # نمودار 6: سرانه با دو محور Y جداگانه
         # ═══════════════════════════════════════════════════════
+        # خط خرید و فروش - محور چپ (y6)
         fig.add_trace(go.Scatter(
             x=df['timestamp'], y=df['sarane_kharid_weighted'],
             name='خرید حقیقی',
             line=dict(color=COLOR_POSITIVE, width=5),
-            hovertemplate='خرید: <b>%{y:.2f}</b><extra></extra>'
+            hovertemplate='خرید: <b>%{y:.2f}</b><extra></extra>',
+            yaxis='y6'
         ), row=6, col=1)
 
         fig.add_trace(go.Scatter(
             x=df['timestamp'], y=df['sarane_forosh_weighted'],
             name='فروش حقیقی',
             line=dict(color=COLOR_NEGATIVE, width=5),
-            hovertemplate='فروش: <b>%{y:.2f}</b><extra></extra>'
+            hovertemplate='فروش: <b>%{y:.2f}</b><extra></extra>',
+            yaxis='y6'
         ), row=6, col=1)
 
+        # میله اختلاف - محور راست (y12) - مخفی
         colors_fill = [
             'rgba(0,230,118,0.75)' if x > 0 else 'rgba(255,23,68,0.75)' if x < 0 else 'rgba(72,79,88,0.75)'
             for x in df['ekhtelaf_sarane_weighted']
@@ -194,21 +200,41 @@ def create_market_charts():
                 color=colors_fill,
                 line=dict(color=colors_fill, width=4)
             ),
-            hovertemplate='اختلاف: <b>%{y:.2f}</b><extra></extra>'
+            hovertemplate='اختلاف: <b>%{y:.2f}</b><extra></extra>',
+            yaxis='y12'
         ), row=6, col=1)
 
+        # محاسبه محدوده برای هر محور
         kharid_min = df['sarane_kharid_weighted'].min()
         kharid_max = df['sarane_kharid_weighted'].max()
         forosh_min = df['sarane_forosh_weighted'].min()
         forosh_max = df['sarane_forosh_weighted'].max()
+        
+        # محور چپ: خرید و فروش
+        lines_min = min(kharid_min, forosh_min)
+        lines_max = max(kharid_max, forosh_max)
+        lines_padding = max(10, (lines_max - lines_min) * 0.15)
+        
+        fig.update_yaxes(
+            range=[lines_min - lines_padding, lines_max + lines_padding],
+            row=6, col=1
+        )
+        
+        # محور راست: اختلاف (مخفی)
         ekhtelaf_min = df['ekhtelaf_sarane_weighted'].min()
         ekhtelaf_max = df['ekhtelaf_sarane_weighted'].max()
+        ekhtelaf_padding = max(10, (ekhtelaf_max - ekhtelaf_min) * 0.15)
         
-        all_min = min(kharid_min, forosh_min, ekhtelaf_min)
-        all_max = max(kharid_max, forosh_max, ekhtelaf_max)
-        
-        y_min, y_max = calculate_y_range_with_steps(all_min, all_max, step=Y_AXIS_STEP)
-        fig.update_yaxes(range=[y_min, y_max], dtick=Y_AXIS_STEP, row=6, col=1)
+        fig.update_layout(
+            yaxis12=dict(
+                overlaying='y6',
+                side='right',
+                range=[ekhtelaf_min - ekhtelaf_padding, ekhtelaf_max + ekhtelaf_padding],
+                showgrid=False,
+                showticklabels=False,
+                zeroline=False
+            )
+        )
 
         # ═══════════════════════════════════════════════════════
         # تنظیمات کلی Layout
@@ -231,7 +257,7 @@ def create_market_charts():
             font=dict(size=40, color=COLOR_GOLD, family=chart_font_family),
             showarrow=False
         )
-        
+
         fig.add_annotation(
             text=f'<b>{date_time_str}</b>',
             x=0.02, y=1.04, xref='paper', yref='paper',
@@ -318,7 +344,7 @@ def create_market_charts():
         ekhtelaf_color = COLOR_POSITIVE if last_ekhtelaf >= 0 else COLOR_NEGATIVE
         fig.add_annotation(
             text=f'<b>اخ:{last_ekhtelaf:+.0f}</b>',
-            x=1.01, y=last_ekhtelaf, xref='paper', yref='y6',
+            x=1.01, y=last_ekhtelaf, xref='paper', yref='y12',
             xanchor='left', yanchor='middle',
             font=dict(size=24, color=ekhtelaf_color, family=chart_font_family),
             showarrow=False
@@ -411,18 +437,18 @@ def add_conditional_line(fig, df, column, row):
         next_time = df['timestamp'].iloc[i + 1]
 
         color = COLOR_POSITIVE if curr_val >= 0 else COLOR_NEGATIVE
-        
+
         if (curr_val >= 0 and next_val < 0) or (curr_val < 0 and next_val >= 0):
             t = abs(curr_val) / (abs(curr_val) + abs(next_val))
             cross_time = curr_time + (next_time - curr_time) * t
-            
+
             fig.add_trace(go.Scatter(
                 x=[curr_time, cross_time], y=[curr_val, 0],
                 mode='lines',
                 line=dict(color=color, width=5, shape='spline'),
                 showlegend=False, hoverinfo='skip'
             ), row=row, col=1)
-            
+
             color_next = COLOR_NEGATIVE if next_val < 0 else COLOR_POSITIVE
             fig.add_trace(go.Scatter(
                 x=[cross_time, next_time], y=[0, next_val],
