@@ -69,26 +69,12 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
                      gold_yesterday, gold_time, yesterday_close):
     """
     ارسال داده‌ها به کانال تلگرام
-    
-    Args:
-        bot_token: توکن ربات
-        chat_id: شناسه چت
-        data: داده‌های پردازش شده
-        dollar_prices: قیمت‌های دلار
-        gold_price: قیمت طلا
-        gold_yesterday: قیمت طلای دیروز
-        gold_time: زمان قیمت طلا
-        yesterday_close: قیمت بسته دیروز
-    
-    Returns:
-        bool: موفقیت ارسال
     """
     if data is None:
         logger.error("❌ داده‌ها None است")
         return False
 
     try:
-        # ساخت تصاویر
         logger.info("🎨 در حال ساخت تصویر Treemap...")
         img1_bytes = create_combined_image(
             data["Fund_df"], 
@@ -102,7 +88,6 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
         logger.info("📊 در حال ساخت نمودارهای بازار...")
         img2_bytes = create_market_charts()
 
-        # ساخت کپشن
         logger.info("📝 در حال ساخت کپشن...")
         caption = create_simple_caption(
             data, 
@@ -113,18 +98,15 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
             gold_time
         )
 
-        # مدیریت پیام پین‌شده
         gist_data = get_gist_data()
         saved_message_id = gist_data.get("message_id")
         saved_date = gist_data.get("date")
         today = get_today_date()
 
-        # اگر تاریخ عوض شده، message_id رو ریست کن
         if saved_date != today:
             logger.info(f"📅 روز جدید ({today}) - ریست message_id")
             saved_message_id = None
 
-        # اگر message_id داریم، سعی کن آپدیت کنی
         if saved_message_id:
             logger.info(f"🔄 در حال آپدیت پیام پین‌شده (ID: {saved_message_id})...")
             if update_media_group_correctly(bot_token, chat_id, saved_message_id, 
@@ -134,7 +116,6 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
             else:
                 logger.warning("⚠️ آپدیت پیام ناموفق بود، پیام جدید ارسال می‌شود")
 
-        # اگر آپدیت نشد، پیام جدید بفرست
         logger.info("📤 ارسال پیام جدید...")
         new_message_id = send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption)
         if new_message_id:
@@ -154,7 +135,6 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
 # ────────────────── MediaGroup ──────────────────
 
 def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
-    """ارسال MediaGroup (دو عکس) به تلگرام"""
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMediaGroup"
         files = {
@@ -191,11 +171,9 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
 
 def update_media_group_correctly(bot_token, chat_id, first_message_id, 
                                  img1_bytes, img2_bytes, caption):
-    """آپدیت کردن MediaGroup موجود"""
     try:
         url = f"https://api.telegram.org/bot{bot_token}/editMessageMedia"
 
-        # آپدیت عکس اول (با کپشن)
         media1 = {
             "type": "photo", 
             "media": "attach://photo1", 
@@ -214,7 +192,6 @@ def update_media_group_correctly(bot_token, chat_id, first_message_id,
             timeout=REQUEST_TIMEOUT
         )
 
-        # آپدیت عکس دوم
         media2 = {"type": "photo", "media": "attach://photo2"}
         files2 = {"photo2": ("charts.png", io.BytesIO(img2_bytes), "image/png")}
         r2 = requests.post(
@@ -241,7 +218,6 @@ def update_media_group_correctly(bot_token, chat_id, first_message_id,
 
 
 def pin_message(bot_token, chat_id, message_id):
-    """پین کردن پیام در کانال"""
     try:
         response = requests.post(
             f"https://api.telegram.org/bot{bot_token}/pinChatMessage",
@@ -260,10 +236,9 @@ def pin_message(bot_token, chat_id, message_id):
         logger.error(f"خطا در پین: {e}")
 
 
-# ────────────────── ساخت تصویر ترکیبی ──────────────────
+# ────────────────── ساخت تصویر ──────────────────
 
 def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yesterday_close):
-    """ساخت تصویر Treemap + Table"""
     tehran_tz = pytz.timezone(TIMEZONE)
     now_jalali = JalaliDateTime.now(tehran_tz)
     date_time_str = now_jalali.strftime("%Y/%m/%d - %H:%M")
@@ -279,14 +254,12 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     df_sorted["color_value"] = df_sorted["close_price_change_percent"]
     df_sorted = df_sorted.sort_values("value", ascending=False)
 
-    # بارگذاری فونت
     try:
         ImageFont.truetype(FONT_MEDIUM_PATH, 40)
         treemap_font_family = "Vazirmatn-Medium, sans-serif"
     except:
         treemap_font_family = "sans-serif"
 
-    # Treemap
     fig.add_trace(
         go.Treemap(
             labels=df_sorted.index,
@@ -310,7 +283,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         row=1, col=1,
     )
 
-    # جدول 10 صندوق برتر
     top_10 = df_sorted.head(10)
     table_header = [
         "نماد", "قیمت", "NAV", "تغییر %", "حباب %", 
@@ -332,7 +304,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
             x = float(v.replace("%", "").replace("+", "").replace(",", ""))
             return "#1B5E20" if x > 0 else "#A52A2A" if x < 0 else "#2C2C2C"
         except:
-            return "#1C2733"
+            return "#1C27333"
 
     cell_colors = [
         ["#1C2733"] * 10,
@@ -381,7 +353,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         showlegend=False,
     )
 
-    # تبدیل به تصویر
     img_bytes = fig.to_image(
         format="png", 
         width=TREEMAP_WIDTH, 
@@ -391,7 +362,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
     draw = ImageDraw.Draw(img)
 
-    # اضافه کردن متن‌ها
     try:
         font_date = ImageFont.truetype(FONT_BOLD_PATH, 64)
         font_desc = ImageFont.truetype(FONT_MEDIUM_PATH, 50)
@@ -401,7 +371,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     draw.text((60, 35), date_time_str, font=font_date, fill="#FFFFFF")
     draw.text((60, 110), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
 
-    # واترمارک
     try:
         wfont = ImageFont.truetype(FONT_REGULAR_PATH, 70)
     except:
@@ -421,11 +390,10 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     return output.getvalue()
 
 
-# ────────────────── کپشن اصلی ──────────────────
+# ────────────────── کپشن ──────────────────
 
 def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, 
                          yesterday_close, gold_time):
-    """ساخت کپشن برای پست تلگرام"""
     tehran_tz = pytz.timezone(TIMEZONE)
     now = JalaliDateTime.now(tehran_tz)
     current_time = now.strftime("%Y/%m/%d - %H:%M")
@@ -434,21 +402,18 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
 
-    # محاسبه میانگین ماهانه کل صندوق‌ها
     total_avg_monthly = df_funds["avg_monthly_value"].sum()
 
     if total_value > 0:
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
         avg_bubble_weighted = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value
-        # ✅ محاسبه میانگین وزنی NAV و تغییر آن
         avg_nav_weighted = (df_funds["NAV"] * df_funds["value"]).sum() / total_value
         avg_nav_change_weighted = (df_funds["NAV_change_percent"] * df_funds["value"]).sum() / total_value
     else:
         avg_price_weighted = avg_change_percent_weighted = avg_bubble_weighted = 0
         avg_nav_weighted = avg_nav_change_weighted = 0
 
-    # محاسبه نسبت ارزش معاملات به میانگین ماهانه
     if total_avg_monthly > 0:
         value_to_avg_ratio = (total_value / total_avg_monthly) * 100
     else:
@@ -493,7 +458,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 💰 ارزش معاملات: {total_value:,.0f} م.ت ({value_to_avg_ratio:.0f}%)
 💸 پول حقیقی: {total_pol:+,.0f} م.ت ({pol_to_value_ratio:+.0f}%)
 📈 آخرین قیمت: {avg_price_weighted:,.0f} ({avg_change_percent_weighted:+.2f}%)
-\u200f📊 NAV: {avg_nav_weighted:,.0f} ({avg_nav_change_weighted:+.2f}%)
+\u202B📊 NAV: {avg_nav_weighted:,.0f} ({avg_nav_change_weighted:+.2f}%)\u202C
 🎈 میانگین حباب: {avg_bubble_weighted:+.2f}%
 ━━━━━━━━━━━━━━━━━━━━━━━━
 ✨ شمش طلا
