@@ -236,103 +236,73 @@ def pin_message(bot_token, chat_id, message_id):
         logger.error(f"خطا در پین: {e}")
 
 
-# ────────────────── رنگ‌بندی گرادیانت ──────────────────
+# ────────────────── رنگ‌بندی گرادیانت (ملایم) ──────────────────
 
 def get_gradient_color(value, vmin=-10, vmax=10):
     """
-    تبدیل مقدار عددی به رنگ گرادیانت (مثل treemap)
-    صفر: خاکستری
-    نزدیک صفر: تیره
-    دور از صفر: روشن
+    تبدیل مقدار عددی به رنگ گرادیانت یکپارچه و ملایم (قرمز → خاکستری → سبز)
+    رنگ‌های ملایم‌تر که چشم رو اذیت نمی‌کنن
     """
-    # Normalize value to [0, 1]
     if vmax == vmin:
         normalized = 0.5
     else:
         normalized = (value - vmin) / (vmax - vmin)
-        normalized = max(0, min(1, normalized))  # Clamp to [0, 1]
-    
+        normalized = max(0, min(1, normalized))
+
     if normalized < 0.5:
-        # منفی: از قرمز روشن به قرمز تیره (نزدیک صفر)
-        # normalized=0 (منفی شدید) → قرمز روشن
-        # normalized=0.5 (صفر) → خاکستری
-        t = normalized * 2  # 0 -> 1
-        # قرمز روشن (220, 50, 50) به خاکستری (100, 100, 100)
-        r = int(220 + (100 - 220) * t)
-        g = int(50 + (100 - 50) * t)
-        b = int(50 + (100 - 50) * t)
-    elif normalized == 0.5:
-        # صفر: خاکستری
-        r, g, b = 100, 100, 100
+        # منفی: قرمز ملایم (#C85A54) → خاکستری تیره (#404040)
+        t = normalized * 2
+        r = int(200 + (64 - 200) * t)
+        g = int(90 + (64 - 90) * t)
+        b = int(84 + (64 - 84) * t)
     else:
-        # مثبت: از خاکستری (نزدیک صفر) به سبز روشن
-        # normalized=0.5 (صفر) → خاکستری
-        # normalized=1 (مثبت شدید) → سبز روشن
-        t = (normalized - 0.5) * 2  # 0 -> 1
-        # خاکستری (100, 100, 100) به سبز روشن (50, 220, 80)
-        r = int(100 + (50 - 100) * t)
-        g = int(100 + (220 - 100) * t)
-        b = int(100 + (80 - 100) * t)
+        # مثبت: خاکستری تیره (#404040) → سبز ملایم (#4CAF50)
+        t = (normalized - 0.5) * 2
+        r = int(64 + (76 - 64) * t)
+        g = int(64 + (175 - 64) * t)
+        b = int(64 + (80 - 64) * t)
+
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def get_positive_gradient_color(value, vmin, vmax):
+    """
+    رنگ‌بندی برای مقادیر مثبت (سبز تیره → سبز ملایم)
+    """
+    if vmax == vmin or vmax <= 0:
+        return "#4CAF50"
+    
+    normalized = (value - vmin) / (vmax - vmin)
+    normalized = max(0, min(1, normalized))
+    
+    # سبز تیره (#2E7D32) → سبز ملایم (#66BB6A)
+    r = int(46 + (102 - 46) * normalized)
+    g = int(125 + (187 - 125) * normalized)
+    b = int(50 + (106 - 50) * normalized)
     
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
-def get_sarane_kharid_color(value):
-    """
-    رنگ‌بندی سرانه خرید (همیشه مثبت)
-    > 70: سبز روشن
-    30-70: سبز کم‌رنگ
-    < 30: سبز تیره متمایل به خاکستری
-    """
-    if value > 70:
-        # سبز روشن
-        return "#32DC50"
-    elif value >= 30:
-        # سبز کم‌رنگ (interpolate بین 30 و 70)
-        t = (value - 30) / 40  # 0 -> 1
-        r = int(80 + (50 - 80) * t)
-        g = int(150 + (220 - 150) * t)
-        b = int(90 + (80 - 90) * t)
-        return f"#{r:02x}{g:02x}{b:02x}"
-    else:
-        # سبز تیره متمایل به خاکستری (< 30)
-        t = value / 30  # 0 -> 1
-        r = int(100 + (80 - 100) * t)
-        g = int(100 + (150 - 100) * t)
-        b = int(100 + (90 - 100) * t)
-        return f"#{r:02x}{g:02x}{b:02x}"
-
-
-def apply_gradient_colors(values, vmin=None, vmax=None):
+def apply_gradient_colors(values, vmin=None, vmax=None, force_positive=False):
     """اعمال رنگ گرادیانت به لیست مقادیر"""
     numeric_values = []
     for v in values:
         try:
-            # حذف % و , و + و تبدیل به float
-            clean = v.replace("%", "").replace("+", "").replace(",", "")
+            clean = str(v).replace("%", "").replace("+", "").replace(",", "")
             numeric_values.append(float(clean))
         except:
             numeric_values.append(0)
-    
+
     if vmin is None:
         vmin = min(numeric_values)
     if vmax is None:
         vmax = max(numeric_values)
+
+    # اگه همه مثبتن، از گرادیانت سبزی استفاده کن
+    if force_positive or (vmin >= 0 and vmax >= 0):
+        return [get_positive_gradient_color(v, vmin, vmax) for v in numeric_values]
     
     return [get_gradient_color(v, vmin, vmax) for v in numeric_values]
-
-
-def apply_sarane_kharid_colors(values):
-    """اعمال رنگ سرانه خرید"""
-    numeric_values = []
-    for v in values:
-        try:
-            clean = v.replace("+", "").replace(",", "")
-            numeric_values.append(float(clean))
-        except:
-            numeric_values.append(0)
-    
-    return [get_sarane_kharid_color(v) for v in numeric_values]
 
 
 # ────────────────── ساخت تصویر ──────────────────
@@ -383,15 +353,15 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     )
 
     # ═══════════════════════════════════════════════════════
-    # جدول با ستون‌های جدید و رنگ‌بندی گرادیانت
+    # جدول با رنگ‌بندی گرادیانت یکپارچه و ملایم
     # ═══════════════════════════════════════════════════════
     top_10 = df_sorted.head(10)
-    
+
     table_header = [
         "نماد", "آخرین", "NAV", "آخرین %", "NAV %", 
         "حباب %", "سرانه خرید", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"
     ]
-    
+
     table_cells = [
         top_10.index.tolist(),
         [f"{x:,.0f}" for x in top_10["close_price"]],
@@ -405,17 +375,17 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         [f"{x:,.0f}" for x in top_10["value"]],
     ]
 
-    # رنگ‌بندی سلول‌ها با گرادیانت
+    # رنگ‌بندی سلول‌ها با گرادیانت یکپارچه و ملایم
     cell_colors = [
         ["#1C2733"] * 10,  # نماد
         ["#1C2733"] * 10,  # آخرین
         ["#1C2733"] * 10,  # NAV
-        apply_gradient_colors(table_cells[3], vmin=-10, vmax=10),  # آخرین % (درصدی)
-        apply_gradient_colors(table_cells[4], vmin=-10, vmax=10),  # NAV % (درصدی)
-        apply_gradient_colors(table_cells[5], vmin=-10, vmax=10),  # حباب % (درصدی)
-        apply_sarane_kharid_colors(table_cells[6]),  # سرانه خرید (قاعده خاص)
-        apply_gradient_colors(table_cells[7]),  # اختلاف سرانه (صفر محور)
-        apply_gradient_colors(table_cells[8]),  # پول حقیقی (صفر محور)
+        apply_gradient_colors(table_cells[3], vmin=-10, vmax=10),  # آخرین %
+        apply_gradient_colors(table_cells[4], vmin=-10, vmax=10),  # NAV %
+        apply_gradient_colors(table_cells[5], vmin=-10, vmax=10),  # حباب %
+        apply_gradient_colors(table_cells[6], force_positive=True),  # سرانه خرید (طیف سبز)
+        apply_gradient_colors(table_cells[7]),  # اختلاف سرانه
+        apply_gradient_colors(table_cells[8]),  # پول حقیقی
         ["#1C2733"] * 10,  # ارزش معاملات
     ]
 
@@ -425,14 +395,14 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 values=[f"<b>{h}</b>" for h in table_header],
                 fill_color="#242F3D",
                 align="center",
-                font=dict(color="white", size=18, family=treemap_font_family),
+                font=dict(color="white", size=16, family=treemap_font_family),
                 height=38,
             ),
             cells=dict(
                 values=table_cells,
                 fill_color=cell_colors,
                 align="center",
-                font=dict(color="white", size=16, family=treemap_font_family),
+                font=dict(color="white", size=17, family=treemap_font_family),  # ✅ افزایش سایز
                 height=36,
             ),
         ),
@@ -474,18 +444,22 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     draw.text((60, 95), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
     draw.text((60, 145), "رنگ‌بندی: درصد آخرین قیمت", font=font_desc, fill="#FFFFFF")
 
+    # ✅ واترمارک افقی در گوشه پایین چپ (بالای جدول)
     try:
-        wfont = ImageFont.truetype(FONT_REGULAR_PATH, 70)
+        wfont = ImageFont.truetype(FONT_REGULAR_PATH, 50)
     except:
         wfont = ImageFont.load_default()
 
     wtext = CHANNEL_HANDLE.replace("@", "")
     bbox = draw.textbbox((0, 0), wtext, font=wfont)
-    w, h = bbox[2] - bbox[0] + 80, bbox[3] - bbox[1] + 80
-    txt_img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-    ImageDraw.Draw(txt_img).text((40, 40), wtext, font=wfont, fill=(255, 255, 255, 100))
-    rotated = txt_img.rotate(45, expand=True)
-    img.paste(rotated, ((img.width - rotated.width) // 2, (img.height - rotated.height) // 2), rotated)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    
+    padding = 30
+    x_pos = padding
+    y_pos = int(TREEMAP_HEIGHT * 0.65) - text_height - padding
+    
+    draw.text((x_pos, y_pos), wtext, font=wfont, fill=(255, 255, 255, 120))
 
     output = io.BytesIO()
     img.save(output, format="PNG", optimize=True, quality=92)
@@ -583,7 +557,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 🪙 سکه امامی
 💰 قیمت: {sekeh_price:,.0f} تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+.0f})
+💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
 ━━━━━━━━━━━━━━━━━━━━━━━━
 🔗 {CHANNEL_HANDLE}
 """
