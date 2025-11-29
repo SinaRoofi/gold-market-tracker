@@ -240,8 +240,7 @@ def pin_message(bot_token, chat_id, message_id):
 
 def get_gradient_color(value, vmin=-10, vmax=10):
     """
-    تبدیل مقدار عددی به رنگ گرادیانت یکپارچه و ملایم (قرمز → خاکستری → سبز)
-    رنگ‌های ملایم‌تر که چشم رو اذیت نمی‌کنن
+    تبدیل مقدار عددی به رنگ گرادیانت متقارن (خاکستری تیره -> رنگ روشن دور از صفر)
     """
     if vmax == vmin:
         normalized = 0.5
@@ -250,14 +249,16 @@ def get_gradient_color(value, vmin=-10, vmax=10):
         normalized = max(0, min(1, normalized))
 
     if normalized < 0.5:
-        # منفی: قرمز ملایم (#C85A54) → خاکستری تیره (#404040)
+        # منفی: خاکستری تیره (#404040) → قرمز ملایم (#C85A54)  <--- روشن شدن دور از صفر
         t = normalized * 2
-        r = int(200 + (64 - 200) * t)
-        g = int(90 + (64 - 90) * t)
-        b = int(84 + (64 - 84) * t)
+        # رنگ‌های شروع و پایان جابجا شده‌اند تا رنگ روشن دور از صفر باشد
+        r = int(64 + (200 - 64) * t)
+        g = int(64 + (90 - 64) * t)
+        b = int(64 + (84 - 64) * t)
     else:
-        # مثبت: خاکستری تیره (#404040) → سبز ملایم (#4CAF50)
+        # مثبت: خاکستری تیره (#404040) → سبز ملایم (#4CAF50)   <--- روشن شدن دور از صفر
         t = (normalized - 0.5) * 2
+        # رنگ‌های شروع و پایان جابجا شده‌اند تا رنگ روشن دور از صفر باشد
         r = int(64 + (76 - 64) * t)
         g = int(64 + (175 - 64) * t)
         b = int(64 + (80 - 64) * t)
@@ -267,20 +268,46 @@ def get_gradient_color(value, vmin=-10, vmax=10):
 
 def get_positive_gradient_color(value, vmin, vmax):
     """
-    رنگ‌بندی برای مقادیر مثبت (سبز تیره → سبز ملایم)
+    رنگ‌بندی برای مقادیر مثبت (سبز تیره → سبز ملایم/روشن)
     """
     if vmax == vmin or vmax <= 0:
         return "#4CAF50"
-    
+
     normalized = (value - vmin) / (vmax - vmin)
     normalized = max(0, min(1, normalized))
-    
+
     # سبز تیره (#2E7D32) → سبز ملایم (#66BB6A)
+    # کوچکترین مقدار (نزدیک vmin) تیره و بزرگترین مقدار (نزدیک vmax) روشن است
     r = int(46 + (102 - 46) * normalized)
     g = int(125 + (187 - 125) * normalized)
     b = int(50 + (106 - 50) * normalized)
-    
+
     return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def get_symmetric_vrange(values):
+    """
+    محاسبه طیف متقارن (vmin, vmax) حول صفر برای ستون‌های صفر-محور
+    """
+    numeric_values = []
+    for v in values:
+        try:
+            # پاکسازی و تبدیل به عدد
+            clean = str(v).replace("%", "").replace("+", "").replace(",", "")
+            numeric_values.append(float(clean))
+        except:
+            numeric_values.append(0)
+
+    # پیدا کردن بیشترین قدر مطلق
+    if not numeric_values:
+        return 0, 0
+        
+    abs_max = max(abs(v) for v in numeric_values)
+
+    # تنظیم vmin و vmax به صورت متقارن
+    vmax = abs_max
+    vmin = -abs_max
+    return vmin, vmax
 
 
 def apply_gradient_colors(values, vmin=None, vmax=None, force_positive=False):
@@ -298,10 +325,14 @@ def apply_gradient_colors(values, vmin=None, vmax=None, force_positive=False):
     if vmax is None:
         vmax = max(numeric_values)
 
-    # اگه همه مثبتن، از گرادیانت سبزی استفاده کن
+    # اگه فقط مثبتن یا force_positive فعال باشه، از گرادیانت سبزی استفاده کن
     if force_positive or (vmin >= 0 and vmax >= 0):
+        # اگر همه مقادیر صفر باشند، باز هم باید vmin و vmax را برای جلوگیری از تقسیم بر صفر تنظیم کنیم.
+        if vmax == vmin and vmax == 0:
+             return [get_positive_gradient_color(v, 0, 1) for v in numeric_values]
+
         return [get_positive_gradient_color(v, vmin, vmax) for v in numeric_values]
-    
+
     return [get_gradient_color(v, vmin, vmax) for v in numeric_values]
 
 
@@ -375,17 +406,26 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         [f"{x:,.0f}" for x in top_10["value"]],
     ]
 
-    # رنگ‌بندی سلول‌ها با گرادیانت یکپارچه و ملایم
+    # --- محاسبه طیف متقارن برای ستون‌های صفر-محور ---
+    vmin_3, vmax_3 = get_symmetric_vrange(table_cells[3]) # آخرین %
+    vmin_4, vmax_4 = get_symmetric_vrange(table_cells[4]) # NAV %
+    vmin_5, vmax_5 = get_symmetric_vrange(table_cells[5]) # حباب %
+    # سرانه خرید از این قانون مستثنی است (چون معمولاً مثبت است)
+    vmin_7, vmax_7 = get_symmetric_vrange(table_cells[7]) # اختلاف سرانه
+    vmin_8, vmax_8 = get_symmetric_vrange(table_cells[8]) # پول حقیقی
+
+
+    # رنگ‌بندی سلول‌ها با گرادیانت‌های مستقل
     cell_colors = [
         ["#1C2733"] * 10,  # نماد
         ["#1C2733"] * 10,  # آخرین
         ["#1C2733"] * 10,  # NAV
-        apply_gradient_colors(table_cells[3], vmin=-10, vmax=10),  # آخرین %
-        apply_gradient_colors(table_cells[4], vmin=-10, vmax=10),  # NAV %
-        apply_gradient_colors(table_cells[5], vmin=-10, vmax=10),  # حباب %
-        apply_gradient_colors(table_cells[6], force_positive=True),  # سرانه خرید (طیف سبز)
-        apply_gradient_colors(table_cells[7]),  # اختلاف سرانه
-        apply_gradient_colors(table_cells[8]),  # پول حقیقی
+        apply_gradient_colors(table_cells[3], vmin=vmin_3, vmax=vmax_3),  # آخرین % (متقارن، روشن دور از صفر)
+        apply_gradient_colors(table_cells[4], vmin=vmin_4, vmax=vmax_4),  # NAV % (متقارن، روشن دور از صفر)
+        apply_gradient_colors(table_cells[5], vmin=vmin_5, vmax=vmax_5),  # حباب % (متقارن، روشن دور از صفر)
+        apply_gradient_colors(table_cells[6], force_positive=True),      # سرانه خرید (سبز تیره به روشن)
+        apply_gradient_colors(table_cells[7], vmin=vmin_7, vmax=vmax_7),  # اختلاف سرانه (متقارن، روشن دور از صفر)
+        apply_gradient_colors(table_cells[8], vmin=vmin_8, vmax=vmax_8),  # پول حقیقی (متقارن، روشن دور از صفر)
         ["#1C2733"] * 10,  # ارزش معاملات
     ]
 
@@ -402,7 +442,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 values=table_cells,
                 fill_color=cell_colors,
                 align="center",
-                font=dict(color="white", size=17, family=treemap_font_family),  # ✅ افزایش سایز
+                font=dict(color="white", size=17, family=treemap_font_family),
                 height=36,
             ),
         ),
@@ -454,11 +494,11 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     bbox = draw.textbbox((0, 0), wtext, font=wfont)
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
-    
+
     padding = 30
     x_pos = padding
     y_pos = int(TREEMAP_HEIGHT * 0.65) - text_height - padding
-    
+
     draw.text((x_pos, y_pos), wtext, font=wfont, fill=(255, 255, 255, 120))
 
     output = io.BytesIO()
