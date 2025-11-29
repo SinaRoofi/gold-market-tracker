@@ -21,7 +21,7 @@ from config import (
     TIMEZONE, Y_AXIS_STEP
 )
 
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 def round_to_nearest(value, step=50):
     """گرد کردن عدد به نزدیک‌ترین مضرب step"""
