@@ -149,9 +149,11 @@ async def main():
             logger.info("🔆 دریافت قیمت طلای جهانی...")
             gold_today, gold_time = await fetch_gold_price_today(client)
 
-            if not gold_today:
+            # ✅ چک و fallback برای طلا
+            if not gold_today or gold_today <= 0:
                 gold_today = DEFAULT_GOLD_PRICE
-                logger.warning(f"⚠️ قیمت طلا گرفته نشد → پیش‌فرض {DEFAULT_GOLD_PRICE}")
+                gold_time = None
+                logger.warning(f"⚠️ قیمت طلا گرفته نشد → پیش‌فرض ${DEFAULT_GOLD_PRICE:.2f}")
             else:
                 logger.info(f"✅ قیمت طلا: ${gold_today:.2f}")
 
@@ -161,14 +163,18 @@ async def main():
             logger.info("💵 دریافت قیمت‌های دلار...")
             dollar_prices = await fetch_dollar_prices(client)
 
-            if not dollar_prices:
-                dollar_prices = {'last_trade': DEFAULT_DOLLAR_PRICE, 'bid': 0, 'ask': 0}
-                logger.warning(f"⚠️ قیمت دلار گرفته نشد → پیش‌فرض {DEFAULT_DOLLAR_PRICE}")
+            # ✅ چک دقیق: باید هم dollar_prices باشه و هم last_trade
+            if not dollar_prices or not dollar_prices.get('last_trade'):
+                last_trade = DEFAULT_DOLLAR_PRICE
+                dollar_prices = {
+                    'last_trade': DEFAULT_DOLLAR_PRICE, 
+                    'bid': dollar_prices.get('bid', 0) if dollar_prices else 0,
+                    'ask': dollar_prices.get('ask', 0) if dollar_prices else 0
+                }
+                logger.warning(f"⚠️ قیمت معامله دلار گرفته نشد → پیش‌فرض {DEFAULT_DOLLAR_PRICE:,}")
             else:
                 last_trade = dollar_prices['last_trade']
                 logger.info(f"✅ آخرین معامله دلار: {last_trade:,} تومان")
-
-            last_trade = dollar_prices.get('last_trade', DEFAULT_DOLLAR_PRICE)
 
             # ───────────────────────────────────────────────────
             # 3️⃣ دریافت قیمت بسته دیروز
