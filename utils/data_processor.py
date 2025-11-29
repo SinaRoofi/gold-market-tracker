@@ -156,6 +156,7 @@ def process_traders_data(data):
             "col32": "value_to_avg_ratio",
             "col40": "NAV",
             "col41": "nominal_bubble",
+            "col42": "NAV_change_percent",  # ✅ اضافه شد
             "price2_change": "close_price_change_percent",
             "col16": "sarane_kharid",
             "col17": "sarane_forosh",
@@ -170,13 +171,18 @@ def process_traders_data(data):
     Fund_df["sarane_forosh"] = pd.to_numeric(Fund_df["sarane_forosh"], errors="coerce") / 10_000_000
     Fund_df["pol_hagigi"] = pd.to_numeric(Fund_df["pol_hagigi"], errors="coerce") / 10_000_000_000
 
-    # ✅ مقاوم‌سازی فقط avg_monthly_value
+    # ✅ مقاوم‌سازی avg_monthly_value
     Fund_df["avg_monthly_value"] = (
         Fund_df["avg_monthly_value"]
         .replace("-", pd.NA)
         .pipe(pd.to_numeric, errors="coerce")
         / 10_000_000_000
     )
+
+    # ✅ تبدیل NAV_change_percent به عدد
+    Fund_df["NAV_change_percent"] = pd.to_numeric(
+        Fund_df["NAV_change_percent"], errors="coerce"
+    ).round(2)
 
     Fund_df["ekhtelaf_sarane"] = Fund_df["sarane_kharid"] - Fund_df["sarane_forosh"]
 
@@ -199,6 +205,7 @@ def process_traders_data(data):
             "close_price",
             "NAV",
             "nominal_bubble",
+            "NAV_change_percent",           # ✅ اضافه شد به لیست ستون‌ها
             "close_price_change_percent",
             "final_price_change",
             "sarane_kharid",
