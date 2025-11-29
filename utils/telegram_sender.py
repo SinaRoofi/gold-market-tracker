@@ -441,8 +441,12 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
         avg_bubble_weighted = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value
+        # ✅ محاسبه میانگین وزنی NAV و تغییر آن
+        avg_nav_weighted = (df_funds["NAV"] * df_funds["value"]).sum() / total_value
+        avg_nav_change_weighted = (df_funds["NAV_change_percent"] * df_funds["value"]).sum() / total_value
     else:
         avg_price_weighted = avg_change_percent_weighted = avg_bubble_weighted = 0
+        avg_nav_weighted = avg_nav_change_weighted = 0
 
     # محاسبه نسبت ارزش معاملات به میانگین ماهانه
     if total_avg_monthly > 0:
@@ -486,8 +490,8 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 💰 قیمت: ${gold_price:,.2f} ({gold_change:+.2f}%)
 ━━━━━━━━━━━━━━━━━━━━━━━━
 📊 آمار صندوق‌های طلا
-💰 ارزش معاملات: {total_value:,.0f} م.ت ({value_to_avg_ratio:.0f}%) 
-💸 پول حقیقی: {total_pol:+,.0f} م.ت ({pol_to_value_ratio:+.0f}%)
+💰 ارزش معاملات: {total_value:,.0f}م.ت ({value_to_avg_ratio:.0f}%)
+💸 پول حقیقی: {total_pol:+,.0f}م.ت ({pol_to_value_ratio:+.0f}%)
 📈 آخرین قیمت: {avg_price_weighted:,.0f} ({avg_change_percent_weighted:+.2f}%)
 🎈 میانگین حباب: {avg_bubble_weighted:+.2f}%
 ━━━━━━━━━━━━━━━━━━━━━━━━
