@@ -1,4 +1,4 @@
-Utils/chart_creator.py
+# utils/chart_creator.py
 
 """ماژول ساخت نمودارهای بازار با نمایش قیمت پایانی"""
 
