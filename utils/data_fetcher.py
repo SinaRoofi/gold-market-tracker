@@ -15,19 +15,21 @@ logger = logging.getLogger(__name__)
 def extract_prices_new(text):
     """استخراج قیمت‌های دلار (معامله/خرید/فروش) از متن پیام بر اساس الگوی کاربر."""
     prices = {"معامله": None, "خرید": None, "فروش": None}
-    معامله_pattern = r"(\d{1,3}[,،]\d{3})\s*مـعامله\s*شد"
+    
+    # ✅ الگوی بهبود یافته: پشتیبانی از قیمت‌های 6+ رقمی
+    معامله_pattern = r"(\d{1,3}(?:[,،]\d{3})+)\s*مـعامله\s*شد"
     معامله_match = re.search(معامله_pattern, text)
     if معامله_match:
         price_str = معامله_match.group(1).replace("،", "").replace(",", "")
         prices["معامله"] = int(price_str)
 
-    خرید_pattern = r"(\d{1,3}[,،]\d{3})\s*خــرید"
+    خرید_pattern = r"(\d{1,3}(?:[,،]\d{3})+)\s*خــرید"
     خرید_match = re.search(خرید_pattern, text)
     if خرید_match:
         price_str = خرید_match.group(1).replace("،", "").replace(",", "")
         prices["خرید"] = int(price_str)
 
-    فروش_pattern = r"(\d{1,3}[,،]\d{3})\s*فروش"
+    فروش_pattern = r"(\d{1,3}(?:[,،]\d{3})+)\s*فروش"
     فروش_match = re.search(فروش_pattern, text)
     if فروش_match:
         price_str = فروش_match.group(1).replace("،", "").replace(",", "")
@@ -80,11 +82,11 @@ async def fetch_gold_price_today(client: TelegramClient):
         for message in messages:
             if message.text and "XAUUSD" in message.text:
                 price = extract_gold_price(message.text)
-                
+
                 if price:
                     msg_time_tehran = message.date.astimezone(tehran_tz)
                     return price, msg_time_tehran
-                    
+
         return None, None
     except Exception as e:
         logger.error(f"خطا در دریافت قیمت طلای امروز: {e}")
@@ -95,9 +97,6 @@ async def fetch_dollar_prices(client: TelegramClient):
     try:
         channel_username = "dollar_tehran3bze"
         tehran_tz = pytz.timezone("Asia/Tehran")
-
-        def extract_prices(text):
-            return extract_prices_new(text)
 
         messages = await client.get_messages(channel_username, limit=50)
 
@@ -111,8 +110,9 @@ async def fetch_dollar_prices(client: TelegramClient):
         }
 
         for message in messages:
-            if message.text and "دلار فردایی تهران" in message.text:
-                prices = extract_prices(message.text)
+            # ✅ چک انعطاف‌پذیر: فقط "دلار فردایی" کافیه (تایپو تهران/تهرا مشکلی نیست)
+            if message.text and "دلار فردایی" in message.text:
+                prices = extract_prices_new(message.text)
                 msg_time_tehran = message.date.astimezone(tehran_tz)
 
                 if prices["معامله"] and not final_prices["last_trade"]:
@@ -129,13 +129,19 @@ async def fetch_dollar_prices(client: TelegramClient):
 
                 if all([final_prices["last_trade"], final_prices["bid"], final_prices["ask"]]):
                     break
-        
+
+        # ✅ لاگ برای دیباگ
+        if final_prices["last_trade"]:
+            logger.info(f"✅ قیمت‌های دلار: معامله={final_prices['last_trade']:,}, خرید={final_prices['bid']:,}, فروش={final_prices['ask']:,}")
+        else:
+            logger.warning("❌ قیمت معامله دلار پیدا نشد")
+
         if any([final_prices["last_trade"], final_prices["bid"], final_prices["ask"]]):
             return final_prices
         else:
             logger.warning("❌ هیچ قیمت دلاری پیدا نشد.")
             return None
-            
+
     except Exception as e:
         logger.error(f"خطا در دریافت قیمت دلار: {e}")
         return None
