@@ -341,7 +341,8 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
 🟢 سرانه خرید: {sarane_str}
 📊 اختلاف سرانه: {ekhtelaf_str}
 🎈 حباب: {row['nominal_bubble']:+.1f}%
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
+
+"""
 
         main_text = f"🚨 هشدار سخت خرید\n\n{funds_text}".strip()
         footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
@@ -401,7 +402,8 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
 💰 ارزش معاملات: {row["value"]:.0f}B ({row["value_to_avg_ratio"]:.0f}%)
 💸 پول حقیقی: {row["pol_hagigi"]:+.1f}B ({pol_ratio:+.0f}%)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
+
+"""
 
             main_text = f"🟢 هشدار کراس مثبت سرانه\n\n{funds_text}".strip()
             footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
@@ -429,7 +431,8 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
 💰 ارزش معاملات: {row["value"]:.0f}B ({row["value_to_avg_ratio"]:.0f}%)
 💸 پول حقیقی: {row["pol_hagigi"]:+.1f}B ({pol_ratio:+.0f}%)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
+
+"""
 
             main_text = f"🔴 هشدار کراس منفی سرانه\n\n{funds_text}".strip()
             footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
