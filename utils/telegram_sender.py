@@ -285,7 +285,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 
     top_10 = df_sorted.head(10)
     table_header = [
-        "نماد", "قیمت", "NAV", "تغییر %", "حباب %", 
+        "نماد", "آخرین ", "NAV", "آخرین %", "حباب %", 
         "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"
     ]
     table_cells = [
