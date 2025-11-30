@@ -328,7 +328,7 @@ def create_market_charts():
         
         fig.add_annotation(
             text=f'<b>خ:{last_kharid:.0f}</b>',
-            x=1.01, y=0.06, xref='paper', yref='paper',
+            x=1.01, y=0.07, xref='paper', yref='paper',
             xanchor='left', yanchor='bottom',
             font=dict(size=24, color=COLOR_POSITIVE, family=chart_font_family),
             showarrow=False
@@ -336,7 +336,7 @@ def create_market_charts():
 
         fig.add_annotation(
             text=f'<b>اخ:{last_ekhtelaf:+.0f}</b>',
-            x=1.01, y=0.035, xref='paper', yref='paper',
+            x=1.01, y=0.055, xref='paper', yref='paper',
             xanchor='left', yanchor='bottom',
             font=dict(size=24, color=ekhtelaf_color, family=chart_font_family),
             showarrow=False
@@ -344,7 +344,7 @@ def create_market_charts():
 
         fig.add_annotation(
             text=f'<b>ف:{last_forosh:.0f}</b>',
-            x=1.01, y=0.01, xref='paper', yref='paper',
+            x=1.01, y=0.02, xref='paper', yref='paper',
             xanchor='left', yanchor='bottom',
             font=dict(size=24, color=COLOR_NEGATIVE, family=chart_font_family),
             showarrow=False
