@@ -207,22 +207,22 @@ def create_market_charts():
         kharid_max = df['sarane_kharid_weighted'].max()
         forosh_min = df['sarane_forosh_weighted'].min()
         forosh_max = df['sarane_forosh_weighted'].max()
-        
+
         # محور چپ: خرید و فروش
         lines_min = min(kharid_min, forosh_min)
         lines_max = max(kharid_max, forosh_max)
         lines_padding = max(10, (lines_max - lines_min) * 0.15)
-        
+
         fig.update_yaxes(
             range=[lines_min - lines_padding, lines_max + lines_padding],
             row=6, col=1
         )
-        
+
         # محور راست: اختلاف (مخفی)
         ekhtelaf_min = df['ekhtelaf_sarane_weighted'].min()
         ekhtelaf_max = df['ekhtelaf_sarane_weighted'].max()
         ekhtelaf_padding = max(10, (ekhtelaf_max - ekhtelaf_min) * 0.15)
-        
+
         fig.update_layout(
             yaxis12=dict(
                 overlaying='y6',
@@ -323,28 +323,30 @@ def create_market_charts():
             showarrow=False
         )
 
-        # نمودار 6
+        # ✅ نمودار 6: برچسب‌های عمودی (زیر هم)
+        ekhtelaf_color = COLOR_POSITIVE if last_ekhtelaf >= 0 else COLOR_NEGATIVE
+        
         fig.add_annotation(
             text=f'<b>خ:{last_kharid:.0f}</b>',
-            x=1.01, y=last_kharid, xref='paper', yref='y6',
-            xanchor='left', yanchor='middle',
+            x=1.01, y=0.05, xref='paper', yref='paper',
+            xanchor='left', yanchor='bottom',
             font=dict(size=24, color=COLOR_POSITIVE, family=chart_font_family),
             showarrow=False
         )
+
         fig.add_annotation(
-            text=f'<b>ف:{last_forosh:.0f}</b>',
-            x=1.065, y=last_forosh, xref='paper', yref='y6',
-            xanchor='left', yanchor='middle',
-            font=dict(size=24, color=COLOR_NEGATIVE, family=chart_font_family),
+            text=f'<b>اخ:{last_ekhtelaf:+.0f}</b>',
+            x=1.01, y=0.025, xref='paper', yref='paper',
+            xanchor='left', yanchor='bottom',
+            font=dict(size=24, color=ekhtelaf_color, family=chart_font_family),
             showarrow=False
         )
 
-        ekhtelaf_color = COLOR_POSITIVE if last_ekhtelaf >= 0 else COLOR_NEGATIVE
         fig.add_annotation(
-            text=f'<b>اخ:{last_ekhtelaf:+.0f}</b>',
-            x=1.01, y=last_ekhtelaf, xref='paper', yref='y12',
-            xanchor='left', yanchor='middle',
-            font=dict(size=24, color=ekhtelaf_color, family=chart_font_family),
+            text=f'<b>ف:{last_forosh:.0f}</b>',
+            x=1.01, y=0.0, xref='paper', yref='paper',
+            xanchor='left', yanchor='bottom',
+            font=dict(size=24, color=COLOR_NEGATIVE, family=chart_font_family),
             showarrow=False
         )
 
