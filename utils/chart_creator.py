@@ -333,7 +333,7 @@ def create_market_charts():
         )
         fig.add_annotation(
             text=f'<b>ف:{last_forosh:.0f}</b>',
-            x=1.01, y=last_forosh, xref='paper', yref='y6',
+            x=1.065, y=last_forosh, xref='paper', yref='y6',
             xanchor='left', yanchor='middle',
             font=dict(size=24, color=COLOR_NEGATIVE, family=chart_font_family),
             showarrow=False
