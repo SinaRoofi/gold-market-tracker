@@ -51,7 +51,7 @@ TELEGRAM_ALERT_CHAT_ID = os.getenv('TELEGRAM_ALERT_CHAT_ID')
 
 TELEGRAM_CHANNELS = {
     'gold': 'XAUUSD_ONE',
-    'dollar': 'dollar_tehran3bze'
+    'dollar': 'dollartehran3bze'
 }
 
 # ════════════════════════════════════════════════════════════════
