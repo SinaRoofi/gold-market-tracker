@@ -5,9 +5,13 @@ import pytz
 from datetime import datetime, timedelta
 from telethon import TelegramClient
 import requests
+from config import TELEGRAM_CHANNELS
 
 logger = logging.getLogger(__name__)
 
+
+DOLLAR_CHANNEL = TELEGRAM_CHANNELS['dollar']
+GOLD_CHANNEL = TELEGRAM_CHANNELS['gold']
 # ==============================================================================
 # توابع کمکی استخراج قیمت‌ها
 # ==============================================================================
@@ -73,7 +77,7 @@ def extract_gold_price(text):
 async def fetch_gold_price_today(client: TelegramClient):
     """دریافت قیمت لحظه‌ای اونس طلای امروز"""
     try:
-        channel_username = "XAUUSD_ONE"
+        channel_username = GOLD_CHANNEL 
         tehran_tz = pytz.timezone("Asia/Tehran")
 
         messages = await client.get_messages(channel_username, limit=5)
@@ -94,7 +98,7 @@ async def fetch_gold_price_today(client: TelegramClient):
 async def fetch_dollar_prices(client: TelegramClient):
     """دریافت قیمت‌های دلار از کانال"""
     try:
-        channel_username = "dollar_tehran3bze"
+        channel_username = DOLLAR_CHANNEL
         tehran_tz = pytz.timezone("Asia/Tehran")
 
         messages = await client.get_messages(channel_username, limit=50)
@@ -148,7 +152,7 @@ async def fetch_dollar_prices(client: TelegramClient):
 async def fetch_yesterday_close(client: TelegramClient):
     """جستجوی قیمت بسته شدن دلار دیروز"""
     try:
-        channel_username = "dollar_tehran3bze"
+        channel_username = DOLLAR_CHANNEL
         tehran_tz = pytz.timezone("Asia/Tehran")
 
         batch_size = 100  
