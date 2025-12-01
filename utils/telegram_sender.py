@@ -563,21 +563,20 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
     caption = f"""
 🔄 آخرین آپدیت: {current_time}
 
-━━━━━━━━━━━━━━━━━━━━━━━━
 💵 دلار
 💰 آخرین معامله: {dollar_prices['last_trade']:,} تومان ({dollar_change:+.2f}%)
 🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
-━━━━━━━━━━━━━━━━━━━━━━━━
+
 🔆 اونس طلا 
 💰 قیمت: ${gold_price:,.2f} ({gold_change:+.2f}%)
-━━━━━━━━━━━━━━━━━━━━━━━━
+
 📊 آمار صندوق‌های طلا
 💰 ارزش معاملات: {total_value:,.0f} م.ت ({value_to_avg_ratio:.0f}%)
 💸 پول حقیقی: {total_pol:+,.0f} م.ت ({pol_to_value_ratio:+.0f}%)
 📈 آخرین قیمت: {avg_price_weighted:,.0f} ({avg_change_percent_weighted:+.2f}%)
 💎 خالص ارزش دارایی: {avg_nav_weighted:,.0f} ({avg_nav_change_weighted:+.2f}%)
 🎈 میانگین حباب: {avg_bubble_weighted:+.2f}%
-━━━━━━━━━━━━━━━━━━━━━━━━
+
 ✨ شمش طلا
 💰 قیمت: {shams['close_price']:,} ریال
 📊 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
@@ -598,7 +597,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 💰 قیمت: {sekeh_price:,.0f} تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
 💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
-━━━━━━━━━━━━━━━━━━━━━━━━
+-----------------------------
 🔗 {CHANNEL_HANDLE}
 """
     return caption.strip()
