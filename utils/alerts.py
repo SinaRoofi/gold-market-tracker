@@ -25,6 +25,9 @@ FUND_ALERTS_FILE = "fund_alerts.json"
 # ✅ کش محلی برای جلوگیری از reset در صورت خطای Gist
 ALERT_STATUS_CACHE = None
 
+# 🆕 متغیر برای ذخیره هندل کانال هشدارها
+ALERT_CHANNEL_HANDLE = None
+
 # ────────────────── مدیریت Gist ──────────────────
 
 def get_alert_status():
@@ -194,8 +197,17 @@ def get_previous_state_from_sheet():
 
 
 # ────────────────── چک و ارسال هشدارها ──────────────────
-def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday):
-    """بررسی شرایط و ارسال هشدارها"""
+def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday, alert_channel_handle=None):
+    """
+    بررسی شرایط و ارسال هشدارها
+    
+    Args:
+        alert_channel_handle: هندل کانال هشدارها (اگه نباشه از CHANNEL_HANDLE استفاده می‌کنه)
+    """
+    global ALERT_CHANNEL_HANDLE
+    
+    # 🆕 تنظیم هندل کانال هشدارها
+    ALERT_CHANNEL_HANDLE = ALERT_CHANNEL_HANDEL
 
     prev = get_previous_state_from_sheet()
     status = get_alert_status()
@@ -330,7 +342,7 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
         funds_text = ""
         for symbol, row in active_funds.loc[new_symbols].iterrows():
             value_str = f"{row['value']:.0f} م.ت ({row['value_to_avg_ratio']:.0f}%)"
-            pol_str = f"{row['pol_hagigi']:+.1f} م.ت ({row['pol_to_value_ratio']*100:+.0f}%)"
+            pol_str = f"{row['pol_hagigi']:+.0f} م.ت ({row['pol_to_value_ratio']*100:+.1f}%)"
             sarane_str = f"{row['sarane_kharid']:.0f}M (+{row['sarane_kharid_diff']:.0f}M)"
             ekhtelaf_str = f"{row['ekhtelaf_sarane']:+.0f}M"
 
@@ -345,7 +357,7 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
 """
 
         main_text = f"🚨 هشدار سخت خرید\n\n{funds_text}".strip()
-        footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+        footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
         caption = f"{main_text}\n{footer}"
 
         send_alert_message(bot_token, chat_id, caption)
@@ -401,12 +413,12 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
 💰 ارزش معاملات: {row["value"]:.0f} م.ت ({row["value_to_avg_ratio"]*100:.0f}%)
-💸 پول حقیقی: {row["pol_hagigi"]:+.0f} م.ت ({pol_ratio:+.0f}%)
+💸 پول حقیقی: {row["pol_hagigi"]:+.0f} م.ت ({pol_ratio:+.1f}%)
 
 """
 
             main_text = f"🟢 هشدار کراس مثبت سرانه\n\n{funds_text}".strip()
-            footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+            footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
             caption = f"{main_text}\n{footer}"
 
             send_alert_message(bot_token, chat_id, caption)
@@ -429,13 +441,13 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🎈 حباب: {row["nominal_bubble"]:+.1f}%
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
-💰 ارزش معاملات: {row["value"]:.0f} م.ت ({row["value_to_avg_ratio"]*100:.0f}%)
-💸 پول حقیقی: {row["pol_hagigi"]:+.0f} م.ت ({pol_ratio:+.0f}%)
+💰 ارزش معاملات: {row["value"]:.0f} م.ت ({row["value_to_avg_ratio"]*100:.1f}%)
+💸 پول حقیقی: {row["pol_hagigi"]:+.0f} م.ت ({pol_ratio:+.1f}%)
 
 """
 
             main_text = f"🔴 هشدار کراس منفی سرانه\n\n{funds_text}".strip()
-            footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+            footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
             caption = f"{main_text}\n{footer}"
 
             send_alert_message(bot_token, chat_id, caption)
@@ -463,7 +475,7 @@ def send_price_alert(bot_token, chat_id, asset_name, price, change_5min, unit="�
         price_formatted = f"{int(round(price)):,} {unit}"
 
     main_text = f"🚨 هشدار نوسان {asset_name}\n\n💰 قیمت: {price_formatted}\n📊 تغییر: {change_text}"
-    footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+    footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
 
     send_alert_message(bot_token, chat_id, caption)
@@ -480,7 +492,7 @@ def send_alert_ekhtelaf_fast(bot_token, chat_id, prev_val, curr_val, diff, pol_h
     pol_text = f"{pol_hagigi:+,.0f}".replace("+-", "−")
 
     main_text = f"🚨 هشدار اختلاف سرانه\n\n{dir_emoji} {direction}\n⏱ تغییر ۵ دقیقه: {diff_text} میلیون تومان\n💰 پول حقیقی: {pol_text} میلیارد تومان"
-    footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+    footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
 
     send_alert_message(bot_token, chat_id, caption)
@@ -519,7 +531,7 @@ def send_alert_threshold(asset, price, threshold, above, bot_token, chat_id):
 💰 قیمت فعلی: {price_formatted} {unit}
 """.strip()
 
-    footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
+    footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
 
     send_alert_message(bot_token, chat_id, caption)
