@@ -13,32 +13,25 @@ logger = logging.getLogger(__name__)
 # ==============================================================================
 
 def extract_prices_new(text):
-    """استخراج قیمت‌های دلار از پیام‌های کانال (معامله/خرید/فروش)"""
+   """استخراج قیمت‌های دلار (معامله/خرید/فروش) از متن پیام بر اساس الگوی کاربر."""
     prices = {"معامله": None, "خرید": None, "فروش": None}
+    معامله_pattern = r"(\d{1,3}[,،]\d{3})\s*مـعامله\s*شد"
+    معامله_match = re.search(معامله_pattern, text)
+    if معامله_match:
+        price_str = معامله_match.group(1).replace("،", "").replace(",", "")
+        prices["معامله"] = int(price_str)
 
-    # استانداردسازی
-    t = (text.replace("٬", ",")
-              .replace("ـ", "")
-              .replace("‍", "")
-              .replace("\u200c", "")
-              .replace("‌", ""))
+    خرید_pattern = r"(\d{1,3}[,،]\d{3})\s*خــرید"
+    خرید_match = re.search(خرید_pattern, text)
+    if خرید_match:
+        price_str = خرید_match.group(1).replace("،", "").replace(",", "")
+        prices["خرید"] = int(price_str)
 
-    num = r"(\d{1,3}(?:[,،]\d{3})+)"
-
-    # معامله شد
-    m = re.search(num + r".{0,25}معامله\s*شد", t)
-    if m:
-        prices["معامله"] = int(m.group(1).replace(",", "").replace("،", ""))
-
-    # خرید با کشیدگی: خــرید / خرید / خـرید
-    b = re.search(num + r".{0,25}خ+رید", t)
-    if b:
-        prices["خرید"] = int(b.group(1).replace(",", "").replace("،", ""))
-
-    # فروش با کشیدگی: فــروش / فروش
-    s = re.search(num + r".{0,25}ف+روش", t)
-    if s:
-        prices["فروش"] = int(s.group(1).replace(",", "").replace("،", ""))
+    فروش_pattern = r"(\d{1,3}[,،]\d{3})\s*فروش"
+    فروش_match = re.search(فروش_pattern, text)
+    if فروش_match:
+        price_str = فروش_match.group(1).replace("،", "").replace(",", "")
+        prices["فروش"] = int(price_str)
 
     return prices
 
