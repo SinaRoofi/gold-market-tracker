@@ -597,7 +597,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 💰 قیمت: {sekeh_price:,.0f} تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
 💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
------------------------------
+------------------------------------
 🔗 {CHANNEL_HANDLE}
 """
     return caption.strip()
