@@ -198,12 +198,7 @@ def get_previous_state_from_sheet():
 
 # ────────────────── چک و ارسال هشدارها ──────────────────
 def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday, alert_channel_handle=None):
-    """
-    بررسی شرایط و ارسال هشدارها
-    
-    Args:
-        alert_channel_handle: هندل کانال هشدارها (اگه نباشه از CHANNEL_HANDLE استفاده می‌کنه)
-    """
+   
     global ALERT_CHANNEL_HANDLE
     
     # 🆕 تنظیم هندل کانال هشدارها
