@@ -14,7 +14,7 @@ from config import (
     TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID,
     TELETHON_API_ID, TELETHON_API_HASH, TELEGRAM_SESSION,
     TIMEZONE, LOG_FORMAT, LOG_FILE, LOG_LEVEL,
-    DEFAULT_GOLD_PRICE, DEFAULT_DOLLAR_PRICE
+    DEFAULT_GOLD_PRICE, DEFAULT_DOLLAR_PRICE, TELEGRAM_ALERT_CHAT_ID
 )
 from utils.data_fetcher import (
     fetch_gold_price_today, fetch_dollar_prices,
@@ -112,7 +112,7 @@ async def main():
         # ═══════════════════════════════════════════════════════
         # بررسی متغیرهای محیطی
         # ═══════════════════════════════════════════════════════
-        if not all([TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, TELETHON_API_ID, 
+        if not all([TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, TELEGRAM_ALERT_CHAT_ID, TELETHON_API_ID, 
                     TELETHON_API_HASH, TELEGRAM_SESSION]):
             logger.error("❌ یکی از متغیرهای محیطی تلگرام پیدا نشد!")
             logger.error("لطفاً این متغیرها را تنظیم کنید:")
@@ -121,6 +121,7 @@ async def main():
             logger.error("- TELETHON_API_ID")
             logger.error("- TELETHON_API_HASH")
             logger.error("- TELEGRAM_SESSION")
+            logger.error("- TELEGRAM_ALERT_CHAT_ID")           
             return
 
         # ═══════════════════════════════════════════════════════
@@ -321,7 +322,7 @@ async def main():
             try:
                 check_and_send_alerts(
                     bot_token=TELEGRAM_BOT_TOKEN,
-                    chat_id=TELEGRAM_CHAT_ID,
+                    chat_id=TELEGRAM_ALERT_CHAT_ID,
                     data=processed,
                     dollar_prices=dollar_prices,
                     gold_price=gold_today,
