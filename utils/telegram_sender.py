@@ -236,39 +236,54 @@ def pin_message(bot_token, chat_id, message_id):
         logger.error(f"خطا در پین: {e}")
 
 
-# ────────────────── رنگ‌بندی گرادیانت (ملایم) ──────────────────
+# ────────────────── رنگ‌بندی گرادیانت (اصلاح شده) ──────────────────
 
 def get_gradient_color(value, vmin=-10, vmax=10):
     """
-    تبدیل مقدار عددی به رنگ گرادیانت متقارن (خاکستری تیره -> رنگ روشن دور از صفر)
+    تبدیل مقدار عددی به رنگ گرادیانت متقارن
+    صفر: خاکستری تیره
+    نزدیک صفر: رنگ تیره (قرمز/سبز تیره)
+    دور از صفر: رنگ روشن (قرمز/سبز روشن)
     """
     if vmax == vmin:
-        normalized = 0.5
-    else:
-        normalized = (value - vmin) / (vmax - vmin)
-        normalized = max(0, min(1, normalized))
-
+        return "#404040"
+    
+    # نرمال‌سازی به بازه [0, 1]
+    normalized = (value - vmin) / (vmax - vmin)
+    normalized = max(0, min(1, normalized))
+    
+    # فاصله از مرکز (0.5)
+    distance_from_center = abs(normalized - 0.5) * 2  # 0 تا 1
+    
     if normalized < 0.5:
-        # منفی: خاکستری تیره (#404040) → قرمز ملایم (#C85A54)  <--- روشن شدن دور از صفر
-        t = normalized * 2
-        # رنگ‌های شروع و پایان جابجا شده‌اند تا رنگ روشن دور از صفر باشد
-        r = int(64 + (200 - 64) * t)
-        g = int(64 + (90 - 64) * t)
-        b = int(64 + (84 - 64) * t)
+        # منفی: از خاکستری به قرمز
+        if distance_from_center < 0.2:
+            # خیلی نزدیک صفر: خاکستری
+            r, g, b = 64, 64, 64
+        else:
+            # قرمز تیره (#8B0000) → قرمز روشن (#FF6B6B)
+            progress = (distance_from_center - 0.2) / 0.8
+            r = int(139 + (255 - 139) * progress)
+            g = int(0 + (107 - 0) * progress)
+            b = int(0 + (107 - 0) * progress)
     else:
-        # مثبت: خاکستری تیره (#404040) → سبز ملایم (#4CAF50)   <--- روشن شدن دور از صفر
-        t = (normalized - 0.5) * 2
-        # رنگ‌های شروع و پایان جابجا شده‌اند تا رنگ روشن دور از صفر باشد
-        r = int(64 + (76 - 64) * t)
-        g = int(64 + (175 - 64) * t)
-        b = int(64 + (80 - 64) * t)
-
+        # مثبت: از خاکستری به سبز
+        if distance_from_center < 0.2:
+            # خیلی نزدیک صفر: خاکستری
+            r, g, b = 64, 64, 64
+        else:
+            # سبز تیره (#006400) → سبز روشن (#66BB6A)
+            progress = (distance_from_center - 0.2) / 0.8
+            r = int(0 + (102 - 0) * progress)
+            g = int(100 + (187 - 100) * progress)
+            b = int(0 + (106 - 0) * progress)
+    
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
 def get_positive_gradient_color(value, vmin, vmax):
     """
-    رنگ‌بندی برای مقادیر مثبت (سبز تیره → سبز ملایم/روشن)
+    رنگ‌بندی برای مقادیر مثبت (سبز تیره → سبز روشن)
     """
     if vmax == vmin or vmax <= 0:
         return "#4CAF50"
@@ -276,8 +291,7 @@ def get_positive_gradient_color(value, vmin, vmax):
     normalized = (value - vmin) / (vmax - vmin)
     normalized = max(0, min(1, normalized))
 
-    # سبز تیره (#2E7D32) → سبز ملایم (#66BB6A)
-    # کوچکترین مقدار (نزدیک vmin) تیره و بزرگترین مقدار (نزدیک vmax) روشن است
+    # سبز تیره (#2E7D32) → سبز روشن (#66BB6A)
     r = int(46 + (102 - 46) * normalized)
     g = int(125 + (187 - 125) * normalized)
     b = int(50 + (106 - 50) * normalized)
@@ -292,19 +306,15 @@ def get_symmetric_vrange(values):
     numeric_values = []
     for v in values:
         try:
-            # پاکسازی و تبدیل به عدد
             clean = str(v).replace("%", "").replace("+", "").replace(",", "")
             numeric_values.append(float(clean))
         except:
             numeric_values.append(0)
 
-    # پیدا کردن بیشترین قدر مطلق
     if not numeric_values:
         return 0, 0
-        
-    abs_max = max(abs(v) for v in numeric_values)
 
-    # تنظیم vmin و vmax به صورت متقارن
+    abs_max = max(abs(v) for v in numeric_values)
     vmax = abs_max
     vmin = -abs_max
     return vmin, vmax
@@ -325,9 +335,7 @@ def apply_gradient_colors(values, vmin=None, vmax=None, force_positive=False):
     if vmax is None:
         vmax = max(numeric_values)
 
-    # اگه فقط مثبتن یا force_positive فعال باشه، از گرادیانت سبزی استفاده کن
     if force_positive or (vmin >= 0 and vmax >= 0):
-        # اگر همه مقادیر صفر باشند، باز هم باید vmin و vmax را برای جلوگیری از تقسیم بر صفر تنظیم کنیم.
         if vmax == vmin and vmax == 0:
              return [get_positive_gradient_color(v, 0, 1) for v in numeric_values]
 
@@ -384,7 +392,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     )
 
     # ═══════════════════════════════════════════════════════
-    # جدول با رنگ‌بندی گرادیانت یکپارچه و ملایم
+    # جدول با رنگ‌بندی گرادیانت اصلاح شده
     # ═══════════════════════════════════════════════════════
     top_10 = df_sorted.head(10)
 
@@ -406,26 +414,24 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         [f"{x:,.0f}" for x in top_10["value"]],
     ]
 
-    # --- محاسبه طیف متقارن برای ستون‌های صفر-محور ---
-    vmin_3, vmax_3 = get_symmetric_vrange(table_cells[3]) # آخرین %
-    vmin_4, vmax_4 = get_symmetric_vrange(table_cells[4]) # NAV %
-    vmin_5, vmax_5 = get_symmetric_vrange(table_cells[5]) # حباب %
-    # سرانه خرید از این قانون مستثنی است (چون معمولاً مثبت است)
-    vmin_7, vmax_7 = get_symmetric_vrange(table_cells[7]) # اختلاف سرانه
-    vmin_8, vmax_8 = get_symmetric_vrange(table_cells[8]) # پول حقیقی
+    # محاسبه طیف متقارن برای ستون‌های صفر-محور
+    vmin_3, vmax_3 = get_symmetric_vrange(table_cells[3])
+    vmin_4, vmax_4 = get_symmetric_vrange(table_cells[4])
+    vmin_5, vmax_5 = get_symmetric_vrange(table_cells[5])
+    vmin_7, vmax_7 = get_symmetric_vrange(table_cells[7])
+    vmin_8, vmax_8 = get_symmetric_vrange(table_cells[8])
 
-
-    # رنگ‌بندی سلول‌ها با گرادیانت‌های مستقل
+    # رنگ‌بندی سلول‌ها
     cell_colors = [
         ["#1C2733"] * 10,  # نماد
         ["#1C2733"] * 10,  # آخرین
         ["#1C2733"] * 10,  # NAV
-        apply_gradient_colors(table_cells[3], vmin=vmin_3, vmax=vmax_3),  # آخرین % (متقارن، روشن دور از صفر)
-        apply_gradient_colors(table_cells[4], vmin=vmin_4, vmax=vmax_4),  # NAV % (متقارن، روشن دور از صفر)
-        apply_gradient_colors(table_cells[5], vmin=vmin_5, vmax=vmax_5),  # حباب % (متقارن، روشن دور از صفر)
-        apply_gradient_colors(table_cells[6], force_positive=True),      # سرانه خرید (سبز تیره به روشن)
-        apply_gradient_colors(table_cells[7], vmin=vmin_7, vmax=vmax_7),  # اختلاف سرانه (متقارن، روشن دور از صفر)
-        apply_gradient_colors(table_cells[8], vmin=vmin_8, vmax=vmax_8),  # پول حقیقی (متقارن، روشن دور از صفر)
+        apply_gradient_colors(table_cells[3], vmin=vmin_3, vmax=vmax_3),
+        apply_gradient_colors(table_cells[4], vmin=vmin_4, vmax=vmax_4),
+        apply_gradient_colors(table_cells[5], vmin=vmin_5, vmax=vmax_5),
+        apply_gradient_colors(table_cells[6], force_positive=True),
+        apply_gradient_colors(table_cells[7], vmin=vmin_7, vmax=vmax_7),
+        apply_gradient_colors(table_cells[8], vmin=vmin_8, vmax=vmax_8),
         ["#1C2733"] * 10,  # ارزش معاملات
     ]
 
@@ -484,7 +490,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     draw.text((60, 95), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
     draw.text((60, 145), "رنگ‌بندی: درصد آخرین قیمت", font=font_desc, fill="#FFFFFF")
 
-    # ✅ واترمارک افقی در گوشه پایین چپ (بالای جدول)
+    # واترمارک افقی در گوشه پایین چپ
     try:
         wfont = ImageFont.truetype(FONT_REGULAR_PATH, 50)
     except:
