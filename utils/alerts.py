@@ -336,11 +336,11 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
 
             funds_text += f"""
 📌 {symbol}
-💰 ارزش معاملات: {value_str}
-💸 ورود پول حقیقی: {pol_str}
-🟢 سرانه خرید: {sarane_str}
-📊 اختلاف سرانه: {ekhtelaf_str}
-🎈 حباب: {row['nominal_bubble']:+.0f}%
+💰 ارزش معاملات: {value_str:,.0f}B
+💸 ورود پول حقیقی: {pol_str:,.0f}B
+🟢 سرانه خرید: {sarane_str}M
+📊 اختلاف سرانه: {ekhtelaf_str}M
+🎈 حباب: {row['nominal_bubble']:+.1f}%
 
 """
 
