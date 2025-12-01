@@ -43,7 +43,7 @@ TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 TELETHON_API_ID = int(os.getenv('TELETHON_API_ID', 0))
 TELETHON_API_HASH = os.getenv('TELETHON_API_HASH')
 TELEGRAM_SESSION = os.getenv('TELEGRAM_SESSION')
-
+TELEGRAM_ALERT_CHAT_ID = os.getenv('TELEGRAM_ALERT_CHAT_ID')
 # ════════════════════════════════════════════════════════════════
 # 📡 کانال‌های تلگرام
 # ════════════════════════════════════════════════════════════════
