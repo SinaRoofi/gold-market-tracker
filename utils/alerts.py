@@ -329,17 +329,17 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
         # ساخت متن هشدار
         funds_text = ""
         for symbol, row in active_funds.loc[new_symbols].iterrows():
-            value_str = f"{row['value']:.0f}B ({row['value_to_avg_ratio']:.0f}%)"
-            pol_str = f"{row['pol_hagigi']:+.1f}B ({row['pol_to_value_ratio']*100:+.0f}%)"
+            value_str = f"{row['value']:.0f} م.ت ({row['value_to_avg_ratio']:.0f}%)"
+            pol_str = f"{row['pol_hagigi']:+.1f} م.ت ({row['pol_to_value_ratio']*100:+.0f}%)"
             sarane_str = f"{row['sarane_kharid']:.0f}M (+{row['sarane_kharid_diff']:.0f}M)"
             ekhtelaf_str = f"{row['ekhtelaf_sarane']:+.0f}M"
 
             funds_text += f"""
 📌 {symbol}
-💰 ارزش معاملات: {value_str:,.0f}B
-💸 ورود پول حقیقی: {pol_str:,.0f}B
-🟢 سرانه خرید: {sarane_str}M
-📊 اختلاف سرانه: {ekhtelaf_str}M
+💰 ارزش معاملات: {value_str}
+💸 ورود پول حقیقی: {pol_str}
+🟢 سرانه خرید: {sarane_str}
+📊 اختلاف سرانه: {ekhtelaf_str}
 🎈 حباب: {row['nominal_bubble']:+.1f}%
 
 """
@@ -374,7 +374,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 
         today = now.strftime("%Y-%m-%d")
         today_list = fund_alerts.get(today, [])
-        
+
         # صندوق‌هایی که امروز هشدار کراس دادن
         already_sent_positive = {item["symbol"] for item in today_list if item.get("alert_type") == "کراس مثبت"}
         already_sent_negative = {item["symbol"] for item in today_list if item.get("alert_type") == "کراس منفی"}
@@ -385,12 +385,12 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
         # ارسال هشدار کراس مثبت
         if new_positive:
             positive_cross = positive_cross.loc[new_positive].sort_values("value", ascending=False)
-            
+
             for sym in new_positive:
                 today_list.append({"symbol": sym, "alert_type": "کراس مثبت"})
-            
+
             logger.info(f"🟢 کراس مثبت: {len(new_positive)} صندوق → {', '.join(new_positive)}")
-            
+
             funds_text = ""
             for symbol, row in positive_cross.iterrows():
                 pol_ratio = (row["pol_hagigi"] / row["value"] * 100) if row["value"] > 0 else 0
@@ -400,26 +400,26 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🎈 حباب: {row["nominal_bubble"]:+.1f}%
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
-💰 ارزش معاملات: {row["value"]:.0f}B ({row["value_to_avg_ratio"]*100:.0f}%)
-💸 پول حقیقی: {row["pol_hagigi"]:+.0f}B ({pol_ratio:+.0f}%)
+💰 ارزش معاملات: {row["value"]:.0f} م.ت ({row["value_to_avg_ratio"]*100:.0f}%)
+💸 پول حقیقی: {row["pol_hagigi"]:+.0f} م.ت ({pol_ratio:+.0f}%)
 
 """
 
             main_text = f"🟢 هشدار کراس مثبت سرانه\n\n{funds_text}".strip()
             footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
             caption = f"{main_text}\n{footer}"
-            
+
             send_alert_message(bot_token, chat_id, caption)
 
         # ارسال هشدار کراس منفی
         if new_negative:
             negative_cross = negative_cross.loc[new_negative].sort_values("value", ascending=False)
-            
+
             for sym in new_negative:
                 today_list.append({"symbol": sym, "alert_type": "کراس منفی"})
-            
+
             logger.info(f"🔴 کراس منفی: {len(new_negative)} صندوق → {', '.join(new_negative)}")
-            
+
             funds_text = ""
             for symbol, row in negative_cross.iterrows():
                 pol_ratio = (row["pol_hagigi"] / row["value"] * 100) if row["value"] > 0 else 0
@@ -429,15 +429,15 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🎈 حباب: {row["nominal_bubble"]:+.1f}%
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
-💰 ارزش معاملات: {row["value"]:.0f}B ({row["value_to_avg_ratio"]*100:.0f}%)
-💸 پول حقیقی: {row["pol_hagigi"]:+.0f}B ({pol_ratio:+.0f}%)
+💰 ارزش معاملات: {row["value"]:.0f} م.ت ({row["value_to_avg_ratio"]*100:.0f}%)
+💸 پول حقیقی: {row["pol_hagigi"]:+.0f} م.ت ({pol_ratio:+.0f}%)
 
 """
 
             main_text = f"🔴 هشدار کراس منفی سرانه\n\n{funds_text}".strip()
             footer = f"------------------------------------------\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {CHANNEL_HANDLE}"
             caption = f"{main_text}\n{footer}"
-            
+
             send_alert_message(bot_token, chat_id, caption)
 
         # ذخیره تاریخچه
