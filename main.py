@@ -58,7 +58,7 @@ def get_gold_yesterday_from_sheet(today_date):
         logger.info(f"🔍 جستجوی آخرین قیمت طلای قبل از {today_date}")
 
         # خواندن 15 رکورد آخر (برای احتمال تعطیلات طولانی)
-        rows = read_from_sheets(limit=50)
+        rows = read_from_sheets(limit=80)
 
         if not rows:
             logger.warning("⚠️ هیچ رکوردی در شیت پیدا نشد")
