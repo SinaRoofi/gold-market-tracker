@@ -21,9 +21,8 @@ def extract_prices_new(text):
               .replace("ـ", "")
               .replace("‍", "")
               .replace("\u200c", "")
-              .replace("‌", ""))  # نیم‌فاصله عربی
+              .replace("‌", ""))
 
-    # الگوی عدد
     num = r"(\d{1,3}(?:[,،]\d{3})+)"
 
     # معامله شد
@@ -31,12 +30,12 @@ def extract_prices_new(text):
     if m:
         prices["معامله"] = int(m.group(1).replace(",", "").replace("،", ""))
 
-    # خرید (با یا بدون کشیدگی)
+    # خرید با کشیدگی: خــرید / خرید / خـرید
     b = re.search(num + r".{0,25}خ+رید", t)
     if b:
         prices["خرید"] = int(b.group(1).replace(",", "").replace("،", ""))
 
-    # فروش (با یا بدون کشیدگی)
+    # فروش با کشیدگی: فــروش / فروش
     s = re.search(num + r".{0,25}ف+روش", t)
     if s:
         prices["فروش"] = int(s.group(1).replace(",", "").replace("،", ""))
