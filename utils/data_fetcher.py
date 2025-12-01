@@ -12,25 +12,28 @@ logger = logging.getLogger(__name__)
 # توابع کمکی استخراج قیمت‌ها
 # ==============================================================================
 
-import re
-
 def extract_prices_new(text):
+    """استخراج قیمت‌های دلار (معامله/خرید/فروش) از متن پیام بر اساس الگوی کاربر."""
     prices = {"معامله": None, "خرید": None, "فروش": None}
-
-    # معامله
-    معامله_match = re.search(r"(\d{1,3}(?:[,\u060C]\d{3})+)\s*م.عامله", text)
+    
+    # ✅ الگوی بهبود یافته: پشتیبانی از قیمت‌های 6+ رقمی
+    معامله_pattern = r"(\d{1,3}(?:[,،]\d{3})+)\s*مـعامله\s*شد"
+    معامله_match = re.search(معامله_pattern, text)
     if معامله_match:
-        prices["معامله"] = int(معامله_match.group(1).replace("،", "").replace(",", ""))
+        price_str = معامله_match.group(1).replace("،", "").replace(",", "")
+        prices["معامله"] = int(price_str)
 
-    # خرید
-    خرید_match = re.search(r"(\d{1,3}(?:[,\u060C]\d{3})+)\s*خ.رید", text)
+    خرید_pattern = r"(\d{1,3}(?:[,،]\d{3})+)\s*خــرید"
+    خرید_match = re.search(خرید_pattern, text)
     if خرید_match:
-        prices["خرید"] = int(خرید_match.group(1).replace("،", "").replace(",", ""))
+        price_str = خرید_match.group(1).replace("،", "").replace(",", "")
+        prices["خرید"] = int(price_str)
 
-    # فروش
-    فروش_match = re.search(r"(\d{1,3}(?:[,\u060C]\d{3})+)\s*فروش", text)
+    فروش_pattern = r"(\d{1,3}(?:[,،]\d{3})+)\s*فروش"
+    فروش_match = re.search(فروش_pattern, text)
     if فروش_match:
-        prices["فروش"] = int(فروش_match.group(1).replace("،", "").replace(",", ""))
+        price_str = فروش_match.group(1).replace("،", "").replace(",", "")
+        prices["فروش"] = int(price_str)
 
     return prices
 
