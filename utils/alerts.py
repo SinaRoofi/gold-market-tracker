@@ -13,7 +13,7 @@ from config import (
     EKHTELAF_THRESHOLD,
     GIST_ID, GIST_TOKEN,
     ALERT_STATUS_FILE,
-    CHANNEL_HANDLE,
+    ALERT_CHANNEL_HANDLE,
     REQUEST_TIMEOUT,
     TIMEZONE
 )
@@ -25,8 +25,6 @@ FUND_ALERTS_FILE = "fund_alerts.json"
 # ✅ کش محلی برای جلوگیری از reset در صورت خطای Gist
 ALERT_STATUS_CACHE = None
 
-# 🆕 متغیر برای ذخیره هندل کانال هشدارها
-ALERT_CHANNEL_HANDLE = None
 
 # ────────────────── مدیریت Gist ──────────────────
 
@@ -199,11 +197,6 @@ def get_previous_state_from_sheet():
 # ────────────────── چک و ارسال هشدارها ──────────────────
 def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday, alert_channel_handle=None):
    
-    global ALERT_CHANNEL_HANDLE
-    
-    # 🆕 تنظیم هندل کانال هشدارها
-    ALERT_CHANNEL_HANDLE = ALERT_CHANNEL_HANDEL
-
     prev = get_previous_state_from_sheet()
     status = get_alert_status()
 
