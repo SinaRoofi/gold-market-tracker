@@ -515,8 +515,23 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 
 # ────────────────── کپشن ──────────────────
 
+# ────────────────── کپشن ──────────────────
+
 def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, 
                          yesterday_close, gold_time):
+    from config import LOW_VALUE, VALUE, HIGH_VALUE
+    from persiantools.jdatetime import JalaliDateTime
+
+    def days_passed_this_year():
+        today = JalaliDateTime.now(pytz.timezone(TIMEZONE))
+        start_of_year = JalaliDateTime(today.year, 1, 1)
+        return (today - start_of_year).days + 1
+
+    days = days_passed_this_year()
+    low_total = LOW_VALUE * days
+    value_total = VALUE * days
+    high_total = HIGH_VALUE * days
+
     tehran_tz = pytz.timezone(TIMEZONE)
     now = JalaliDateTime.now(tehran_tz)
     current_time = now.strftime("%Y/%m/%d - %H:%M")
@@ -570,6 +585,9 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 🔄 آخرین آپدیت: {current_time}
 
 💵 دلار
+🟩 کران پایین ارزش دلار: {low_total:,} تومان
+💵 ارزش دلار: {value_total:,} تومان
+🟥 کران بالای ارزش دلار: {high_total:,} تومان
 💰 آخرین معامله: {dollar_prices['last_trade']:,} تومان ({dollar_change:+.2f}%)
 🟢 خرید: {dollar_prices['bid']:,} | 🔴 فروش: {dollar_prices['ask']:,}
 
@@ -602,7 +620,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 🪙 سکه بورسی
 💰 قیمت: {sekeh_price:,.0f} تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
+💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+.0f})
 
 🔗 {CHANNEL_HANDLE}
 """
