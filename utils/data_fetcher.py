@@ -39,25 +39,7 @@ def extract_prices_new(text):
         prices["فروش"] = int(price_str)
 
     return prices
-    
-def extract_yesterday_close_price(text):
-    """استخراج آخرین معامله فردایی از پیام پایان معاملات بر اساس الگوی کاربر"""
-    patterns = [
-        r"❌\s*([0-9,،]+)\s*آخرین[\s‌]*معامله[\s‌]*فردایی", 
-        r"❌([0-9,،]+)\s*آخرین[\s‌]*معامله[\s‌]*فردایی", 
-        r"([0-9,،]+)\s*آخرین[\s‌]*معامله[\s‌]*فردایی", 
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            price_str = match.group(1).replace("،", "").replace(",", "").strip()
-            try:
-                price = int(price_str)
-                if 10000 <= price <= 1000000:
-                    return price
-            except:
-                continue
-    return None
+
 
 def extract_gold_price(text):
     """استخراج قیمت اونس طلا بر اساس الگوی کاربر"""
@@ -94,6 +76,7 @@ async def fetch_gold_price_today(client: TelegramClient):
     except Exception as e:
         logger.error(f"خطا در دریافت قیمت طلای امروز: {e}")
         return None, None
+
 
 async def fetch_dollar_prices(client: TelegramClient):
     """دریافت قیمت‌های دلار از کانال"""
@@ -149,47 +132,6 @@ async def fetch_dollar_prices(client: TelegramClient):
         logger.error(f"خطا در دریافت قیمت دلار: {e}")
         return None
 
-async def fetch_yesterday_close(client: TelegramClient):
-    """جستجوی قیمت بسته شدن دلار دیروز"""
-    try:
-        channel_username = DOLLAR_CHANNEL
-        tehran_tz = pytz.timezone("Asia/Tehran")
-
-        batch_size = 100  
-        offset_id = 0
-        total_checked = 0
-        max_messages = 10000 
-
-        for batch_num in range(max_messages // batch_size):
-            messages = await client.get_messages(
-                channel_username, limit=batch_size, offset_id=offset_id
-            )
-
-            if not messages:
-                logger.warning(f"⚠️ به انتهای پیام‌های کانال دلار رسیدیم. کل پیام بررسی شده: {total_checked}")
-                break
-
-            total_checked += len(messages)
-            offset_id = messages[-1].id
-
-            for message in messages:
-                if message.text and "پایان معاملات" in message.text:
-                    price = extract_yesterday_close_price(message.text)
-
-                    if price:
-                        return price 
-                    else:
-                        logger.warning(f"❌ پیام 'پایان معاملات' پیدا شد اما استخراج قیمت امکان پذیر نبود.")
-                        return 0 
-
-            if total_checked % 1000 == 0:
-                logger.info(f"⏳ در حال جستجوی قیمت بسته شدن دلار... {total_checked} پیام بررسی شد.")
-
-        logger.warning(f"❌ پیام 'پایان معاملات' تا عمق {max_messages} پیدا نشد.")
-        return 0
-    except Exception as e:
-        logger.error(f"خطا در دریافت قیمت بسته دیروز: {e}")
-        return 0
 
 async def fetch_market_data():
     """دریافت داده‌های بازار"""
