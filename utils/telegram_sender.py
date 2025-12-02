@@ -609,7 +609,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 💎 خالص ارزش دارایی: {avg_nav_weighted:,.0f} ({avg_nav_change_weighted:+.2f}%)
 🎈 میانگین حباب: {avg_bubble_weighted:+.2f}%
 
-✨ شمش طلا
+✨ شمش طلا بورسی
 💰 قیمت: {shams['close_price']:,.0f} ریال
 📊 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
 💵 دلار محاسباتی: {d_shams:,.0f} ({diff_shams:,.0f})
