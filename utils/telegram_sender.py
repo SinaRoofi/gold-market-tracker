@@ -539,7 +539,6 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
     df_funds = data["Fund_df"]
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
-
     total_avg_monthly = df_funds["avg_monthly_value"].sum()
 
     if total_value > 0:
@@ -557,23 +556,31 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
     else:
         value_to_avg_ratio = 0
 
-    dollar_change = ((dollar_prices["last_trade"] - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
+    dollar_last = dollar_prices['last_trade']
+
+    # محاسبه درصد فاصله نسبت آخرین معامله
+    low_pct = (low_total - dollar_last) / dollar_last * 100
+    value_pct = (value_total - dollar_last) / dollar_last * 100
+    high_pct = (high_total - dollar_last) / dollar_last * 100
+
+    dollar_change = ((dollar_last - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
     gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday else 0
 
-    shams = data["dfp"].loc["شمش-طلا"]
-    gold_24 = data["dfp"].loc["طلا-گرم-24-عیار"]
-    gold_18 = data["dfp"].loc["طلا-گرم-18-عیار"]
-    sekeh = data["dfp"].loc["سطلا"]
+    dfp = data["dfp"]
+    shams = dfp.loc["شمش-طلا"]
+    gold_24 = dfp.loc["طلا-گرم-24-عیار"]
+    gold_18 = dfp.loc["طلا-گرم-18-عیار"]
+    sekeh = dfp.loc["سطلا"]
 
     def calc_diffs(row, d_cur, g_cur):
         d_calc = row.get("pricing_dollar", 0)
         o_calc = row.get("pricing_Gold", 0)
         return d_calc, d_calc - d_cur, o_calc, o_calc - g_cur
 
-    d_shams, diff_shams, o_shams, diff_o_shams = calc_diffs(shams, dollar_prices["last_trade"], gold_price)
-    d_24, diff_24, _, _ = calc_diffs(gold_24, dollar_prices["last_trade"], gold_price)
-    d_18, diff_18, _, _ = calc_diffs(gold_18, dollar_prices["last_trade"], gold_price)
-    d_sekeh, diff_sekeh, _, _ = calc_diffs(sekeh, dollar_prices["last_trade"], gold_price)
+    d_shams, diff_shams, o_shams, diff_o_shams = calc_diffs(shams, dollar_last, gold_price)
+    d_24, diff_24, _, _ = calc_diffs(gold_24, dollar_last, gold_price)
+    d_18, diff_18, _, _ = calc_diffs(gold_18, dollar_last, gold_price)
+    d_sekeh, diff_sekeh, _, _ = calc_diffs(sekeh, dollar_last, gold_price)
 
     gold_24_price = gold_24["close_price"] / 10
     gold_18_price = gold_18["close_price"] / 10
@@ -585,11 +592,10 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 🔄 آخرین آپدیت: {current_time}
 
 💵 دلار
-🟩 کران پایین دلار: {low_total:,.0f} تومان
-💵 ارزش دلار: {value_total:,.0f} تومان
-🟥 کران بالای دلار: {high_total:,.0f} تومان
-
-💰 آخرین معامله: {dollar_prices['last_trade']:,.0f} تومان ({dollar_change:+.2f}%)
+🟩 کران پایین دلار: {low_total:,.0f} تومان ({low_pct:.2f}%)
+💵 ارزش دلار: {value_total:,.0f} تومان ({value_pct:.2f}%)
+🟥 کران بالای دلار: {high_total:,.0f} تومان ({high_pct:.2f}%)
+💵 آخرین معامله: {dollar_last:,.0f} تومان ({dollar_change:+.2f}%)
 🟢 خرید: {dollar_prices['bid']:,.0f} | 🔴 فروش: {dollar_prices['ask']:,.0f}
 
 🔆 اونس طلا 
@@ -597,7 +603,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 
 📊 آمار صندوق‌های طلا
 💰 ارزش معاملات: {total_value:,.0f} م.ت ({value_to_avg_ratio:.0f}%)
-💸 پول حقیقی: {total_pol:,.0f} م.ت ({pol_to_value_ratio:,.0f}%)
+💸 پول حقیقی: {total_pol:,.0f} م.ت ({pol_to_value_ratio:.0f}%)
 📈 آخرین قیمت: {avg_price_weighted:,.0f} ({avg_change_percent_weighted:+.2f}%)
 💎 خالص ارزش دارایی: {avg_nav_weighted:,.0f} ({avg_nav_change_weighted:+.2f}%)
 🎈 میانگین حباب: {avg_bubble_weighted:+.2f}%
