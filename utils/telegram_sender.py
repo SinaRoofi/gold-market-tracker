@@ -398,7 +398,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 
     table_header = [
         "نماد", "آخرین", "NAV", "آخرین %", "NAV %", 
-        "حباب %", "بازده هفتگی", "سرانه خرید", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"
+        "حباب %", "بازده هفتگی", "سرانه خرید", "اختلاف سرانه", "پول حقیقی", "ارزش"
     ]
 
     table_cells = [
@@ -444,14 +444,14 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 values=[f"<b>{h}</b>" for h in table_header],
                 fill_color="#242F3D",
                 align="center",
-                font=dict(color="white", size=17, family=treemap_font_family),
+                font=dict(color="white", size=18, family=treemap_font_family),
                 height=36,
             ),
             cells=dict(
                 values=table_cells,
                 fill_color=cell_colors,
                 align="center",
-                font=dict(color="white", size=17, family=treemap_font_family),
+                font=dict(color="white", size=18, family=treemap_font_family),
                 height=36,
             ),
         ),
