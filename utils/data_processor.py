@@ -156,7 +156,12 @@ def process_traders_data(data):
             "col32": "value_to_avg_ratio",
             "col40": "NAV",
             "col41": "nominal_bubble",
-            "col42": "NAV_change_percent",  # ✅ اضافه شد
+            "col42": "NAV_change_percent",
+"col35":"weekly_return",
+"col36":"monthly_return",
+"col37":"3_month_return",
+"col38":"net_asset",
+
             "price2_change": "close_price_change_percent",
             "col16": "sarane_kharid",
             "col17": "sarane_forosh",
@@ -187,7 +192,7 @@ def process_traders_data(data):
     Fund_df["ekhtelaf_sarane"] = Fund_df["sarane_kharid"] - Fund_df["sarane_forosh"]
 
     Fund_df["pol_to_value_ratio"] = (
-        (Fund_df["pol_hagigi"] / Fund_df["value"].replace(0, pd.NA)) * 100
+        (Fund_df["pol_hagigi"] / Fund_df["avg_monthly_value"].replace(0, pd.NA)) * 100
     ).round(2)
 
     Fund_df["final_price_change"] = pd.to_numeric(
@@ -198,6 +203,12 @@ def process_traders_data(data):
         Fund_df["value_to_avg_ratio"], errors="coerce"
     ).round(2)
 
+    Fund_df["net_asset"] = (
+        Fund_df["net_asset"]
+        .replace("-", pd.NA)
+        .pipe(pd.to_numeric, errors="coerce")
+        / 10_000_000_000
+
     Fund_df.sort_values(by="value", ascending=False, inplace=True)
 
     Fund_df = Fund_df[
@@ -205,7 +216,7 @@ def process_traders_data(data):
             "close_price",
             "NAV",
             "nominal_bubble",
-            "NAV_change_percent",           # ✅ اضافه شد به لیست ستون‌ها
+            "NAV_change_percent",
             "close_price_change_percent",
             "final_price_change",
             "sarane_kharid",
