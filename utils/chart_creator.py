@@ -294,24 +294,35 @@ def create_market_charts():
             showarrow=False
         )
 
-        # نمودار 4: دو برچسب
-        fund_color = COLOR_POSITIVE if last_fund >= 0 else COLOR_NEGATIVE
-        fig.add_annotation(
-            text=f'<b>{last_fund:+.2f}%</b>',
-            x=1.01, y=last_fund, xref='paper', yref='y4',
-            xanchor='left', yanchor='middle',
-            font=dict(size=28, color=fund_color, family=chart_font_family),
-            showarrow=False
-        )
+        # برچسب اول: last_fund
+fund_color = COLOR_POSITIVE if last_fund >= 0 else COLOR_NEGATIVE
+fig.add_annotation(
+    text=f'<b>{last_fund:+.2f}%</b>',
+    x=1.01, y=last_fund, xref='paper', yref='y4',
+    xanchor='left', yanchor='middle',
+    font=dict(size=28, color=fund_color, family=chart_font_family),
+    showarrow=False
+)
 
-        final_color = COLOR_POSITIVE if last_final >= 0 else COLOR_NEGATIVE
-        fig.add_annotation(
-            text=f'<b>{last_final:+.2f}%</b>',
-            x=1.01, y=last_final, xref='paper', yref='y4',
-            xanchor='left', yanchor='middle',
-            font=dict(size=28, color='#2196F3', family=chart_font_family),
-            showarrow=False
-        )
+# برچسب دوم: last_final
+final_color = '#2196F3'
+
+# تعیین yshift خودکار بر اساس فاصله بین دو مقدار
+min_gap = 0.01  # حداقل فاصله برای جلوگیری از هم‌پوشانی (می‌توانید تغییر دهید)
+if abs(last_final - last_fund) < min_gap:
+    # اگر last_final بالاتر است، برچسب را پایین می‌بریم و بالعکس
+    yshift = -30 if last_final > last_fund else 30
+else:
+    yshift = 0
+
+fig.add_annotation(
+    text=f'<b>{last_final:+.2f}%</b>',
+    x=1.01, y=last_final, xref='paper', yref='y4',
+    xanchor='left', yanchor='middle',
+    yshift=yshift,
+    font=dict(size=28, color=final_color, family=chart_font_family),
+    showarrow=False
+)
 
         # نمودار 5
         bubble_color = COLOR_POSITIVE if last_bubble >= 0 else COLOR_NEGATIVE
