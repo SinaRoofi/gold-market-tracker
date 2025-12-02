@@ -401,7 +401,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
 💰 ارزش معاملات: {row["value"]:.0f} م.ت ({row["value_to_avg_ratio"]*100:.0f}%)
-💸 پول حقیقی: {row["pol_hagigi"]:+.0f} م.ت ({pol_ratio:+.1f}%)
+💸 پول حقیقی: {row["pol_hagigi"]:+.1f} م.ت ({pol_ratio:+.1f}%)
 
 """
 
@@ -430,7 +430,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
 💰 ارزش معاملات: {row["value"]:.0f} م.ت ({row["value_to_avg_ratio"]*100:.1f}%)
-💸 پول حقیقی: {row["pol_hagigi"]:+.0f} م.ت ({pol_ratio:+.1f}%)
+💸 پول حقیقی: {row["pol_hagigi"]:+.1f} م.ت ({pol_ratio:+.1f}%)
 
 """
 
