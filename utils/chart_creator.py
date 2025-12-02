@@ -311,7 +311,7 @@ def create_market_charts():
         min_gap = 0.01  # حداقل فاصله برای جلوگیری از هم‌پوشانی (می‌توانید تغییر دهید)
         if abs(last_final - last_fund) < min_gap:
             # اگر last_final بالاتر است، برچسب را پایین می‌بریم و بالعکس
-            yshift = -30 if last_final > last_fund else 30
+            yshift = -50 if last_final > last_fund else 50
         else:
             yshift = 0
 
