@@ -23,8 +23,8 @@ DEFAULT_DOLLAR_PRICE = 119100   # قیمت پیش‌فرض دلار (تومان)
 # 📌 هندل کانال تلگرام
 CHANNEL_HANDLE = "@Gold_Iran_Market"
 ALERT_CHANNEL_HANDLE = "@ALERT_GOLD"
-#
 
+# ارزش روزانه دلار
 LOW_VALUE = 52.05
 VALUE = 90.41
 HIGH_VALUE = 191.79 ════════════════════════════════════════════════════════════════
