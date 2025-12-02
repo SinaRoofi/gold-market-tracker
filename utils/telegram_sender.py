@@ -548,7 +548,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
     shams = data["dfp"].loc["شمش-طلا"]
     gold_24 = data["dfp"].loc["طلا-گرم-24-عیار"]
     gold_18 = data["dfp"].loc["طلا-گرم-18-عیار"]
-    sekeh = data["dfp"].loc["سکه-امامی-طرح-جدید"]
+    sekeh = data["dfp"].loc["سطلا"]
 
     def calc_diffs(row, d_cur, g_cur):
         d_calc = row.get("pricing_dollar", 0)
@@ -599,7 +599,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 📊 تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
 💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+,.0f})
 
-🪙 سکه امامی
+🪙 سکه بورسی
 💰 قیمت: {sekeh_price:,.0f} تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
 💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+,.0f})
