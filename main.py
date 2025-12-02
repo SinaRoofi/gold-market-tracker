@@ -18,7 +18,7 @@ from config import (
 )
 from utils.data_fetcher import (
     fetch_gold_price_today, fetch_dollar_prices,
-    fetch_yesterday_close, fetch_market_data
+    fetch_market_data
 )
 from utils.data_processor import process_market_data
 from utils.telegram_sender import send_to_telegram
@@ -90,6 +90,55 @@ def get_gold_yesterday_from_sheet(today_date):
         return None, None, False
 
 
+def get_dollar_yesterday_from_sheet(today_date):
+    """
+    دریافت قیمت دلار آخرین روز کاری قبل از امروز
+    
+    Args:
+        today_date: تاریخ امروز به فرمت YYYY-MM-DD
+    
+    Returns:
+        tuple: (قیمت دلار، تاریخ پیدا شده، موفقیت)
+    """
+    try:
+        from datetime import datetime, timedelta
+
+        today = datetime.strptime(today_date, "%Y-%m-%d")
+
+        logger.info(f"🔍 جستجوی آخرین قیمت دلار قبل از {today_date}")
+
+        # خواندن 80 رکورد آخر
+        rows = read_from_sheets(limit=80)
+
+        if not rows:
+            logger.warning("⚠️ هیچ رکوردی در شیت پیدا نشد")
+            return None, None, False
+
+        # جستجو از آخرین رکورد به قبل
+        for row in reversed(rows):
+            if len(row) > 2 and row[0]:
+                row_date_str = row[0][:10]  # تاریخ
+                row_date = datetime.strptime(row_date_str, "%Y-%m-%d")
+
+                # باید قبل از امروز باشه
+                if row_date < today:
+                    if row[2]:  # ستون سوم قیمت دلار
+                        dollar_price = float(row[2])
+                        days_ago = (today - row_date).days
+                        logger.info(f"✅ آخرین قیمت دلار: {dollar_price:,.0f} تومان (تاریخ {row_date_str} - {days_ago} روز پیش)")
+                        return dollar_price, row_date_str, True
+                    else:
+                        logger.warning(f"⚠️ تاریخ {row_date_str} پیدا شد ولی قیمت دلار خالی است")
+                        continue
+
+        logger.warning(f"⚠️ هیچ رکورد معتبری قبل از {today_date} پیدا نشد")
+        return None, None, False
+
+    except Exception as e:
+        logger.error(f"❌ خطا در خواندن قیمت دلار دیروز: {e}")
+        return None, None, False
+
+
 async def main():
     """تابع اصلی برنامه"""
     try:
@@ -136,6 +185,16 @@ async def main():
             gold_yesterday = None
 
         # ═══════════════════════════════════════════════════════
+        # 🆕 دریافت قیمت دلار آخرین روز کاری از شیت
+        # ═══════════════════════════════════════════════════════
+        logger.info("📊 دریافت قیمت دلار آخرین روز کاری از Google Sheets...")
+        dollar_yesterday, dollar_prev_date, dollar_found = get_dollar_yesterday_from_sheet(today_str)
+
+        if not dollar_found:
+            logger.warning("⚠️ قیمت دلار قبلی پیدا نشد → yesterday_close = قیمت فعلی")
+            dollar_yesterday = None
+
+        # ═══════════════════════════════════════════════════════
         # اتصال به Telethon و دریافت داده‌ها
         # ═══════════════════════════════════════════════════════
         async with TelegramClient(StringSession(TELEGRAM_SESSION), 
@@ -178,16 +237,14 @@ async def main():
                 logger.info(f"✅ آخرین معامله دلار: {last_trade:,} تومان")
 
             # ───────────────────────────────────────────────────
-            # 3️⃣ دریافت قیمت بسته دیروز
+            # 3️⃣ استفاده از قیمت دلار دیروز از Sheet
             # ───────────────────────────────────────────────────
-            logger.info("📊 دریافت قیمت بسته شدن دیروز...")
-            yesterday_close = await fetch_yesterday_close(client)
+            yesterday_close = dollar_yesterday if dollar_yesterday else last_trade
 
-            if not yesterday_close or yesterday_close == 0:
-                yesterday_close = last_trade
-                logger.warning(f"⚠️ قیمت بسته دیروز پیدا نشد → استفاده از قیمت فعلی")
+            if dollar_yesterday:
+                logger.info(f"✅ قیمت دلار دیروز (از Sheet): {yesterday_close:,} تومان")
             else:
-                logger.info(f"✅ قیمت بسته دیروز: {yesterday_close:,} تومان")
+                logger.warning(f"⚠️ قیمت دلار دیروز پیدا نشد → استفاده از قیمت فعلی ({last_trade:,})")
 
             # ───────────────────────────────────────────────────
             # 4️⃣ دریافت داده‌های بازار
