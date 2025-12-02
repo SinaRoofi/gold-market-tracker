@@ -26,9 +26,9 @@ ALERT_CHANNEL_HANDLE = "@ALERT_GOLD"
 
 # ارزش روزانه دلار
 VALUE_DIFF = 70_000
-LOW_VALUE = 54.05
-VALUE = 98.63
-HIGH_VALUE = 191.79
+LOW_VALUE = 30.13
+VALUE = 87.67
+HIGH_VALUE = 186.30
 
 # ════════════════════════════════════════════════════════════════
 # 🔐 متغیرهای محیطی (Environment Variables)
