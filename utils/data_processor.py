@@ -157,11 +157,10 @@ def process_traders_data(data):
             "col40": "NAV",
             "col41": "nominal_bubble",
             "col42": "NAV_change_percent",
-"col35":"weekly_return",
-"col36":"monthly_return",
-"col37":"3_month_return",
-"col38":"net_asset",
-
+            "col35": "weekly_return",
+            "col36": "monthly_return",
+            "col37": "3_month_return",
+            "col38": "net_asset",
             "price2_change": "close_price_change_percent",
             "col16": "sarane_kharid",
             "col17": "sarane_forosh",
@@ -189,6 +188,18 @@ def process_traders_data(data):
         Fund_df["NAV_change_percent"], errors="coerce"
     ).round(2)
 
+    # ✅ پردازش ستون‌های بازده
+    for col in ["weekly_return", "monthly_return", "3_month_return"]:
+        Fund_df[col] = pd.to_numeric(Fund_df[col], errors="coerce").round(2)
+
+    # ✅ پردازش net_asset (با پرانتز بسته اصلاح‌شده)
+    Fund_df["net_asset"] = (
+        Fund_df["net_asset"]
+        .replace("-", pd.NA)
+        .pipe(pd.to_numeric, errors="coerce")
+        / 10_000_000_000
+    )
+
     Fund_df["ekhtelaf_sarane"] = Fund_df["sarane_kharid"] - Fund_df["sarane_forosh"]
 
     Fund_df["pol_to_value_ratio"] = (
@@ -203,14 +214,9 @@ def process_traders_data(data):
         Fund_df["value_to_avg_ratio"], errors="coerce"
     ).round(2)
 
-    Fund_df["net_asset"] = (
-        Fund_df["net_asset"]
-        .replace("-", pd.NA)
-        .pipe(pd.to_numeric, errors="coerce")
-        / 10_000_000_000
-
     Fund_df.sort_values(by="value", ascending=False, inplace=True)
 
+    # ✅ ستون‌های جدید اضافه شدند
     Fund_df = Fund_df[
         [
             "close_price",
@@ -219,6 +225,10 @@ def process_traders_data(data):
             "NAV_change_percent",
             "close_price_change_percent",
             "final_price_change",
+            "weekly_return",
+            "monthly_return",
+            "3_month_return",
+            "net_asset",
             "sarane_kharid",
             "sarane_forosh",
             "ekhtelaf_sarane",
