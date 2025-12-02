@@ -308,7 +308,7 @@ def create_market_charts():
         final_color = '#2196F3'
 
         # تعیین yshift خودکار بر اساس فاصله بین دو مقدار
-        min_gap = 0.01  # حداقل فاصله برای جلوگیری از هم‌پوشانی (می‌توانید تغییر دهید)
+        min_gap = 0.03  # حداقل فاصله برای جلوگیری از هم‌پوشانی (می‌توانید تغییر دهید)
         if abs(last_final - last_fund) < min_gap:
             # اگر last_final بالاتر است، برچسب را پایین می‌بریم و بالعکس
             yshift = -50 if last_final > last_fund else 50
