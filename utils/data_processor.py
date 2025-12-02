@@ -197,6 +197,7 @@ def process_traders_data(data):
         Fund_df["net_asset"]
         .replace("-", pd.NA)
         .pipe(pd.to_numeric, errors="coerce")
+        .fillna(0)
         / 10_000_000_000
     )
 
