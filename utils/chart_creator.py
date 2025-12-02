@@ -339,7 +339,7 @@ def create_market_charts():
 
         fig.add_annotation(
             text=f'<b>خ:{last_kharid:.0f}</b>',
-            x=1.01, y=0.11, xref='paper', yref='paper',
+            x=1.01, y=0.105, xref='paper', yref='paper',
             xanchor='left', yanchor='bottom',
             font=dict(size=28, color=COLOR_POSITIVE, family=chart_font_family),
             showarrow=False
