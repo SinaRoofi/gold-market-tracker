@@ -585,9 +585,9 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 🔄 آخرین آپدیت: {current_time}
 
 💵 دلار
-🟩 کران پایین ارزش دلار: {low_total:,.0f} تومان
+🟩 کران پایین دلار: {low_total:,.0f} تومان
 💵 ارزش دلار: {value_total:,.0f} تومان
-🟥 کران بالای ارزش دلار: {high_total:,.0f} تومان
+🟥 کران بالای دلار: {high_total:,.0f} تومان
 
 💰 آخرین معامله دلار: {dollar_prices['last_trade']:,.0f} تومان ({dollar_change:+.2f}%)
 🟢 خرید: {dollar_prices['bid']:,.0f} | 🔴 فروش: {dollar_prices['ask']:,.0f}
