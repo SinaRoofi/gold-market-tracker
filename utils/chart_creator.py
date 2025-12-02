@@ -300,7 +300,7 @@ def create_market_charts():
             text=f'<b>{last_fund:+.2f}%</b>',
             x=1.01, y=last_fund, xref='paper', yref='y4',
             xanchor='left', yanchor='middle',
-            font=dict(size=25, color=fund_color, family=chart_font_family),
+            font=dict(size=28, color=fund_color, family=chart_font_family),
             showarrow=False
         )
 
@@ -309,7 +309,7 @@ def create_market_charts():
             text=f'<b>{last_final:+.2f}%</b>',
             x=1.01, y=last_final, xref='paper', yref='y4',
             xanchor='left', yanchor='middle',
-            font=dict(size=25, color='#2196F3', family=chart_font_family),
+            font=dict(size=28, color='#2196F3', family=chart_font_family),
             showarrow=False
         )
 
@@ -328,9 +328,9 @@ def create_market_charts():
         
         fig.add_annotation(
             text=f'<b>خ:{last_kharid:.0f}</b>',
-            x=1.01, y=0.2, xref='paper', yref='paper',
+            x=1.01, y=0.12, xref='paper', yref='paper',
             xanchor='left', yanchor='bottom',
-            font=dict(size=25, color=COLOR_POSITIVE, family=chart_font_family),
+            font=dict(size=28, color=COLOR_POSITIVE, family=chart_font_family),
             showarrow=False
         )
 
@@ -338,7 +338,7 @@ def create_market_charts():
             text=f'<b>اخ:{last_ekhtelaf:+.0f}</b>',
             x=1.01, y=0.07, xref='paper', yref='paper',
             xanchor='left', yanchor='bottom',
-            font=dict(size=25, color=ekhtelaf_color, family=chart_font_family),
+            font=dict(size=28, color=ekhtelaf_color, family=chart_font_family),
             showarrow=False
         )
 
@@ -346,7 +346,7 @@ def create_market_charts():
             text=f'<b>ف:{last_forosh:.0f}</b>',
             x=1.01, y=0.04, xref='paper', yref='paper',
             xanchor='left', yanchor='bottom',
-            font=dict(size=25, color=COLOR_NEGATIVE, family=chart_font_family),
+            font=dict(size=28, color=COLOR_NEGATIVE, family=chart_font_family),
             showarrow=False
         )
 
