@@ -247,14 +247,14 @@ def get_gradient_color(value, vmin=-10, vmax=10):
     """
     if vmax == vmin:
         return "#404040"
-    
+
     # نرمال‌سازی به بازه [0, 1]
     normalized = (value - vmin) / (vmax - vmin)
     normalized = max(0, min(1, normalized))
-    
+
     # فاصله از مرکز (0.5)
     distance_from_center = abs(normalized - 0.5) * 2  # 0 تا 1
-    
+
     if normalized < 0.5:
         # منفی: از خاکستری به قرمز
         if distance_from_center < 0.2:
@@ -277,7 +277,7 @@ def get_gradient_color(value, vmin=-10, vmax=10):
             r = int(0 + (102 - 0) * progress)
             g = int(100 + (187 - 100) * progress)
             b = int(0 + (106 - 0) * progress)
-    
+
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
@@ -392,13 +392,13 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     )
 
     # ═══════════════════════════════════════════════════════
-    # جدول با رنگ‌بندی گرادیانت اصلاح شده
+    # جدول با بازده هفتگی بعد از حباب
     # ═══════════════════════════════════════════════════════
     top_10 = df_sorted.head(10)
 
     table_header = [
         "نماد", "آخرین", "NAV", "آخرین %", "NAV %", 
-        "حباب %", "سرانه خرید", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"
+        "حباب %", "بازده هفتگی", "سرانه خرید", "اختلاف سرانه", "پول حقیقی", "ارزش معاملات"
     ]
 
     table_cells = [
@@ -408,6 +408,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         [f"{x:+.2f}%" for x in top_10["close_price_change_percent"]],
         [f"{x:+.2f}%" for x in top_10["NAV_change_percent"]],
         [f"{x:+.2f}%" for x in top_10["nominal_bubble"]],
+        [f"{x:+.2f}%" for x in top_10["weekly_return"]],
         [f"{x:+.2f}" for x in top_10["sarane_kharid"]],
         [f"{x:+.2f}" for x in top_10["ekhtelaf_sarane"]],
         [f"{x:+,.0f}" for x in top_10["pol_hagigi"]],
@@ -418,8 +419,9 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     vmin_3, vmax_3 = get_symmetric_vrange(table_cells[3])
     vmin_4, vmax_4 = get_symmetric_vrange(table_cells[4])
     vmin_5, vmax_5 = get_symmetric_vrange(table_cells[5])
-    vmin_7, vmax_7 = get_symmetric_vrange(table_cells[7])
+    vmin_6, vmax_6 = get_symmetric_vrange(table_cells[6])  # بازده هفتگی
     vmin_8, vmax_8 = get_symmetric_vrange(table_cells[8])
+    vmin_9, vmax_9 = get_symmetric_vrange(table_cells[9])
 
     # رنگ‌بندی سلول‌ها
     cell_colors = [
@@ -429,9 +431,10 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         apply_gradient_colors(table_cells[3], vmin=vmin_3, vmax=vmax_3),
         apply_gradient_colors(table_cells[4], vmin=vmin_4, vmax=vmax_4),
         apply_gradient_colors(table_cells[5], vmin=vmin_5, vmax=vmax_5),
-        apply_gradient_colors(table_cells[6], force_positive=True),
-        apply_gradient_colors(table_cells[7], vmin=vmin_7, vmax=vmax_7),
+        apply_gradient_colors(table_cells[6], vmin=vmin_6, vmax=vmax_6),  # بازده هفتگی
+        apply_gradient_colors(table_cells[7], force_positive=True),
         apply_gradient_colors(table_cells[8], vmin=vmin_8, vmax=vmax_8),
+        apply_gradient_colors(table_cells[9], vmin=vmin_9, vmax=vmax_9),
         ["#1C2733"] * 10,  # ارزش معاملات
     ]
 
@@ -522,7 +525,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
     import pytz
 
     def days_passed_this_year():
-        tehran_tz = pytz.timezone("Asia/Tehran")  # یا TIMEZONE از config
+        tehran_tz = pytz.timezone("Asia/Tehran")
         today = JalaliDateTime.now(tehran_tz)
         start_of_year = JalaliDateTime(today.year, 1, 1, tzinfo=tehran_tz)
         return (today - start_of_year).days + 1
@@ -540,13 +543,15 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
     total_value = df_funds["value"].sum()
     total_pol = df_funds["pol_hagigi"].sum()
     total_avg_monthly = df_funds["avg_monthly_value"].sum()
+    total_net_asset = df_funds["net_asset"].sum()
 
-    if total_value > 0:
+    # ✅ وزن‌دهی NAV و درصد تغییر NAV با Net Asset
+    if total_net_asset > 0:
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
         avg_bubble_weighted = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value
-        avg_nav_weighted = (df_funds["NAV"] * df_funds["value"]).sum() / total_value
-        avg_nav_change_weighted = (df_funds["NAV_change_percent"] * df_funds["value"]).sum() / total_value
+        avg_nav_weighted = (df_funds["NAV"] * df_funds["net_asset"]).sum() / total_net_asset
+        avg_nav_change_weighted = (df_funds["NAV_change_percent"] * df_funds["net_asset"]).sum() / total_net_asset
     else:
         avg_price_weighted = avg_change_percent_weighted = avg_bubble_weighted = 0
         avg_nav_weighted = avg_nav_change_weighted = 0
