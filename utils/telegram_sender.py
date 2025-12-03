@@ -396,19 +396,21 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     # ═══════════════════════════════════════════════════════
     top_10 = df_sorted.head(10)
 
-    Table_header_custom = [
-    "نماد",
-    "آخرین",
-    "NAV",
-    "آخرین %",
-    "حباب %",
-    "NAV %",
-    "سرانه خرید",
-    "اختلاف سرانه",
-    "پول حقیقی",
-    "ارزش",
-    "بازده هفتگی"
+    Table_header = [
+    "نماد", 
+    "آخرین", 
+    "NAV", 
+    "آخرین %", 
+    "NAV %", 
+    "حباب %", 
+    "بازده هفتگی",
+    "سرانه خرید", 
+    "اختلاف سرانه", 
+    "پول حقیقی", 
+    "ارزش"
 ]
+
+
 
 
     table_cells = [
@@ -455,14 +457,14 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 fill_color="#242F3D",
                 align="center",
                 font=dict(color="white", size=18, family=treemap_font_family),
-                height=36,
+                height=35,
             ),
             cells=dict(
                 values=table_cells,
                 fill_color=cell_colors,
                 align="center",
                 font=dict(color="white", size=18, family=treemap_font_family),
-                height=36,
+                height=35,
             ),
         ),
         row=2, col=1,
