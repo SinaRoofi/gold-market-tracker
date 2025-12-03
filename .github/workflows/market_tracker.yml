@@ -1,7 +1,7 @@
 name: Gold Market Tracker
 
 on:
-  workflow_dispatch:  # فقط دستی
+  workflow_dispatch:
 
 jobs:
   track-market:
@@ -10,25 +10,38 @@ jobs:
       TZ: Asia/Tehran
 
     steps:
-      - name: Checkout repository
+      # 1. چک‌اوت خیلی سریع‌تر با sparse-checkout
+      - name: Sparse Checkout
         uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .
+          sparse-checkout-cone-mode: false
 
-      - name: Set up Python
+      # 2. استفاده از Python cache داخلی GitHub (بهترین کش ممکن)
+      - name: Setup Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'                     # این خط خیلی مهمه! خود گیت‌هاب کش می‌کنه
 
-      - name: Cache pip
+      # 3. کش دستی pip رو فقط به عنوان fallback نگه داشتم (تقریباً هیچ‌وقت استفاده نمیشه)
+      - name: Cache pip (fallback)
+        if: ${{ !env.ACT }}   # وقتی setup-python کش کرد دیگه لازم نیست
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          key: pip-\( {{ runner.os }}- \){{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            pip-${{ runner.os }}-
 
+      # 4. نصب وابستگی‌ها فقط وقتی requirements.txt تغییر کرده
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt --quiet
 
+      # 5. اجرای اسکریپت اصلی
       - name: Run Gold Tracker
         env:
           TELEGRAM_SESSION: ${{ secrets.TELEGRAM_SESSION }}
@@ -44,9 +57,11 @@ jobs:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
         run: python main.py
 
+      # 6. آپلود لاگ فقط در صورت شکست
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: logs
+          name: gold-tracker-logs
           path: gold_tracker.log
+          retention-days: 7
