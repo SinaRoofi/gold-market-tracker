@@ -461,7 +461,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
                 values=table_cells,
                 fill_color=cell_colors,
                 align="center",
-                font=dict(color="white", size=18, family=treemap_font_family),
+                font=dict(color="white", size=19, family=treemap_font_family),
                 height=35,
             ),
         ),
