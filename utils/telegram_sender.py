@@ -396,10 +396,20 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     # ═══════════════════════════════════════════════════════
     top_10 = df_sorted.head(10)
 
-    table_header = [
-        "نماد", "آخرین", "NAV", "آخرین %", "NAV %", 
-        "حباب %", "بازده هفتگی", "سرانه خرید", "اختلاف سرانه", "پول حقیقی", "ارزش"
-    ]
+    Table_header_custom = [
+    "نماد",
+    "آخرین",
+    "NAV",
+    "آخرین %",
+    "حباب %",
+    "NAV %",
+    "سرانه خرید",
+    "اختلاف سرانه",
+    "پول حقیقی",
+    "ارزش",
+    "بازده هفتگی"
+]
+
 
     table_cells = [
         top_10.index.tolist(),
