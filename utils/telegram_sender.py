@@ -574,12 +574,17 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 
     dollar_last = dollar_prices['last_trade']
 
-    # محاسبه درصد فاصله نسبت آخرین معامله
+    # محاسبه درصد فاصله نسبت آخرین معامله دلار
     low_pct = (low_total - dollar_last) / dollar_last * 100
     value_pct = (value_total - dollar_last) / dollar_last * 100
     high_pct = (high_total - dollar_last) / dollar_last * 100
-
     dollar_change = ((dollar_last - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
+
+    # فاصله دلار درهم نسبت آخرین معامله دلار
+    if dirham_price:
+        dollar_from_dirham = int(dirham_price * 3.6727)
+        dirham_diff_pct = (dollar_from_dirham - dollar_last) / dollar_last * 100
+
     gold_change = ((gold_price - gold_yesterday) / gold_yesterday * 100) if gold_yesterday else 0
 
     dfp = data["dfp"]
@@ -613,15 +618,14 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 🟥 کران بالای دلار: {high_total:,.0f} تومان ({high_pct:.2f}%)
 """
 
-    # ⬇️ اضافه کردن دلار درهم
+    # دلار درهم
     if dirham_price:
-        dollar_from_dirham = int(dirham_price * 3.6727)
-        caption += f"🇦🇪 دلار درهم: {dollar_from_dirham:,.0f} تومان\n"
+        caption += f"🇦🇪 دلار درهم: {dollar_from_dirham:,.0f} تومان ({dirham_diff_pct:+.2f}%)\n"
+
+    caption += f"💵 آخرین معامله: {dollar_last:,.0f} تومان ({dollar_change:+.2f}%)\n"
+    caption += f"🟢 خرید: {dollar_prices['bid']:,.0f} | 🔴 فروش: {dollar_prices['ask']:,.0f}\n"
 
     caption += f"""
-💵 آخرین معامله: {dollar_last:,.0f} تومان ({dollar_change:+.2f}%)
-🟢 خرید: {dollar_prices['bid']:,.0f} | 🔴 فروش: {dollar_prices['ask']:,.0f}
-
 🔆 اونس طلا 
 💰 قیمت: ${gold_price:,.0f} ({gold_change:+.2f}%)
 
@@ -635,23 +639,23 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 ✨ شمش طلا بورسی
 💰 قیمت: {shams['close_price']:,.0f} ریال
 📊 تغییر: {shams['close_price_change_percent']:+.2f}% | حباب: {shams['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_shams:,.0f} ({diff_shams:,.0f})
-🔆 اونس محاسباتی: ${o_shams:,.0f} ({diff_o_shams:,.0f})
+💵 دلار محاسباتی: {d_shams:,.0f} ({diff_shams:+.0f})
+🔆 اونس محاسباتی: ${o_shams:,.0f} ({diff_o_shams:+.0f})
 
 🔸 طلا ۲۴ عیار
 💰 قیمت: {gold_24_price:,.0f} تومان
 📊 تغییر: {gold_24['close_price_change_percent']:+.2f}% | حباب: {gold_24['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:,.0f})
+💵 دلار محاسباتی: {d_24:,.0f} ({diff_24:+.0f})
 
 🔸 طلا ۱۸ عیار
 💰 قیمت: {gold_18_price:,.0f} تومان
 📊 تغییر: {gold_18['close_price_change_percent']:+.2f}% | حباب: {gold_18['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:,.0f})
+💵 دلار محاسباتی: {d_18:,.0f} ({diff_18:+.0f})
 
 🪙 سکه بورسی
 💰 قیمت: {sekeh_price:,.0f} تومان
 📊 تغییر: {sekeh['close_price_change_percent']:+.2f}% | حباب: {sekeh['Bubble']:+.2f}%
-💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:,.0f})
+💵 دلار محاسباتی: {d_sekeh:,.0f} ({diff_sekeh:+.0f})
 
 🔗 {CHANNEL_HANDLE}
 """
