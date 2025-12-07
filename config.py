@@ -18,7 +18,7 @@ EKHTELAF_THRESHOLD = 10         # تغییر اختلاف سرانه برای ه
 
 # 🎯 مقادیر پیش‌فرض (Fallback)
 DEFAULT_GOLD_PRICE = 4230      # قیمت پیش‌فرض اونس طلا (دلار)
-DEFAULT_DOLLAR_PRICE = 122000   # قیمت پیش‌فرض دلار (تومان)
+DEFAULT_DOLLAR_PRICE = 123_000   # قیمت پیش‌فرض دلار (تومان)
 
 # 📌 هندل کانال تلگرام
 CHANNEL_HANDLE = "@Gold_Iran_Market"
