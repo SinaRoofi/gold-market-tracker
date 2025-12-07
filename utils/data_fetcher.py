@@ -5,6 +5,7 @@ import pytz
 from datetime import datetime, timedelta
 from telethon import TelegramClient
 import requests
+from bs4 import BeautifulSoup
 from config import TELEGRAM_CHANNELS
 
 logger = logging.getLogger(__name__)
@@ -148,4 +149,44 @@ async def fetch_market_data():
         return {'rahavard_data': data1, 'traders_data': data2}
     except Exception as e:
         logger.error(f"خطا در دریافت داده‌های بازار: {e}")
+        return None
+
+
+def fetch_dirham_price():
+    """دریافت قیمت فروش درهم امارات از alanchand.com"""
+    try:
+        def persian_to_english_number(s):
+            persian_numbers = "۰۱۲۳۴۵۶۷۸۹"
+            english_numbers = "0123456789"
+            for p, e in zip(persian_numbers, english_numbers):
+                s = s.replace(p, e)
+            return s
+
+        url = "https://alanchand.com/currencies-price"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        resp = requests.get(url, headers=headers, timeout=30)
+        
+        soup = BeautifulSoup(resp.text, "html.parser")
+        
+        table = soup.find("table")
+        
+        price_sale_dirham = None
+        for row in table.find_all("tr")[1:]:
+            cols = row.find_all("td")
+            if cols and cols[0].text.strip() == "درهم":
+                price_sale_dirham = cols[2].text.strip()  # ستون قیمت فروش
+                break
+        
+        if price_sale_dirham:
+            # تبدیل ارقام فارسی به انگلیسی و حذف کاما
+            price_sale_dirham = persian_to_english_number(price_sale_dirham).replace(",", "")
+            price_sale_dirham_int = int(price_sale_dirham)
+            logger.info(f"✅ قیمت درهم: {price_sale_dirham_int:,} تومان")
+            return price_sale_dirham_int
+        else:
+            logger.warning("⚠️ قیمت فروش درهم پیدا نشد")
+            return None
+            
+    except Exception as e:
+        logger.error(f"❌ خطا در دریافت قیمت درهم: {e}")
         return None
