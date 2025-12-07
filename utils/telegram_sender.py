@@ -541,6 +541,15 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
         start_of_year = JalaliDateTime(today.year, 1, 1, tzinfo=tehran_tz)
         return (today - start_of_year).days + 1
 
+    def get_trade_tick(last_trade_time, bid_time, ask_time):
+        times = [t for t in [last_trade_time, bid_time, ask_time] if t is not None]
+        if not times:
+            return ""
+        newest_time = max(times)
+        if newest_time == last_trade_time:
+            return "✅"
+        return ""
+
     days = days_passed_this_year()
     low_total = LOW_VALUE * days + VALUE_DIFF
     value_total = VALUE * days + VALUE_DIFF
@@ -556,7 +565,6 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
     total_avg_monthly = df_funds["avg_monthly_value"].sum()
     total_net_asset = df_funds["net_asset"].sum()
 
-    # ✅ وزن‌دهی NAV و درصد تغییر NAV با Net Asset
     if total_net_asset > 0:
         avg_price_weighted = (df_funds["close_price"] * df_funds["value"]).sum() / total_value
         avg_change_percent_weighted = (df_funds["close_price_change_percent"] * df_funds["value"]).sum() / total_value
@@ -574,13 +582,11 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 
     dollar_last = dollar_prices['last_trade']
 
-    # محاسبه درصد فاصله نسبت آخرین معامله دلار
     low_pct = (low_total - dollar_last) / dollar_last * 100
     value_pct = (value_total - dollar_last) / dollar_last * 100
     high_pct = (high_total - dollar_last) / dollar_last * 100
     dollar_change = ((dollar_last - yesterday_close) / yesterday_close * 100) if yesterday_close else 0
 
-    # فاصله دلار درهم نسبت آخرین معامله دلار
     if dirham_price:
         dollar_from_dirham = int(dirham_price * 3.6727)
         dirham_diff_pct = (dollar_from_dirham - dollar_last) / dollar_last * 100
@@ -609,6 +615,12 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 
     pol_to_value_ratio = (total_pol / total_value * 100) if total_value != 0 else 0
 
+    tick = get_trade_tick(
+        dollar_prices.get("last_trade_time"),
+        dollar_prices.get("bid_time"),
+        dollar_prices.get("ask_time")
+    )
+
     caption = f"""
 🔄 آخرین آپدیت: {current_time}
 
@@ -619,11 +631,10 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 🟥 کران بالای دلار: {high_total:,.0f} تومان ({high_pct:.2f}%)
 """
 
-    # دلار درهم
     if dirham_price:
         caption += f"🇦🇪 دلار درهم: {dollar_from_dirham:,.0f} تومان ({dirham_diff_pct:+.2f}%)\n\n"
 
-    caption += f"💵 آخرین معامله: {dollar_last:,.0f} تومان ({dollar_change:+.2f}%)\n"
+    caption += f"💵 آخرین معامله: {dollar_last:,.0f} تومان ({dollar_change:+.2f}%) {tick}\n"
     caption += f"🟢 خرید: {dollar_prices['bid']:,.0f} | 🔴 فروش: {dollar_prices['ask']:,.0f}\n"
 
     caption += f"""
