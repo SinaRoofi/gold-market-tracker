@@ -66,7 +66,7 @@ def get_today_date():
 # ────────────────── ارسال اصلی به تلگرام ──────────────────
 
 def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, 
-                     gold_yesterday, gold_time, yesterday_close):
+                     gold_yesterday, gold_time, yesterday_close, dirham_price=None):
     """
     ارسال داده‌ها به کانال تلگرام
     """
@@ -95,7 +95,8 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
             gold_price, 
             gold_yesterday, 
             yesterday_close, 
-            gold_time
+            gold_time,
+            dirham_price
         )
 
         gist_data = get_gist_data()
@@ -529,7 +530,7 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 # ────────────────── کپشن ──────────────────
 
 def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, 
-                         yesterday_close, gold_time):
+                         yesterday_close, gold_time, dirham_price=None):
     from config import LOW_VALUE, VALUE, HIGH_VALUE, VALUE_DIFF
     from persiantools.jdatetime import JalaliDateTime
     import pytz
@@ -610,7 +611,14 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 🟩 کران پایین دلار: {low_total:,.0f} تومان ({low_pct:.2f}%)
 💵 ارزش دلار: {value_total:,.0f} تومان ({value_pct:.2f}%)
 🟥 کران بالای دلار: {high_total:,.0f} تومان ({high_pct:.2f}%)
+"""
 
+    # ⬇️ اضافه کردن دلار درهم
+    if dirham_price:
+        dollar_from_dirham = int(dirham_price * 3.6727)
+        caption += f"🇦🇪 دلار درهم: {dollar_from_dirham:,.0f} تومان\n"
+
+    caption += f"""
 💵 آخرین معامله: {dollar_last:,.0f} تومان ({dollar_change:+.2f}%)
 🟢 خرید: {dollar_prices['bid']:,.0f} | 🔴 فروش: {dollar_prices['ask']:,.0f}
 
