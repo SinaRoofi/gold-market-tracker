@@ -18,7 +18,7 @@ from config import (
 )
 from utils.data_fetcher import (
     fetch_gold_price_today, fetch_dollar_prices,
-    fetch_market_data
+    fetch_market_data, fetch_dirham_price
 )
 from utils.data_processor import process_market_data
 from utils.telegram_sender import send_to_telegram
@@ -237,6 +237,12 @@ async def main():
                 logger.info(f"✅ آخرین معامله دلار: {last_trade:,} تومان")
 
             # ───────────────────────────────────────────────────
+            # 🆕 دریافت قیمت درهم امارات
+            # ───────────────────────────────────────────────────
+            logger.info("🇦🇪 دریافت قیمت درهم امارات...")
+            dirham_price = fetch_dirham_price()
+
+            # ───────────────────────────────────────────────────
             # 3️⃣ استفاده از قیمت دلار دیروز از Sheet
             # ───────────────────────────────────────────────────
             yesterday_close = dollar_yesterday if dollar_yesterday else last_trade
@@ -364,7 +370,8 @@ async def main():
                 gold_price=gold_today,
                 gold_yesterday=gold_yesterday,
                 gold_time=gold_time,
-                yesterday_close=yesterday_close
+                yesterday_close=yesterday_close,
+                dirham_price=dirham_price
             )
 
             if success:
