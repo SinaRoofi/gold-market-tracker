@@ -196,7 +196,7 @@ def get_previous_state_from_sheet():
 
 # ────────────────── چک و ارسال هشدارها ──────────────────
 def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday, alert_channel_handle=None):
-
+   
     prev = get_previous_state_from_sheet()
     status = get_alert_status()
 
@@ -260,13 +260,11 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
         ("شمش طلا", current_shams, SHAMS_HIGH, SHAMS_LOW, "shams"),
         ("اونس طلا", current_gold, GOLD_HIGH, GOLD_LOW, "gold")
     ]:
-        if price >= high:
         if price > high:
             if status[key] != "above":
                 send_alert_threshold(asset, price, high, above=True, bot_token=bot_token, chat_id=chat_id)
                 status[key] = "above"
                 changed = True
-        elif price <= low:
         elif price < low:
             if status[key] != "below":
                 send_alert_threshold(asset, price, low, above=False, bot_token=bot_token, chat_id=chat_id)
