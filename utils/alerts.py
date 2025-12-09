@@ -196,7 +196,7 @@ def get_previous_state_from_sheet():
 
 # ────────────────── چک و ارسال هشدارها ──────────────────
 def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday, alert_channel_handle=None):
-   
+
     prev = get_previous_state_from_sheet()
     status = get_alert_status()
 
@@ -260,11 +260,13 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
         ("شمش طلا", current_shams, SHAMS_HIGH, SHAMS_LOW, "shams"),
         ("اونس طلا", current_gold, GOLD_HIGH, GOLD_LOW, "gold")
     ]:
+        if price >= high:
         if price > high:
             if status[key] != "above":
                 send_alert_threshold(asset, price, high, above=True, bot_token=bot_token, chat_id=chat_id)
                 status[key] = "above"
                 changed = True
+        elif price <= low:
         elif price < low:
             if status[key] != "below":
                 send_alert_threshold(asset, price, low, above=False, bot_token=bot_token, chat_id=chat_id)
@@ -344,7 +346,7 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
 
 """
 
-        main_text = f"🚨  #خرید_قوی# \n\n{funds_text}".strip()
+        main_text = f"🚨 هشدار سخت خرید\n\n{funds_text}".strip()
         footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
         caption = f"{main_text}\n{footer}"
 
@@ -405,7 +407,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 
 """
 
-            main_text = f"🟢  #کراس_مثبت_سرانه#\n\n{funds_text}".strip()
+            main_text = f"🟢 هشدار کراس مثبت سرانه\n\n{funds_text}".strip()
             footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
             caption = f"{main_text}\n{footer}"
 
@@ -434,7 +436,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 
 """
 
-            main_text = f"🔴  #کراس_منفی_سرانه#\n\n{funds_text}".strip()
+            main_text = f"🔴 هشدار کراس منفی سرانه\n\n{funds_text}".strip()
             footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
             caption = f"{main_text}\n{footer}"
 
@@ -462,7 +464,7 @@ def send_price_alert(bot_token, chat_id, asset_name, price, change_5min, unit="�
     else:
         price_formatted = f"{int(round(price)):,} {unit}"
 
-    main_text = f"🚨 #نوسان# {asset_name}\n\n💰 قیمت: {price_formatted}\n📊 تغییر: {change_text}"
+    main_text = f"🚨 هشدار نوسان {asset_name}\n\n💰 قیمت: {price_formatted}\n📊 تغییر: {change_text}"
     footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
 
@@ -479,7 +481,7 @@ def send_alert_ekhtelaf_fast(bot_token, chat_id, prev_val, curr_val, diff, pol_h
     diff_text = f"{diff:+.0f}".replace("+-", "−")
     pol_text = f"{pol_hagigi:+,.0f}".replace("+-", "−")
 
-    main_text = f"🚨  #اختلاف_سرانه#\n\n{dir_emoji} {direction}\n⏱ تغییر ۵ دقیقه: {diff_text} میلیون تومان\n💰 پول حقیقی: {pol_text} میلیارد تومان"
+    main_text = f"🚨 هشدار اختلاف سرانه\n\n{dir_emoji} {direction}\n⏱ تغییر ۵ دقیقه: {diff_text} میلیون تومان\n💰 پول حقیقی: {pol_text} میلیارد تومان"
     footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
 
