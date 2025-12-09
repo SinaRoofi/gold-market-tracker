@@ -344,7 +344,7 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
 
 """
 
-        main_text = f"🚨 هشدار سخت خرید\n\n{funds_text}".strip()
+        main_text = f"🚨  #خرید_قوی# \n\n{funds_text}".strip()
         footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
         caption = f"{main_text}\n{footer}"
 
@@ -405,7 +405,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 
 """
 
-            main_text = f"🟢 هشدار کراس مثبت سرانه\n\n{funds_text}".strip()
+            main_text = f"🟢  #کراس_مثبت_سرانه#\n\n{funds_text}".strip()
             footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
             caption = f"{main_text}\n{footer}"
 
@@ -434,7 +434,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 
 """
 
-            main_text = f"🔴 هشدار کراس منفی سرانه\n\n{funds_text}".strip()
+            main_text = f"🔴  #کراس_منفی_سرانه#\n\n{funds_text}".strip()
             footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
             caption = f"{main_text}\n{footer}"
 
@@ -462,7 +462,7 @@ def send_price_alert(bot_token, chat_id, asset_name, price, change_5min, unit="�
     else:
         price_formatted = f"{int(round(price)):,} {unit}"
 
-    main_text = f"🚨 هشدار نوسان {asset_name}\n\n💰 قیمت: {price_formatted}\n📊 تغییر: {change_text}"
+    main_text = f"🚨 #نوسان# {asset_name}\n\n💰 قیمت: {price_formatted}\n📊 تغییر: {change_text}"
     footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
 
@@ -479,7 +479,7 @@ def send_alert_ekhtelaf_fast(bot_token, chat_id, prev_val, curr_val, diff, pol_h
     diff_text = f"{diff:+.0f}".replace("+-", "−")
     pol_text = f"{pol_hagigi:+,.0f}".replace("+-", "−")
 
-    main_text = f"🚨 هشدار اختلاف سرانه\n\n{dir_emoji} {direction}\n⏱ تغییر ۵ دقیقه: {diff_text} میلیون تومان\n💰 پول حقیقی: {pol_text} میلیارد تومان"
+    main_text = f"🚨  #اختلاف_سرانه#\n\n{dir_emoji} {direction}\n⏱ تغییر ۵ دقیقه: {diff_text} میلیون تومان\n💰 پول حقیقی: {pol_text} میلیارد تومان"
     footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
 
