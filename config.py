@@ -17,8 +17,13 @@ ALERT_THRESHOLD_PERCENT = 0.5   # درصد تغییر سریع
 EKHTELAF_THRESHOLD = 10         # تغییر اختلاف سرانه برای هشدار (میلیون تومان)
 
 # 🎯 مقادیر پیش‌فرض (Fallback)
-DEFAULT_GOLD_PRICE = 4230      # قیمت پیش‌فرض اونس طلا (دلار)
-DEFAULT_DOLLAR_PRICE = 125_000   # قیمت پیش‌فرض دلار (تومان)
+DEFAULT_GOLD_PRICE = 4230      
+DEFAULT_DOLLAR_PRICE = 125_000 
+
+# 🎈 آستانه‌های هشدار حباب
+BUBBLE_POSITIVE_THRESHOLD = 1.0   
+BUBBLE_NEGATIVE_THRESHOLD = -1.0
+BUBBLE_SHARP_CHANGE_THRESHOLD = 0.5
 
 # 📌 هندل کانال تلگرام
 CHANNEL_HANDLE = "@Gold_Iran_Market"
