@@ -653,7 +653,7 @@ def send_alert_ekhtelaf_fast(bot_token, chat_id, prev_val, curr_val, diff, pol_h
     diff_text = f"{diff:+.0f}".replace("+-", "−")
     pol_text = f"{pol_hagigi:+,.0f}".replace("+-", "−")
 
-    main_text = f"🚨 هشدار اختلاف سرانه\n\n{dir_emoji} {direction}\n⏱ تغییر ۵ دقیقه: {diff_text} میلیون تومان\n💰 پول حقیقی: {pol_text} میلیارد تومان"
+    main_text = f"🚨 هشدار اختلاف سرانه\n\n{dir_emoji} {direction}\n⏱ تغییر: {diff_text} میلیون تومان\n💰 پول حقیقی: {pol_text} میلیارد تومان"
     footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
     caption = f"{main_text}\n{footer}"
 
