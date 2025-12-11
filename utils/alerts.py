@@ -11,6 +11,9 @@ from config import (
     GOLD_HIGH, GOLD_LOW,
     ALERT_THRESHOLD_PERCENT,
     EKHTELAF_THRESHOLD,
+    BUBBLE_POSITIVE_THRESHOLD,
+    BUBBLE_NEGATIVE_THRESHOLD,
+    BUBBLE_SHARP_CHANGE_THRESHOLD,
     GIST_ID, GIST_TOKEN,
     ALERT_STATUS_FILE,
     ALERT_CHANNEL_HANDLE,
@@ -26,7 +29,9 @@ FUND_ALERTS_FILE = "fund_alerts.json"
 ALERT_STATUS_CACHE = None
 
 
-# ────────────────── مدیریت Gist ──────────────────
+# ════════════════════════════════════════════════════════════════
+# مدیریت Gist
+# ════════════════════════════════════════════════════════════════
 
 def get_alert_status():
     """دریافت وضعیت هشدارها از Gist با fallback به کش محلی"""
@@ -35,7 +40,13 @@ def get_alert_status():
     try:
         if not GIST_ID or not GIST_TOKEN:
             logger.warning("GIST_ID یا GIST_TOKEN تنظیم نشده است")
-            return ALERT_STATUS_CACHE or {"dollar": "normal", "shams": "normal", "gold": "normal"}
+            default = {
+                "dollar": "normal",
+                "shams": "normal",
+                "gold": "normal",
+                "bubble": "normal"  # ✅ وضعیت حباب
+            }
+            return ALERT_STATUS_CACHE or default
 
         url = f"https://api.github.com/gists/{GIST_ID}"
         headers = {"Authorization": f"token {GIST_TOKEN}"}
@@ -43,6 +54,11 @@ def get_alert_status():
 
         if r.status_code == 200 and ALERT_STATUS_FILE in r.json()["files"]:
             status = json.loads(r.json()["files"][ALERT_STATUS_FILE]["content"])
+            
+            # ✅ اطمینان از وجود کلید bubble
+            if "bubble" not in status:
+                status["bubble"] = "normal"
+            
             ALERT_STATUS_CACHE = status  # ✅ ذخیره موفق
             return status
 
@@ -52,7 +68,12 @@ def get_alert_status():
             logger.info("استفاده از کش محلی")
             return ALERT_STATUS_CACHE
 
-    default = {"dollar": "normal", "shams": "normal", "gold": "normal"}
+    default = {
+        "dollar": "normal",
+        "shams": "normal",
+        "gold": "normal",
+        "bubble": "normal"
+    }
     ALERT_STATUS_CACHE = default
     return default
 
@@ -115,9 +136,12 @@ def save_fund_alerts(fund_alerts):
         logger.error(f"خطا در ذخیره fund_alerts: {e}")
 
 
-# ────────────────── پاک‌سازی داده‌های قدیمی‌تر از ۷ روز ──────────────────
+# ════════════════════════════════════════════════════════════════
+# پاک‌سازی داده‌های قدیمی
+# ════════════════════════════════════════════════════════════════
+
 def cleanup_old_alerts(alerts_dict, max_days=7):
-    """پاک‌سازی بهینه‌شده داده‌های قدیمی"""
+    """پاک‌سازی بهینه‌شده داده‌های قدیمی‌تر از 7 روز"""
     if not alerts_dict:
         return {}
 
@@ -142,9 +166,12 @@ def cleanup_old_alerts(alerts_dict, max_days=7):
         return alerts_dict
 
 
-# ────────────────── دریافت وضعیت قبلی از شیت با Validation ──────────────────
+# ════════════════════════════════════════════════════════════════
+# دریافت وضعیت قبلی از Sheet
+# ════════════════════════════════════════════════════════════════
+
 def get_previous_state_from_sheet():
-    """دریافت وضعیت قبلی با بررسی فاصله زمانی"""
+    """دریافت وضعیت قبلی با بررسی فاصله زمانی (1 دقیقه برای حباب)"""
     try:
         rows = read_from_sheets(limit=3)  # ✅ 3 ردیف برای اطمینان
 
@@ -155,7 +182,8 @@ def get_previous_state_from_sheet():
                 "shams_price": None, 
                 "gold_price": None, 
                 "ekhtelaf_sarane": None,
-                "sarane_kharid": None
+                "sarane_kharid": None,
+                "bubble_weighted": None  # ✅ حباب
             }
 
         prev_row = rows[-2]
@@ -181,6 +209,7 @@ def get_previous_state_from_sheet():
             "gold_price": float(prev_row[1]) if len(prev_row) > 1 and prev_row[1] else None,
             "ekhtelaf_sarane": float(prev_row[11]) if len(prev_row) > 11 and prev_row[11] else None,
             "sarane_kharid": float(last_row[9]) if len(last_row) > 9 and last_row[9] else None,
+            "bubble_weighted": float(prev_row[8]) if len(prev_row) > 8 and prev_row[8] else None,  # ✅ ستون 8
         }
 
     except Exception as e:
@@ -190,13 +219,27 @@ def get_previous_state_from_sheet():
             "shams_price": None, 
             "gold_price": None, 
             "ekhtelaf_sarane": None,
-            "sarane_kharid": None
+            "sarane_kharid": None,
+            "bubble_weighted": None
         }
 
 
-# ────────────────── چک و ارسال هشدارها ──────────────────
+# ════════════════════════════════════════════════════════════════
+# تابع اصلی بررسی و ارسال هشدارها
+# ════════════════════════════════════════════════════════════════
+
 def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, yesterday_close, gold_yesterday, alert_channel_handle=None):
-   
+    """
+    بررسی و ارسال همه هشدارها
+    
+    1️⃣ نوسان 5 دقیقه‌ای (دلار، شمش، طلا) - بدون Cooldown
+    2️⃣ تغییر شدید اختلاف سرانه - بدون Cooldown
+    3️⃣ هشدارهای حباب (وضعیت + تغییر شدید)
+    4️⃣ هشدار صندوق‌های فعال - یک بار در روز
+    5️⃣ هشدار کراس سرانه - یک بار در روز
+    6️⃣ آستانه‌های قیمتی - با Cooldown
+    """
+    
     prev = get_previous_state_from_sheet()
     status = get_alert_status()
 
@@ -207,6 +250,9 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
     df_funds = data["Fund_df"]
     total_value = df_funds["value"].sum()
     current_ekhtelaf = (df_funds["ekhtelaf_sarane"] * df_funds["value"]).sum() / total_value if total_value > 0 else 0
+    
+    # ✅ محاسبه حباب وزنی فعلی
+    current_bubble = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value if total_value > 0 else 0
 
     changed = False
     tz = pytz.timezone(TIMEZONE)
@@ -243,17 +289,31 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
             send_alert_ekhtelaf_fast(bot_token, chat_id, prev["ekhtelaf_sarane"], current_ekhtelaf, diff, df_funds["pol_hagigi"].sum())
 
     # ───────────────────────────────────────────────────
-    # 3️⃣ هشدار صندوق فعال
+    # 3️⃣ هشدارهای حباب (وضعیت + تغییر شدید)
+    # ───────────────────────────────────────────────────
+    bubble_status_changed = check_bubble_alerts(
+        bot_token, chat_id,
+        current_bubble,
+        prev["bubble_weighted"],
+        status,
+        tz, now
+    )
+    
+    if bubble_status_changed:
+        changed = True
+
+    # ───────────────────────────────────────────────────
+    # 4️⃣ هشدار صندوق فعال
     # ───────────────────────────────────────────────────
     check_active_funds_alert(bot_token, chat_id, df_funds, tz, now)
 
     # ───────────────────────────────────────────────────
-    # 🆕 هشدار کراس سرانه
+    # 5️⃣ هشدار کراس سرانه
     # ───────────────────────────────────────────────────
     check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now)
 
     # ───────────────────────────────────────────────────
-    # 4️⃣ آستانه‌های قیمتی (این‌ها با Cooldown هستن)
+    # 6️⃣ آستانه‌های قیمتی (با Cooldown)
     # ───────────────────────────────────────────────────
     for asset, price, high, low, key in [
         ("دلار", current_dollar, DOLLAR_HIGH, DOLLAR_LOW, "dollar"),
@@ -279,7 +339,119 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
         save_alert_status(status)
 
 
-# ────────────────── هشدار صندوق‌های فعال ──────────────────
+# ════════════════════════════════════════════════════════════════
+# هشدارهای حباب
+# ════════════════════════════════════════════════════════════════
+
+def check_bubble_alerts(bot_token, chat_id, current_bubble, prev_bubble, status, tz, now):
+    """
+    بررسی و ارسال هشدارهای حباب
+    
+    1️⃣ تغییر وضعیت (مثبت/منفی/خنثی) - با Anti-spam
+    2️⃣ تغییر شدید در 1 دقیقه - همیشه
+    
+    Returns:
+        bool: True اگر وضعیت تغییر کرد
+    """
+    status_changed = False
+
+    # ───────────────────────────────────────────────────
+    # 1️⃣ هشدار تغییر وضعیت (با Anti-spam از طریق Gist)
+    # ───────────────────────────────────────────────────
+    if current_bubble >= BUBBLE_POSITIVE_THRESHOLD:
+        # حباب مثبت شد
+        if status["bubble"] != "positive":
+            send_bubble_state_alert(bot_token, chat_id, current_bubble, "positive", tz, now)
+            status["bubble"] = "positive"
+            status_changed = True
+            logger.info(f"🟢 حباب به حالت مثبت تغییر کرد: {current_bubble:+.2f}%")
+    
+    elif current_bubble <= BUBBLE_NEGATIVE_THRESHOLD:
+        # حباب منفی شد
+        if status["bubble"] != "negative":
+            send_bubble_state_alert(bot_token, chat_id, current_bubble, "negative", tz, now)
+            status["bubble"] = "negative"
+            status_changed = True
+            logger.info(f"🔴 حباب به حالت منفی تغییر کرد: {current_bubble:+.2f}%")
+    
+    else:
+        # حباب در محدوده خنثی
+        if status["bubble"] != "normal":
+            # فقط تغییر وضعیت می‌دیم، پیام نمی‌فرستیم
+            status["bubble"] = "normal"
+            status_changed = True
+            logger.info(f"⚪ حباب به حالت خنثی برگشت: {current_bubble:+.2f}%")
+
+    # ───────────────────────────────────────────────────
+    # 2️⃣ هشدار تغییر شدید در 1 دقیقه (بدون Cooldown - همیشه)
+    # ───────────────────────────────────────────────────
+    if prev_bubble is not None:
+        bubble_change = current_bubble - prev_bubble
+        
+        if abs(bubble_change) >= BUBBLE_SHARP_CHANGE_THRESHOLD:
+            send_bubble_sharp_change_alert(
+                bot_token, chat_id, 
+                prev_bubble, current_bubble, 
+                bubble_change, tz, now
+            )
+
+    return status_changed
+
+
+def send_bubble_state_alert(bot_token, chat_id, bubble_value, state, tz, now):
+    """
+    ارسال هشدار تغییر وضعیت حباب (مثبت/منفی)
+    
+    Args:
+        state: "positive" یا "negative"
+    """
+    if state == "positive":
+        direction = "مثبت"
+        dir_emoji = "🟢"
+        description = f"حباب به بالای {BUBBLE_POSITIVE_THRESHOLD:+.1f}% رسید"
+    else:  # negative
+        direction = "منفی"
+        dir_emoji = "🔴"
+        description = f"حباب به زیر {BUBBLE_NEGATIVE_THRESHOLD:+.1f}% رسید"
+
+    main_text = f"""
+🎈 هشدار حباب {dir_emoji}
+
+{description}
+💹 حباب فعلی: {bubble_value:+.2f}%
+📊 وضعیت: {direction}
+""".strip()
+
+    footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
+    caption = f"{main_text}\n{footer}"
+
+    send_alert_message(bot_token, chat_id, caption)
+
+
+def send_bubble_sharp_change_alert(bot_token, chat_id, prev_value, curr_value, change, tz, now):
+    """ارسال هشدار تغییر شدید حباب در 1 دقیقه"""
+    direction = "افزایش" if change > 0 else "کاهش"
+    dir_emoji = "📈" if change > 0 else "📉"
+    change_text = f"{change:+.2f}%".replace("+-", "−")
+
+    main_text = f"""
+🚨 تغییر شدید حباب {dir_emoji}
+
+⏱ {direction} در 1 دقیقه: {change_text}
+🔴 قبلی: {prev_value:+.2f}%
+🟢 فعلی: {curr_value:+.2f}%
+""".strip()
+
+    footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
+    caption = f"{main_text}\n{footer}"
+
+    send_alert_message(bot_token, chat_id, caption)
+
+
+# ════════════════════════════════════════════════════════════════
+# هشدار صندوق‌های فعال
+# ════════════════════════════════════════════════════════════════
+
 def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
     """بررسی و ارسال هشدار صندوق‌های فعال (فقط یک بار در روز)"""
     try:
@@ -353,10 +525,12 @@ def check_active_funds_alert(bot_token, chat_id, df_funds, tz, now):
     except Exception as e:
         logger.error(f"خطا در بررسی صندوق‌های فعال: {e}")
 
+# ════════════════════════════════════════════════════════════════
+# هشدار کراس سرانه
+# ════════════════════════════════════════════════════════════════
 
-# ────────────────── هشدار کراس سرانه ──────────────────
 def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
-    """بررسی و ارسال هشدار کراس سرانه خرید و فروش (فقط یک بار در روز برای هر صندوق)"""
+    """بررسی و ارسال هشدار کراس سرانه خرید و فروش (فقط یک بار در روز)"""
     try:
         # 🟢 کراس مثبت: سرانه خرید > سرانه فروش
         positive_cross = df_funds[
@@ -368,14 +542,12 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
             (df_funds["sarane_forosh"] > df_funds["sarane_kharid"])
         ].copy()
 
-        # دریافت تاریخچه هشدارها
         fund_alerts = get_fund_alerts()
         fund_alerts = cleanup_old_alerts(fund_alerts)
 
         today = now.strftime("%Y-%m-%d")
         today_list = fund_alerts.get(today, [])
 
-        # صندوق‌هایی که امروز هشدار کراس دادن
         already_sent_positive = {item["symbol"] for item in today_list if item.get("alert_type") == "کراس مثبت"}
         already_sent_negative = {item["symbol"] for item in today_list if item.get("alert_type") == "کراس منفی"}
 
@@ -449,7 +621,10 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
         logger.error(f"خطا در بررسی کراس سرانه: {e}")
 
 
-# ────────────────── پیام هشدار قیمتی یکپارچه ──────────────────
+# ════════════════════════════════════════════════════════════════
+# پیام‌های هشدار یکپارچه
+# ════════════════════════════════════════════════════════════════
+
 def send_price_alert(bot_token, chat_id, asset_name, price, change_5min, unit="تومان", is_gold=False):
     """ارسال هشدار نوسان قیمتی (یکپارچه برای دلار/شمش/طلا)"""
     tz = pytz.timezone(TIMEZONE)
@@ -469,7 +644,6 @@ def send_price_alert(bot_token, chat_id, asset_name, price, change_5min, unit="�
     send_alert_message(bot_token, chat_id, caption)
 
 
-# ────────────────── هشدار اختلاف سرانه ──────────────────
 def send_alert_ekhtelaf_fast(bot_token, chat_id, prev_val, curr_val, diff, pol_hagigi):
     """ارسال هشدار تغییر شدید اختلاف سرانه"""
     tz = pytz.timezone(TIMEZONE)
@@ -486,7 +660,6 @@ def send_alert_ekhtelaf_fast(bot_token, chat_id, prev_val, curr_val, diff, pol_h
     send_alert_message(bot_token, chat_id, caption)
 
 
-# ────────────────── هشدار آستانه قیمتی ──────────────────
 def send_alert_threshold(asset, price, threshold, above, bot_token, chat_id):
     """ارسال هشدار عبور از آستانه قیمتی"""
     tz = pytz.timezone(TIMEZONE)
@@ -525,7 +698,6 @@ def send_alert_threshold(asset, price, threshold, above, bot_token, chat_id):
     send_alert_message(bot_token, chat_id, caption)
 
 
-# ────────────────── ارسال پیام به تلگرام ──────────────────
 def send_alert_message(bot_token, chat_id, caption):
     """ارسال پیام هشدار به تلگرام با مدیریت Rate Limit"""
     try:
