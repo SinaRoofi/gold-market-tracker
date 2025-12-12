@@ -364,7 +364,7 @@ def create_market_charts():
         # ═══════════════════════════════════════════════════════
         # تنظیمات محورها
         # ═══════════════════════════════════════════════════════
-        step = max(1, len(df) // 10)
+        step = max(1, len(df) // 20)
         tick_vals = df['timestamp'][::step].tolist()
 
         for i in range(1, 7):
