@@ -4,8 +4,8 @@
 import os
 
 # 🚨 آستانه‌های هشدار قیمتی
-DOLLAR_HIGH = 125_000      # آستانه بالای دلار
-DOLLAR_LOW = 124_000       # آستانه پایین دلار
+DOLLAR_HIGH = 126_000      # آستانه بالای دلار
+DOLLAR_LOW = 125_000       # آستانه پایین دلار
 
 SHAMS_HIGH = 17_000_000    # آستانه بالای شمش طلا 
 SHAMS_LOW = 16_000_000     # آستانه پایین شمش طلا 
@@ -21,8 +21,8 @@ DEFAULT_GOLD_PRICE = 4230
 DEFAULT_DOLLAR_PRICE = 125_000 
 
 # 🎈 آستانه‌های هشدار حباب
-BUBBLE_POSITIVE_THRESHOLD = 1.0   
-BUBBLE_NEGATIVE_THRESHOLD = -1.0
+BUBBLE_POSITIVE_THRESHOLD = 0.1   
+BUBBLE_NEGATIVE_THRESHOLD = -0.1
 BUBBLE_SHARP_CHANGE_THRESHOLD = 0.3
 
 # 📌 هندل کانال تلگرام
