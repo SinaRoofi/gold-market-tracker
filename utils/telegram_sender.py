@@ -630,10 +630,7 @@ def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
 💵 ارزش دلار: {value_total:,.0f} ({value_pct:.2f}%)
 🟥 کران بالای دلار: {high_total:,.0f} ({high_pct:.2f}%)
 """
-
-    if dirham_price:
-        caption += f"🇦🇪 دلار درهم: {dollar_from_dirham:,.0f} ({dirham_diff_pct:+.2f}%)\n\n"
-
+    caption += f"🇦🇪 دلار درهم: {dollar_from_dirham:,.0f} ({dirham_diff_pct:+.2f}%)\n\n"
     caption += f"💵 آخرین معامله: {dollar_last:,.0f} ({dollar_change:+.2f}%) {tick}\n"
     caption += f"🟢 خرید: {dollar_prices['bid']:,.0f} | 🔴 فروش: {dollar_prices['ask']:,.0f}\n"
 
