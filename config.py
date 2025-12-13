@@ -176,7 +176,7 @@ STANDARD_HEADER = [
     'dollar_change_percent',
     'shams_change_percent',
     'fund_weighted_change_percent',
-    'fund_final_price_avg',              # ✅ ستون 7: میانگین ساده قیمت پایانی
+    'fund_final_price_avg',    
     'fund_weighted_bubble_percent',
     'sarane_kharid_weighted',
     'sarane_forosh_weighted',
