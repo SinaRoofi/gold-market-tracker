@@ -244,7 +244,7 @@ def create_market_charts():
             font=dict(color='#C9D1D9', family=chart_font_family, size=25),
             hovermode='x unified',
             showlegend=False,
-            margin=dict(l=60, r=120, t=120, b=40),
+            margin=dict(l=60, r=120, t=120, b=60),  # ✅ فضای بیشتر برای label‌ها
         )
 
         # عنوان و تاریخ
@@ -367,28 +367,33 @@ def create_market_charts():
         # محاسبه تعداد داده‌ها
         total_minutes = len(df)
 
-        # تعیین فاصله label‌ها بر اساس تعداد داده (فاصله کمتر)
-        if total_minutes <= 20:      # کمتر از 20 دقیقه
-            step = 2                  # هر 2 دقیقه
-        elif total_minutes <= 40:    # کمتر از 40 دقیقه
-            step = 5                  # هر 5 دقیقه
-        elif total_minutes <= 80:    # کمتر از 80 دقیقه
-            step = 8                  # هر 8 دقیقه
-        elif total_minutes <= 120:   # کمتر از 2 ساعت
-            step = 10                 # هر 10 دقیقه
-        elif total_minutes <= 180:   # کمتر از 3 ساعت
-            step = 15                 # هر 15 دقیقه
-        elif total_minutes <= 300:   # کمتر از 5 ساعت
-            step = 20                 # هر 20 دقیقه
-        else:                         # بیشتر از 5 ساعت
-            step = 30                 # هر 30 دقیقه
+        # تعیین فاصله label‌ها - هدف: حداکثر 15-20 label
+        if total_minutes <= 30:
+            step = 3
+        elif total_minutes <= 60:
+            step = 5
+        elif total_minutes <= 90:
+            step = 6
+        elif total_minutes <= 120:
+            step = 8
+        elif total_minutes <= 180:
+            step = 12
+        elif total_minutes <= 240:
+            step = 15
+        elif total_minutes <= 360:
+            step = 20
+        else:
+            step = 30
 
         # انتخاب label‌ها
         tick_vals = df['timestamp'][::step].tolist()
 
-        # اگر آخرین نقطه نزدیک به آخر نیست، اضافه کن
-        if len(df) > 0 and (len(df) - 1) % step != 0:
-            tick_vals.append(df['timestamp'].iloc[-1])
+        # همیشه اولین و آخرین نقطه رو اضافه کن
+        if len(df) > 0:
+            if df['timestamp'].iloc[0] not in tick_vals:
+                tick_vals.insert(0, df['timestamp'].iloc[0])
+            if df['timestamp'].iloc[-1] not in tick_vals:
+                tick_vals.append(df['timestamp'].iloc[-1])
 
         logger.info(f"📊 تعداد داده: {total_minutes} دقیقه | فاصله label: {step} دقیقه | تعداد label: {len(tick_vals)}")
 
@@ -398,8 +403,8 @@ def create_market_charts():
                 tickformat='%H:%M',
                 tickmode='array',
                 tickvals=tick_vals,
-                tickangle=-50,           # ✅ زاویه بیشتر (50 درجه)
-                tickfont=dict(size=22),  # ✅ فونت کوچک‌تر (22)
+                tickangle=-45,           # ✅ زاویه متعادل
+                tickfont=dict(size=25),  # ✅ فونت کوچک‌تر
                 gridcolor=COLOR_GRID,
                 showgrid=True,
                 zeroline=False,
