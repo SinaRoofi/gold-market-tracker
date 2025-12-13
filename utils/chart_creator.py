@@ -361,66 +361,65 @@ def create_market_charts():
         )
 
 # ═══════════════════════════════════════════════════════
-# تنظیمات محورها - بهینه شده برای داده‌های 1 دقیقه‌ای (حداکثر ۶ ساعت)
-# ═══════════════════════════════════════════════════════
+        # تنظیمات محورها - بهینه شده برای داده‌های 1 دقیقه‌ای (حداکثر ۶ ساعت)
+        # ═══════════════════════════════════════════════════════
 
-df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-TICK_MINUTES = 30  # فاصله ثابت لیبل‌ها
+        TICK_MINUTES = 30
 
-start_ts = df['timestamp'].iloc[0]
-end_ts   = df['timestamp'].iloc[-1]
+        start_ts = df['timestamp'].iloc[0]
+        end_ts   = df['timestamp'].iloc[-1]
 
-tick_vals = pd.date_range(
-    start=start_ts.floor('30min'),
-    end=end_ts.ceil('30min'),
-    freq='30min'
-).tolist()
+        tick_vals = pd.date_range(
+            start=start_ts.floor('30min'),
+            end=end_ts.ceil('30min'),
+            freq='30min'
+        ).tolist()
 
-# جلوگیری قطعی از overlap ابتدا و انتها
-tick_vals[0]  = start_ts
-tick_vals[-1] = end_ts
+        tick_vals[0]  = start_ts
+        tick_vals[-1] = end_ts
 
-logger.info(f"📊 labels: {len(tick_vals)} | interval: 30 min")
+        logger.info(f"📊 labels: {len(tick_vals)} | interval: 30 min")
 
-for i in range(1, 7):
-    fig.update_xaxes(
-        type='date',
-        tickmode='array',
-        tickvals=tick_vals,
-        tickformat='%H:%M',
-        tickangle=-45,
-        tickfont=dict(size=25),
-        gridcolor=COLOR_GRID,
-        showgrid=True,
-        zeroline=False,
-        showline=True,
-        linewidth=1,
-        linecolor='#30363D',
-        row=i, col=1
-    )
+        for i in range(1, 7):
+            fig.update_xaxes(
+                type='date',
+                tickmode='array',
+                tickvals=tick_vals,
+                tickformat='%H:%M',
+                tickangle=-45,
+                tickfont=dict(size=25),
+                gridcolor=COLOR_GRID,
+                showgrid=True,
+                zeroline=False,
+                showline=True,
+                linewidth=1,
+                linecolor='#30363D',
+                row=i, col=1
+            )
 
-    fig.update_yaxes(
-        tickfont=dict(size=25),
-        gridcolor=COLOR_GRID,
-        showgrid=True,
-        zeroline=True,
-        zerolinecolor='#30363D',
-        zerolinewidth=2,
-        showline=True,
-        linewidth=1,
-        linecolor='#30363D',
-        row=i, col=1
-    )
+            fig.update_yaxes(
+                tickfont=dict(size=25),
+                gridcolor=COLOR_GRID,
+                showgrid=True,
+                zeroline=True,
+                zerolinecolor='#30363D',
+                zerolinewidth=2,
+                showline=True,
+                linewidth=1,
+                linecolor='#30363D',
+                row=i, col=1
+            )
 
-    if i > 1:
-        fig.add_hline(
-            y=0,
-            line_dash='dot',
-            line_color='#484F58',
-            line_width=2,
-            row=i, col=1
-        )
+            if i > 1:
+                fig.add_hline(
+                    y=0,
+                    line_dash='dot',
+                    line_color='#484F58',
+                    line_width=2,
+                    row=i, col=1
+                )
 
         # ═══════════════════════════════════════════════════════
         # تبدیل به تصویر و واترمارک
