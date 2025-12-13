@@ -360,64 +360,43 @@ def create_market_charts():
             font=dict(size=28, color=COLOR_NEGATIVE, family=chart_font_family),
             showarrow=False
         )
- ═══════════════════════════════════════════════════════════════
-# تنظیمات محورها - بهینه شده برای داده‌های 1 دقیقه‌ای
-# ═══════════════════════════════════════════════════════════════
 
-# محاسبه تعداد داده‌ها
-total_minutes = len(df)
+        # ═══════════════════════════════════════════════════════
+        # تنظیمات محورها
+        # ═══════════════════════════════════════════════════════
+        step = max(1, len(df) // 20)
+        tick_vals = df['timestamp'][::step].tolist()
 
-# تعیین فاصله label‌ها بر اساس تعداد داده
-if total_minutes <= 30:      # کمتر از نیم ساعت
-    step = 5                  # هر 5 دقیقه
-elif total_minutes <= 60:    # کمتر از 1 ساعت
-    step = 10                 # هر 10 دقیقه
-elif total_minutes <= 120:   # کمتر از 2 ساعت
-    step = 15                 # هر 15 دقیقه
-elif total_minutes <= 240:   # کمتر از 4 ساعت
-    step = 20                 # هر 20 دقیقه
-else:                         # بیشتر از 4 ساعت
-    step = 30                 # هر 30 دقیقه
-
-# انتخاب label‌ها
-tick_vals = df['timestamp'][::step].tolist()
-
-# اگر آخرین نقطه نزدیک به آخر نیست، اضافه کن
-if len(df) > 0 and (len(df) - 1) % step != 0:
-    tick_vals.append(df['timestamp'].iloc[-1])
-
-logger.info(f"📊 تعداد داده: {total_minutes} دقیقه | فاصله label: {step} دقیقه | تعداد label: {len(tick_vals)}")
-
-for i in range(1, 7):
-    fig.update_xaxes(
-        type='date',
-        tickformat='%H:%M',
-        tickmode='array',
-        tickvals=tick_vals,
-        tickangle=-45,           # ✅ زاویه بیشتر برای خوانایی بهتر
-        tickfont=dict(size=24),  # ✅ اندکی کوچک‌تر
-        gridcolor=COLOR_GRID,
-        showgrid=True,
-        zeroline=False,
-        showline=True,
-        linewidth=1,
-        linecolor='#30363D',
-        row=i, col=1
-    )
-    fig.update_yaxes(
-        tickfont=dict(size=25),
-        gridcolor=COLOR_GRID,
-        showgrid=True,
-        zeroline=True,
-        zerolinecolor='#30363D',
-        zerolinewidth=2,
-        showline=True,
-        linewidth=1,
-        linecolor='#30363D',
-        row=i, col=1
-    )
-    if i > 1:
-        fig.add_hline(y=0, line_dash='dot', line_color='#484F58', line_width=2, row=i, col=1)
+        for i in range(1, 7):
+            fig.update_xaxes(
+                type='date',
+                tickformat='%H:%M',
+                tickmode='array',
+                tickvals=tick_vals,
+                tickangle=0,
+                tickfont=dict(size=25),
+                gridcolor=COLOR_GRID,
+                showgrid=True,
+                zeroline=False,
+                showline=True,
+                linewidth=1,
+                linecolor='#30363D',
+                row=i, col=1
+            )
+            fig.update_yaxes(
+                tickfont=dict(size=25),
+                gridcolor=COLOR_GRID,
+                showgrid=True,
+                zeroline=True,
+                zerolinecolor='#30363D',
+                zerolinewidth=2,
+                showline=True,
+                linewidth=1,
+                linecolor='#30363D',
+                row=i, col=1
+            )
+            if i > 1:
+                fig.add_hline(y=0, line_dash='dot', line_color='#484F58', line_width=2, row=i, col=1)
 
         # تبدیل به تصویر
         img_bytes = fig.to_image(format='png', width=CHART_WIDTH, height=CHART_HEIGHT, scale=CHART_SCALE)
