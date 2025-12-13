@@ -25,6 +25,9 @@ from utils.sheets_storage import read_from_sheets
 logger = logging.getLogger(__name__)
 FUND_ALERTS_FILE = "fund_alerts.json"
 
+# ✅ آستانه‌های هشدار پول حقیقی
+POL_SHARP_CHANGE_THRESHOLD = 5.0  # تغییر شدید: 5 میلیارد تومان در 1 دقیقه
+
 # ✅ کش محلی برای جلوگیری از reset در صورت خطای Gist
 ALERT_STATUS_CACHE = None
 
@@ -44,7 +47,8 @@ def get_alert_status():
                 "dollar": "normal",
                 "shams": "normal",
                 "gold": "normal",
-                "bubble": "normal"  # ✅ وضعیت حباب
+                "bubble": "normal",
+                "pol_hagigi": "normal"  # ✅ وضعیت پول حقیقی
             }
             return ALERT_STATUS_CACHE or default
 
@@ -54,12 +58,14 @@ def get_alert_status():
 
         if r.status_code == 200 and ALERT_STATUS_FILE in r.json()["files"]:
             status = json.loads(r.json()["files"][ALERT_STATUS_FILE]["content"])
-            
-            # ✅ اطمینان از وجود کلید bubble
+
+            # ✅ اطمینان از وجود کلیدهای جدید
             if "bubble" not in status:
                 status["bubble"] = "normal"
-            
-            ALERT_STATUS_CACHE = status  # ✅ ذخیره موفق
+            if "pol_hagigi" not in status:
+                status["pol_hagigi"] = "normal"
+
+            ALERT_STATUS_CACHE = status
             return status
 
     except Exception as e:
@@ -72,7 +78,8 @@ def get_alert_status():
         "dollar": "normal",
         "shams": "normal",
         "gold": "normal",
-        "bubble": "normal"
+        "bubble": "normal",
+        "pol_hagigi": "normal"
     }
     ALERT_STATUS_CACHE = default
     return default
@@ -94,7 +101,7 @@ def save_alert_status(status):
         }, timeout=REQUEST_TIMEOUT)
 
         if response.status_code == 200:
-            ALERT_STATUS_CACHE = status  # ✅ آپدیت کش
+            ALERT_STATUS_CACHE = status
 
     except Exception as e:
         logger.error(f"خطا در ذخیره alert_status: {e}")
@@ -149,7 +156,6 @@ def cleanup_old_alerts(alerts_dict, max_days=7):
         tz = pytz.timezone(TIMEZONE)
         cutoff = (datetime.now(tz) - timedelta(days=max_days)).strftime("%Y-%m-%d")
 
-        # اگه همه تاریخ‌ها جدیدن، نیازی به پاکسازی نیست
         if all(d >= cutoff for d in alerts_dict.keys()):
             return alerts_dict
 
@@ -171,9 +177,9 @@ def cleanup_old_alerts(alerts_dict, max_days=7):
 # ════════════════════════════════════════════════════════════════
 
 def get_previous_state_from_sheet():
-    """دریافت وضعیت قبلی با بررسی فاصله زمانی (1 دقیقه برای حباب)"""
+    """دریافت وضعیت قبلی با بررسی فاصله زمانی"""
     try:
-        rows = read_from_sheets(limit=3)  # ✅ 3 ردیف برای اطمینان
+        rows = read_from_sheets(limit=3)
 
         if len(rows) < 2:
             logger.warning("داده کافی برای مقایسه نیست")
@@ -183,13 +189,14 @@ def get_previous_state_from_sheet():
                 "gold_price": None, 
                 "ekhtelaf_sarane": None,
                 "sarane_kharid": None,
-                "bubble_weighted": None  # ✅ حباب
+                "bubble_weighted": None,
+                "pol_hagigi": None  # ✅ پول حقیقی
             }
 
         prev_row = rows[-2]
         last_row = rows[-1]
 
-        # ✅ بررسی فاصله زمانی
+        # بررسی فاصله زمانی
         try:
             prev_time = datetime.strptime(prev_row[0][:19], '%Y-%m-%d %H:%M:%S')
             last_time = datetime.strptime(last_row[0][:19], '%Y-%m-%d %H:%M:%S')
@@ -209,7 +216,8 @@ def get_previous_state_from_sheet():
             "gold_price": float(prev_row[1]) if len(prev_row) > 1 and prev_row[1] else None,
             "ekhtelaf_sarane": float(prev_row[11]) if len(prev_row) > 11 and prev_row[11] else None,
             "sarane_kharid": float(last_row[9]) if len(last_row) > 9 and last_row[9] else None,
-            "bubble_weighted": float(prev_row[8]) if len(prev_row) > 8 and prev_row[8] else None,  # ✅ ستون 8
+            "bubble_weighted": float(prev_row[8]) if len(prev_row) > 8 and prev_row[8] else None,
+            "pol_hagigi": float(prev_row[12]) if len(prev_row) > 12 and prev_row[12] else None,  # ✅ ستون 12
         }
 
     except Exception as e:
@@ -220,7 +228,8 @@ def get_previous_state_from_sheet():
             "gold_price": None, 
             "ekhtelaf_sarane": None,
             "sarane_kharid": None,
-            "bubble_weighted": None
+            "bubble_weighted": None,
+            "pol_hagigi": None
         }
 
 
@@ -235,11 +244,12 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
     1️⃣ نوسان 5 دقیقه‌ای (دلار، شمش، طلا) - بدون Cooldown
     2️⃣ تغییر شدید اختلاف سرانه - بدون Cooldown
     3️⃣ هشدارهای حباب (وضعیت + تغییر شدید)
-    4️⃣ هشدار صندوق‌های فعال - یک بار در روز
-    5️⃣ هشدار کراس سرانه - یک بار در روز
-    6️⃣ آستانه‌های قیمتی - با Cooldown
+    4️⃣ ✅ هشدارهای پول حقیقی (وضعیت + تغییر شدید)
+    5️⃣ هشدار صندوق‌های فعال - یک بار در روز
+    6️⃣ هشدار کراس سرانه - یک بار در روز
+    7️⃣ آستانه‌های قیمتی - با Cooldown
     """
-    
+
     prev = get_previous_state_from_sheet()
     status = get_alert_status()
 
@@ -250,16 +260,19 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
     df_funds = data["Fund_df"]
     total_value = df_funds["value"].sum()
     current_ekhtelaf = (df_funds["ekhtelaf_sarane"] * df_funds["value"]).sum() / total_value if total_value > 0 else 0
-    
-    # ✅ محاسبه حباب وزنی فعلی
+
+    # محاسبه حباب وزنی فعلی
     current_bubble = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value if total_value > 0 else 0
+
+    # ✅ محاسبه پول حقیقی وزنی فعلی
+    current_pol = (df_funds["pol_hagigi"] * df_funds["value"]).sum() / total_value if total_value > 0 else 0
 
     changed = False
     tz = pytz.timezone(TIMEZONE)
     now = datetime.now(tz)
 
     # ───────────────────────────────────────────────────
-    # 1️⃣ نوسان ۵ دقیقه‌ای (بدون Cooldown - همیشه مانیتور)
+    # 1️⃣ نوسان ۵ دقیقه‌ای (بدون Cooldown)
     # ───────────────────────────────────────────────────
 
     # دلار
@@ -298,22 +311,36 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
         status,
         tz, now
     )
-    
+
     if bubble_status_changed:
         changed = True
 
     # ───────────────────────────────────────────────────
-    # 4️⃣ هشدار صندوق فعال
+    # 4️⃣ ✅ هشدارهای پول حقیقی (وضعیت + تغییر شدید)
+    # ───────────────────────────────────────────────────
+    pol_status_changed = check_pol_alerts(
+        bot_token, chat_id,
+        current_pol,
+        prev["pol_hagigi"],
+        status,
+        tz, now
+    )
+
+    if pol_status_changed:
+        changed = True
+
+    # ───────────────────────────────────────────────────
+    # 5️⃣ هشدار صندوق فعال
     # ───────────────────────────────────────────────────
     check_active_funds_alert(bot_token, chat_id, df_funds, tz, now)
 
     # ───────────────────────────────────────────────────
-    # 5️⃣ هشدار کراس سرانه
+    # 6️⃣ هشدار کراس سرانه
     # ───────────────────────────────────────────────────
     check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now)
 
     # ───────────────────────────────────────────────────
-    # 6️⃣ آستانه‌های قیمتی (با Cooldown)
+    # 7️⃣ آستانه‌های قیمتی (با Cooldown)
     # ───────────────────────────────────────────────────
     for asset, price, high, low, key in [
         ("دلار", current_dollar, DOLLAR_HIGH, DOLLAR_LOW, "dollar"),
@@ -356,38 +383,34 @@ def check_bubble_alerts(bot_token, chat_id, current_bubble, prev_bubble, status,
     status_changed = False
 
     # ───────────────────────────────────────────────────
-    # 1️⃣ هشدار تغییر وضعیت (با Anti-spam از طریق Gist)
+    # 1️⃣ هشدار تغییر وضعیت (با Anti-spam)
     # ───────────────────────────────────────────────────
     if current_bubble >= BUBBLE_POSITIVE_THRESHOLD:
-        # حباب مثبت شد
         if status["bubble"] != "positive":
             send_bubble_state_alert(bot_token, chat_id, current_bubble, "positive", tz, now)
             status["bubble"] = "positive"
             status_changed = True
             logger.info(f"🟢 حباب به حالت مثبت تغییر کرد: {current_bubble:+.2f}%")
-    
+
     elif current_bubble <= BUBBLE_NEGATIVE_THRESHOLD:
-        # حباب منفی شد
         if status["bubble"] != "negative":
             send_bubble_state_alert(bot_token, chat_id, current_bubble, "negative", tz, now)
             status["bubble"] = "negative"
             status_changed = True
             logger.info(f"🔴 حباب به حالت منفی تغییر کرد: {current_bubble:+.2f}%")
-    
+
     else:
-        # حباب در محدوده خنثی
         if status["bubble"] != "normal":
-            # فقط تغییر وضعیت می‌دیم، پیام نمی‌فرستیم
             status["bubble"] = "normal"
             status_changed = True
             logger.info(f"⚪ حباب به حالت خنثی برگشت: {current_bubble:+.2f}%")
 
     # ───────────────────────────────────────────────────
-    # 2️⃣ هشدار تغییر شدید در 1 دقیقه (بدون Cooldown - همیشه)
+    # 2️⃣ هشدار تغییر شدید در 1 دقیقه (بدون Cooldown)
     # ───────────────────────────────────────────────────
     if prev_bubble is not None:
         bubble_change = current_bubble - prev_bubble
-        
+
         if abs(bubble_change) >= BUBBLE_SHARP_CHANGE_THRESHOLD:
             send_bubble_sharp_change_alert(
                 bot_token, chat_id, 
@@ -399,17 +422,12 @@ def check_bubble_alerts(bot_token, chat_id, current_bubble, prev_bubble, status,
 
 
 def send_bubble_state_alert(bot_token, chat_id, bubble_value, state, tz, now):
-    """
-    ارسال هشدار تغییر وضعیت حباب (مثبت/منفی)
-    
-    Args:
-        state: "positive" یا "negative"
-    """
+    """ارسال هشدار تغییر وضعیت حباب"""
     if state == "positive":
         direction = "مثبت"
         dir_emoji = "🟢"
         description = f"حباب به بالای {BUBBLE_POSITIVE_THRESHOLD:+.1f}% رسید"
-    else:  # negative
+    else:
         direction = "منفی"
         dir_emoji = "🔴"
         description = f"حباب به زیر {BUBBLE_NEGATIVE_THRESHOLD:+.1f}% رسید"
@@ -429,7 +447,7 @@ def send_bubble_state_alert(bot_token, chat_id, bubble_value, state, tz, now):
 
 
 def send_bubble_sharp_change_alert(bot_token, chat_id, prev_value, curr_value, change, tz, now):
-    """ارسال هشدار تغییر شدید حباب در 1 دقیقه"""
+    """ارسال هشدار تغییر شدید حباب"""
     direction = "افزایش" if change > 0 else "کاهش"
     dir_emoji = "📈" if change > 0 else "📉"
     change_text = f"{change:+.2f}%".replace("+-", "−")
@@ -440,6 +458,109 @@ def send_bubble_sharp_change_alert(bot_token, chat_id, prev_value, curr_value, c
 ⏱ {direction} در 1 دقیقه: {change_text}
 🔴 قبلی: {prev_value:+.2f}%
 🟢 فعلی: {curr_value:+.2f}%
+""".strip()
+
+    footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
+    caption = f"{main_text}\n{footer}"
+
+    send_alert_message(bot_token, chat_id, caption)
+
+
+# ════════════════════════════════════════════════════════════════
+# ✅ هشدارهای پول حقیقی (جدید)
+# ════════════════════════════════════════════════════════════════
+
+def check_pol_alerts(bot_token, chat_id, current_pol, prev_pol, status, tz, now):
+    """
+    بررسی و ارسال هشدارهای پول حقیقی
+    
+    1️⃣ تغییر وضعیت (مثبت/منفی/خنثی) - با Anti-spam
+    2️⃣ تغییر شدید در 1 دقیقه - همیشه
+    
+    Returns:
+        bool: True اگر وضعیت تغییر کرد
+    """
+    status_changed = False
+
+    # ───────────────────────────────────────────────────
+    # 1️⃣ هشدار کراس صفر (با Anti-spam)
+    # ───────────────────────────────────────────────────
+    if current_pol > 0:
+        # پول حقیقی مثبت شد (ورود پول)
+        if status["pol_hagigi"] != "positive":
+            send_pol_state_alert(bot_token, chat_id, current_pol, "positive", tz, now)
+            status["pol_hagigi"] = "positive"
+            status_changed = True
+            logger.info(f"🟢 پول حقیقی به حالت مثبت تغییر کرد: {current_pol:+.2f} م.ت")
+
+    elif current_pol < 0:
+        # پول حقیقی منفی شد (خروج پول)
+        if status["pol_hagigi"] != "negative":
+            send_pol_state_alert(bot_token, chat_id, current_pol, "negative", tz, now)
+            status["pol_hagigi"] = "negative"
+            status_changed = True
+            logger.info(f"🔴 پول حقیقی به حالت منفی تغییر کرد: {current_pol:+.2f} م.ت")
+
+    else:
+        # پول حقیقی صفر (خنثی)
+        if status["pol_hagigi"] != "normal":
+            status["pol_hagigi"] = "normal"
+            status_changed = True
+            logger.info(f"⚪ پول حقیقی در حالت خنثی است: {current_pol:.2f} م.ت")
+
+    # ───────────────────────────────────────────────────
+    # 2️⃣ هشدار تغییر شدید در 1 دقیقه (بدون Cooldown)
+    # ───────────────────────────────────────────────────
+    if prev_pol is not None:
+        pol_change = current_pol - prev_pol
+
+        if abs(pol_change) >= POL_SHARP_CHANGE_THRESHOLD:
+            send_pol_sharp_change_alert(
+                bot_token, chat_id, 
+                prev_pol, current_pol, 
+                pol_change, tz, now
+            )
+
+    return status_changed
+
+
+def send_pol_state_alert(bot_token, chat_id, pol_value, state, tz, now):
+    """ارسال هشدار تغییر وضعیت پول حقیقی"""
+    if state == "positive":
+        direction = "مثبت"
+        dir_emoji = "🟢"
+        description = "ورود پول حقیقی به صندوق‌های طلا"
+    else:  # negative
+        direction = "منفی"
+        dir_emoji = "🔴"
+        description = "خروج پول حقیقی از صندوق‌های طلا"
+
+    main_text = f"""
+💸 هشدار پول حقیقی {dir_emoji}
+
+{description}
+💰 پول حقیقی: {pol_value:+.2f} میلیارد تومان
+📊 وضعیت: {direction}
+""".strip()
+
+    footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
+    caption = f"{main_text}\n{footer}"
+
+    send_alert_message(bot_token, chat_id, caption)
+
+
+def send_pol_sharp_change_alert(bot_token, chat_id, prev_value, curr_value, change, tz, now):
+    """ارسال هشدار تغییر شدید پول حقیقی"""
+    direction = "ورود" if change > 0 else "خروج"
+    dir_emoji = "📈" if change > 0 else "📉"
+    change_text = f"{abs(change):.2f}"
+
+    main_text = f"""
+🚨 تغییر شدید پول حقیقی {dir_emoji}
+
+⏱ {direction} در 1 دقیقه: {change_text} میلیارد تومان
+🔴 قبلی: {prev_value:+.2f} م.ت
+🟢 فعلی: {curr_value:+.2f} م.ت
 """.strip()
 
     footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
