@@ -13,8 +13,8 @@ SHAMS_LOW = 17_000_000     # آستانه پایین شمش طلا
 GOLD_HIGH = 4365         # آستانه بالای اونس طلا
 GOLD_LOW = 4300        # آستانه پایین اونس طلا
 
-ALERT_THRESHOLD_PERCENT = 0.3  # درصد تغییر سریع
-EKHTELAF_THRESHOLD = 10         # اختلاف سرانه
+ALERT_THRESHOLD_PERCENT = 0.3  # درصد تغییر سریع (5 دقیقه)
+EKHTELAF_THRESHOLD = 10         # اختلاف سرانه (میلیون تومان)
 
 # 🎯 مقادیر پیش‌فرض (Fallback)
 DEFAULT_GOLD_PRICE = 4300      
@@ -23,7 +23,10 @@ DEFAULT_DOLLAR_PRICE = 129_000
 # 🎈 آستانه‌های هشدار حباب
 BUBBLE_POSITIVE_THRESHOLD = 0.1   
 BUBBLE_NEGATIVE_THRESHOLD = -0.1
-BUBBLE_SHARP_CHANGE_THRESHOLD = 0.3
+BUBBLE_SHARP_CHANGE_THRESHOLD = 0.3  # درصد
+
+# ✅ آستانه‌های هشدار پول حقیقی
+POL_SHARP_CHANGE_THRESHOLD = 5.0  
 
 # 📌 هندل کانال تلگرام
 CHANNEL_HANDLE = "@Gold_Iran_Market"
@@ -56,6 +59,7 @@ TELETHON_API_ID = int(os.getenv('TELETHON_API_ID', 0))
 TELETHON_API_HASH = os.getenv('TELETHON_API_HASH')
 TELEGRAM_SESSION = os.getenv('TELEGRAM_SESSION')
 TELEGRAM_ALERT_CHAT_ID = os.getenv('TELEGRAM_ALERT_CHAT_ID')
+
 # ════════════════════════════════════════════════════════════════
 # 📡 کانال‌های تلگرام
 # ════════════════════════════════════════════════════════════════
@@ -167,7 +171,7 @@ HTTP_HEADERS = {
 # 📊 تنظیمات Google Sheets
 # ════════════════════════════════════════════════════════════════
 
-# هدر استاندارد (12 ستونی)
+# ✅ هدر استاندارد (13 ستونی)
 STANDARD_HEADER = [
     'timestamp',
     'gold_price_usd',
@@ -180,7 +184,8 @@ STANDARD_HEADER = [
     'fund_weighted_bubble_percent',
     'sarane_kharid_weighted',
     'sarane_forosh_weighted',
-    'ekhtelaf_sarane_weighted'
+    'ekhtelaf_sarane_weighted',
+    'pol_hagigi'  # ✅ ستون پول حقیقی
 ]
 
 # تعداد روزهای نگهداری داده
