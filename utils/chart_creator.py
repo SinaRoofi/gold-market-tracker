@@ -403,8 +403,8 @@ def create_market_charts():
                 tickformat='%H:%M',
                 tickmode='array',
                 tickvals=tick_vals,
-                tickangle=-45,           # ✅ زاویه متعادل
-                tickfont=dict(size=25),  # ✅ فونت کوچک‌تر
+                tickangle=-45,     
+                tickfont=dict(size=25),
                 gridcolor=COLOR_GRID,
                 showgrid=True,
                 zeroline=False,
