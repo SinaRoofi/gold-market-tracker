@@ -263,7 +263,7 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
     current_bubble = (df_funds["nominal_bubble"] * df_funds["value"]).sum() / total_value if total_value > 0 else 0
 
     # ✅ محاسبه پول حقیقی وزنی فعلی
-    current_pol = (df_funds["pol_hagigi"] * df_funds["value"]).sum() / total_value if total_value > 0 else 0
+    current_pol = (df_funds["pol_hagigi"]).sum() 
 
     changed = False
     tz = pytz.timezone(TIMEZONE)
