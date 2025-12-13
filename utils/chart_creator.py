@@ -360,73 +360,67 @@ def create_market_charts():
             showarrow=False
         )
 
-        # ═══════════════════════════════════════════════════════
-        # تنظیمات محورها - بهینه شده برای داده‌های 1 دقیقه‌ای
-        # ═══════════════════════════════════════════════════════
-        
-        # محاسبه تعداد داده‌ها
-        total_minutes = len(df)
+# ═══════════════════════════════════════════════════════
+# تنظیمات محورها - بهینه شده برای داده‌های 1 دقیقه‌ای (حداکثر ۶ ساعت)
+# ═══════════════════════════════════════════════════════
 
-        # تعیین فاصله label‌ها - هدف: حداکثر 15-20 label
-        if total_minutes <= 30:
-            step = 3
-        elif total_minutes <= 60:
-            step = 5
-        elif total_minutes <= 90:
-            step = 6
-        elif total_minutes <= 120:
-            step = 8
-        elif total_minutes <= 180:
-            step = 12
-        elif total_minutes <= 240:
-            step = 15
-        elif total_minutes <= 360:
-            step = 20
-        else:
-            step = 30
+df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-        # انتخاب label‌ها
-        tick_vals = df['timestamp'][::step].tolist()
+TICK_MINUTES = 30  # فاصله ثابت لیبل‌ها
 
-        # همیشه اولین و آخرین نقطه رو اضافه کن
-        if len(df) > 0:
-            if df['timestamp'].iloc[0] not in tick_vals:
-                tick_vals.insert(0, df['timestamp'].iloc[0])
-            if df['timestamp'].iloc[-1] not in tick_vals:
-                tick_vals.append(df['timestamp'].iloc[-1])
+start_ts = df['timestamp'].iloc[0]
+end_ts   = df['timestamp'].iloc[-1]
 
-        logger.info(f"📊 تعداد داده: {total_minutes} دقیقه | فاصله label: {step} دقیقه | تعداد label: {len(tick_vals)}")
+tick_vals = pd.date_range(
+    start=start_ts.floor('30min'),
+    end=end_ts.ceil('30min'),
+    freq='30min'
+).tolist()
 
-        for i in range(1, 7):
-            fig.update_xaxes(
-                type='date',
-                tickformat='%H:%M',
-                tickmode='array',
-                tickvals=tick_vals,
-                tickangle=-45,     
-                tickfont=dict(size=25),
-                gridcolor=COLOR_GRID,
-                showgrid=True,
-                zeroline=False,
-                showline=True,
-                linewidth=1,
-                linecolor='#30363D',
-                row=i, col=1
-            )
-            fig.update_yaxes(
-                tickfont=dict(size=25),
-                gridcolor=COLOR_GRID,
-                showgrid=True,
-                zeroline=True,
-                zerolinecolor='#30363D',
-                zerolinewidth=2,
-                showline=True,
-                linewidth=1,
-                linecolor='#30363D',
-                row=i, col=1
-            )
-            if i > 1:
-                fig.add_hline(y=0, line_dash='dot', line_color='#484F58', line_width=2, row=i, col=1)
+# جلوگیری قطعی از overlap ابتدا و انتها
+tick_vals[0]  = start_ts
+tick_vals[-1] = end_ts
+
+logger.info(f"📊 labels: {len(tick_vals)} | interval: 30 min")
+
+for i in range(1, 7):
+    fig.update_xaxes(
+        type='date',
+        tickmode='array',
+        tickvals=tick_vals,
+        tickformat='%H:%M',
+        tickangle=-45,
+        tickfont=dict(size=25),
+        gridcolor=COLOR_GRID,
+        showgrid=True,
+        zeroline=False,
+        showline=True,
+        linewidth=1,
+        linecolor='#30363D',
+        row=i, col=1
+    )
+
+    fig.update_yaxes(
+        tickfont=dict(size=25),
+        gridcolor=COLOR_GRID,
+        showgrid=True,
+        zeroline=True,
+        zerolinecolor='#30363D',
+        zerolinewidth=2,
+        showline=True,
+        linewidth=1,
+        linecolor='#30363D',
+        row=i, col=1
+    )
+
+    if i > 1:
+        fig.add_hline(
+            y=0,
+            line_dash='dot',
+            line_color='#484F58',
+            line_width=2,
+            row=i, col=1
+        )
 
         # ═══════════════════════════════════════════════════════
         # تبدیل به تصویر و واترمارک
