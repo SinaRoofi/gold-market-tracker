@@ -108,7 +108,7 @@ def get_dollar_yesterday_from_sheet(today_date):
         logger.info(f"🔍 جستجوی آخرین قیمت دلار قبل از {today_date}")
 
         # خواندن 80 رکورد آخر
-        rows = read_from_sheets(limit=80)
+        rows = read_from_sheets(limit=800)
 
         if not rows:
             logger.warning("⚠️ هیچ رکوردی در شیت پیدا نشد")
