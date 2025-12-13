@@ -333,7 +333,7 @@ def create_market_charts():
         # ✅ نمودار 6: پول حقیقی
         pol_color = COLOR_POSITIVE if last_pol >= 0 else COLOR_NEGATIVE
         fig.add_annotation(
-            text=f'<b>{last_pol:+.2f}</b>',
+            text=f'<b>{last_pol:+,.0f}</b>',
             x=1.01, y=last_pol, xref='paper', yref='y6',
             xanchor='left', yanchor='middle',
             font=dict(size=28, color=pol_color, family=chart_font_family),
