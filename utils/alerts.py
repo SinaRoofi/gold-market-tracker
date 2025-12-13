@@ -18,15 +18,13 @@ from config import (
     ALERT_STATUS_FILE,
     ALERT_CHANNEL_HANDLE,
     REQUEST_TIMEOUT,
-    TIMEZONE
+    TIMEZONE,
+    POL_SHARP_CHANGE_THRESHOLD
 )
 from utils.sheets_storage import read_from_sheets
 
 logger = logging.getLogger(__name__)
 FUND_ALERTS_FILE = "fund_alerts.json"
-
-# ✅ آستانه‌های هشدار پول حقیقی
-POL_SHARP_CHANGE_THRESHOLD = 5.0  # تغییر شدید: 5 میلیارد تومان در 1 دقیقه
 
 # ✅ کش محلی برای جلوگیری از reset در صورت خطای Gist
 ALERT_STATUS_CACHE = None
@@ -190,7 +188,7 @@ def get_previous_state_from_sheet():
                 "ekhtelaf_sarane": None,
                 "sarane_kharid": None,
                 "bubble_weighted": None,
-                "pol_hagigi": None  # ✅ پول حقیقی
+                "pol_hagigi": None   
             }
 
         prev_row = rows[-2]
@@ -272,7 +270,7 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
     now = datetime.now(tz)
 
     # ───────────────────────────────────────────────────
-    # 1️⃣ نوسان ۵ دقیقه‌ای (بدون Cooldown)
+    # 1️⃣ نوسان 1 دقیقه‌ای (بدون Cooldown)
     # ───────────────────────────────────────────────────
 
     # دلار
@@ -491,7 +489,7 @@ def check_pol_alerts(bot_token, chat_id, current_pol, prev_pol, status, tz, now)
             send_pol_state_alert(bot_token, chat_id, current_pol, "positive", tz, now)
             status["pol_hagigi"] = "positive"
             status_changed = True
-            logger.info(f"🟢 پول حقیقی به حالت مثبت تغییر کرد: {current_pol:+.2f} م.ت")
+            logger.info(f"🟢 پول حقیقی به حالت مثبت تغییر کرد: {current_pol:+,.0f} م.ت")
 
     elif current_pol < 0:
         # پول حقیقی منفی شد (خروج پول)
@@ -499,14 +497,14 @@ def check_pol_alerts(bot_token, chat_id, current_pol, prev_pol, status, tz, now)
             send_pol_state_alert(bot_token, chat_id, current_pol, "negative", tz, now)
             status["pol_hagigi"] = "negative"
             status_changed = True
-            logger.info(f"🔴 پول حقیقی به حالت منفی تغییر کرد: {current_pol:+.2f} م.ت")
+            logger.info(f"🔴 پول حقیقی به حالت منفی تغییر کرد: {current_pol:+,.0f} م.ت")
 
     else:
         # پول حقیقی صفر (خنثی)
         if status["pol_hagigi"] != "normal":
             status["pol_hagigi"] = "normal"
             status_changed = True
-            logger.info(f"⚪ پول حقیقی در حالت خنثی است: {current_pol:.2f} م.ت")
+            logger.info(f"⚪ پول حقیقی در حالت خنثی است: {current_pol:,.0f} م.ت")
 
     # ───────────────────────────────────────────────────
     # 2️⃣ هشدار تغییر شدید در 1 دقیقه (بدون Cooldown)
@@ -539,7 +537,7 @@ def send_pol_state_alert(bot_token, chat_id, pol_value, state, tz, now):
 💸 هشدار پول حقیقی {dir_emoji}
 
 {description}
-💰 پول حقیقی: {pol_value:+.2f} میلیارد تومان
+💰 پول حقیقی: {pol_value:+,.0f} میلیارد تومان
 📊 وضعیت: {direction}
 """.strip()
 
@@ -553,14 +551,14 @@ def send_pol_sharp_change_alert(bot_token, chat_id, prev_value, curr_value, chan
     """ارسال هشدار تغییر شدید پول حقیقی"""
     direction = "ورود" if change > 0 else "خروج"
     dir_emoji = "📈" if change > 0 else "📉"
-    change_text = f"{abs(change):.2f}"
+    change_text = f"{abs(change):,.0f}"
 
     main_text = f"""
 🚨 تغییر شدید پول حقیقی {dir_emoji}
 
 ⏱ {direction} در 1 دقیقه: {change_text} میلیارد تومان
-🔴 قبلی: {prev_value:+.2f} م.ت
-🟢 فعلی: {curr_value:+.2f} م.ت
+🔴 قبلی: {prev_value:+,.0f} م.ت
+🟢 فعلی: {curr_value:+,.0f} م.ت
 """.strip()
 
     footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
@@ -694,7 +692,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
 💰 ارزش معاملات: {row["value"]:.0f} م.ت ({row["value_to_avg_ratio"]*100:.0f}%)
-💸 پول حقیقی: {row["pol_hagigi"]:+.1f} م.ت ({pol_ratio:+.1f}%)
+💸 پول حقیقی: {row["pol_hagigi"]:+,.0f} م.ت ({pol_ratio:+.1f}%)
 
 """
 
@@ -722,8 +720,8 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 🎈 حباب: {row["nominal_bubble"]:+.1f}%
 🔴 سرانه فروش: {row["sarane_forosh"]:,.0f}M
 🟢 سرانه خرید: {row["sarane_kharid"]:,.0f}M
-💰 ارزش معاملات: {row["value"]:.0f} م.ت ({row["value_to_avg_ratio"]*100:.1f}%)
-💸 پول حقیقی: {row["pol_hagigi"]:+.1f} م.ت ({pol_ratio:+.1f}%)
+💰 ارزش معاملات: {row["value"]:,.0f} م.ت ({row["value_to_avg_ratio"]*100:.1f}%)
+💸 پول حقیقی: {row["pol_hagigi"]:+,.0f} م.ت ({pol_ratio:+.1f}%)
 
 """
 
