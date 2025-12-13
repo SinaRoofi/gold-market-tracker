@@ -84,10 +84,10 @@ def create_market_charts():
                 '<b>شمش طلای بورس کالا (%)</b>',
                 '<b>آخرین قیمت و قیمت پایانی صندوق‌های طلا (%)</b>',
                 '<b>میانگین حباب صندوق‌های طلا (%)</b>',
-                '<b>پول حقیقی (میلیارد تومان)</b>',  # ✅ نمودار جدید
+                '<b>پول حقیقی</b>',  
                 '<b>سرانه خرید و فروش و اختلاف آن</b>'
             ),
-            vertical_spacing=0.035,  # ✅ کاهش فاصله برای 7 نمودار
+            vertical_spacing=0.035,  
             shared_xaxes=True
         )
 
@@ -108,7 +108,7 @@ def create_market_charts():
         last_fund = df['fund_weighted_change_percent'].iloc[-1]
         last_final = df['fund_final_price_avg'].iloc[-1]
         last_bubble = df['fund_weighted_bubble_percent'].iloc[-1]
-        last_pol = df['pol_hagigi'].iloc[-1]  # ✅ پول حقیقی
+        last_pol = df['pol_hagigi'].iloc[-1]  
         last_kharid = df['sarane_kharid_weighted'].iloc[-1]
         last_forosh = df['sarane_forosh_weighted'].iloc[-1]
         last_ekhtelaf = df['ekhtelaf_sarane_weighted'].iloc[-1]
