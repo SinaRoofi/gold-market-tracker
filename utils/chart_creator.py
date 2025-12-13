@@ -43,7 +43,7 @@ def calculate_y_range_with_steps(data_min, data_max, step=50):
 def create_market_charts():
     """ساخت نمودارهای بازار با 7 subplot (اضافه شدن پول حقیقی)"""
     try:
-        data_rows = read_from_sheets(limit=500)
+        data_rows = read_from_sheets(limit=800)
         if not data_rows:
             logger.warning("⚠️ داده‌ای از Sheets دریافت نشد")
             return None
@@ -55,7 +55,7 @@ def create_market_charts():
             'fund_weighted_change_percent', 'fund_final_price_avg',
             'fund_weighted_bubble_percent', 'sarane_kharid_weighted',
             'sarane_forosh_weighted', 'ekhtelaf_sarane_weighted',
-            'pol_hagigi'  # ✅ ستون جدید
+            'pol_hagigi' 
         ])
 
         df['timestamp'] = pd.to_datetime(df['timestamp'])
@@ -77,14 +77,14 @@ def create_market_charts():
 
         # ساخت نمودار با 7 ردیف
         fig = make_subplots(
-            rows=7, cols=1,  # ✅ تغییر از 6 به 7
+            rows=7, cols=1, 
             subplot_titles=(
                 '<b>قیمت اونس طلا ($)</b>',
                 '<b>دلار آزاد (%)</b>',
                 '<b>شمش طلای بورس کالا (%)</b>',
                 '<b>آخرین قیمت و قیمت پایانی صندوق‌های طلا (%)</b>',
                 '<b>میانگین حباب صندوق‌های طلا (%)</b>',
-                '<b>پول حقیقی</b>',  
+                '<b>ورود پول حقیقی</b>',  
                 '<b>سرانه خرید و فروش و اختلاف آن</b>'
             ),
             vertical_spacing=0.035,  
@@ -387,7 +387,7 @@ def create_market_charts():
 
         logger.info(f"📊 labels: {len(tick_vals)} | interval: 30 min")
 
-        for i in range(1, 8):  # ✅ تغییر از 7 به 8 برای 7 نمودار
+        for i in range(1, 8): 
             fig.update_xaxes(
                 type='date',
                 tickmode='array',
