@@ -310,7 +310,7 @@ async def main():
 
             # ✅ محاسبه پول حقیقی (میانگین وزنی)
             pol_hagigi_weighted = (
-                (Fund_df["pol_hagigi"] * Fund_df["value"]).sum() / total_value
+                Fund_df["pol_hagigi"].sum()
             )
 
             dollar_change = (
