@@ -17,8 +17,8 @@ ALERT_THRESHOLD_PERCENT = 0.3  # درصد تغییر سریع
 EKHTELAF_THRESHOLD = 10         # اختلاف سرانه
 
 # 🎯 مقادیر پیش‌فرض (Fallback)
-DEFAULT_GOLD_PRICE = 4230      
-DEFAULT_DOLLAR_PRICE = 125_000 
+DEFAULT_GOLD_PRICE = 4300      
+DEFAULT_DOLLAR_PRICE = 129_000 
 
 # 🎈 آستانه‌های هشدار حباب
 BUBBLE_POSITIVE_THRESHOLD = 0.1   
