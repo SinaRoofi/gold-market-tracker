@@ -367,16 +367,20 @@ def create_market_charts():
         # محاسبه تعداد داده‌ها
         total_minutes = len(df)
 
-        # تعیین فاصله label‌ها بر اساس تعداد داده
-        if total_minutes <= 30:      # کمتر از نیم ساعت
+        # تعیین فاصله label‌ها بر اساس تعداد داده (فاصله کمتر)
+        if total_minutes <= 20:      # کمتر از 20 دقیقه
+            step = 2                  # هر 2 دقیقه
+        elif total_minutes <= 40:    # کمتر از 40 دقیقه
             step = 5                  # هر 5 دقیقه
-        elif total_minutes <= 60:    # کمتر از 1 ساعت
-            step = 10                 # هر 10 دقیقه
+        elif total_minutes <= 80:    # کمتر از 80 دقیقه
+            step = 8                  # هر 8 دقیقه
         elif total_minutes <= 120:   # کمتر از 2 ساعت
+            step = 10                 # هر 10 دقیقه
+        elif total_minutes <= 180:   # کمتر از 3 ساعت
             step = 15                 # هر 15 دقیقه
-        elif total_minutes <= 240:   # کمتر از 4 ساعت
+        elif total_minutes <= 300:   # کمتر از 5 ساعت
             step = 20                 # هر 20 دقیقه
-        else:                         # بیشتر از 4 ساعت
+        else:                         # بیشتر از 5 ساعت
             step = 30                 # هر 30 دقیقه
 
         # انتخاب label‌ها
@@ -394,8 +398,8 @@ def create_market_charts():
                 tickformat='%H:%M',
                 tickmode='array',
                 tickvals=tick_vals,
-                tickangle=-45,           # ✅ زاویه بیشتر برای خوانایی بهتر
-                tickfont=dict(size=24),  # ✅ اندکی کوچک‌تر
+                tickangle=-50,           # ✅ زاویه بیشتر (50 درجه)
+                tickfont=dict(size=22),  # ✅ فونت کوچک‌تر (22)
                 gridcolor=COLOR_GRID,
                 showgrid=True,
                 zeroline=False,
