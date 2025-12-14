@@ -13,7 +13,7 @@ SHAMS_LOW = 17_000_000     # آستانه پایین شمش طلا
 GOLD_HIGH = 4365         # آستانه بالای اونس طلا
 GOLD_LOW = 4300        # آستانه پایین اونس طلا
 
-ALERT_THRESHOLD_PERCENT = 0.3  # درصد تغییر سریع (5 دقیقه)
+ALERT_THRESHOLD_PERCENT = 0.5  # درصد تغییر سریع 
 EKHTELAF_THRESHOLD = 10         # اختلاف سرانه (میلیون تومان)
 
 # 🎯 مقادیر پیش‌فرض (Fallback)
@@ -21,8 +21,8 @@ DEFAULT_GOLD_PRICE = 4300
 DEFAULT_DOLLAR_PRICE = 129_000 
 
 # 🎈 آستانه‌های هشدار حباب
-BUBBLE_POSITIVE_THRESHOLD = 0.1   
-BUBBLE_NEGATIVE_THRESHOLD = -0.1
+BUBBLE_POSITIVE_THRESHOLD = 0.5   
+BUBBLE_NEGATIVE_THRESHOLD = -0.5
 BUBBLE_SHARP_CHANGE_THRESHOLD = 0.5  # درصد
 
 # ✅ آستانه‌های هشدار پول حقیقی
