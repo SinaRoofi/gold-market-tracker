@@ -419,11 +419,9 @@ def check_bubble_alerts(bot_token, chat_id, current_bubble, prev_bubble, status,
 def send_bubble_state_alert(bot_token, chat_id, bubble_value, state, tz, now):
     """ارسال هشدار کراس صفر حباب"""
     if state == "positive":
-        direction = "مثبت"
         dir_emoji = "🟢"
         description = "حباب مثبت شد"
     else:
-        direction = "منفی"
         dir_emoji = "🔴"
         description = "حباب منفی شد"
 
@@ -432,7 +430,6 @@ def send_bubble_state_alert(bot_token, chat_id, bubble_value, state, tz, now):
 
 {description}
 💹 حباب فعلی: {bubble_value:+.2f}%
-📊 وضعیت: {direction}
 """.strip()
 
     footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
