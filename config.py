@@ -26,7 +26,7 @@ BUBBLE_NEGATIVE_THRESHOLD = -0.1
 BUBBLE_SHARP_CHANGE_THRESHOLD = 0.3  # درصد
 
 # ✅ آستانه‌های هشدار پول حقیقی
-POL_SHARP_CHANGE_THRESHOLD = 5.0  
+POL_SHARP_CHANGE_THRESHOLD = 20 
 
 # 📌 هندل کانال تلگرام
 CHANNEL_HANDLE = "@Gold_Iran_Market"
