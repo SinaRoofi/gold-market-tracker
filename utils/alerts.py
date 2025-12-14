@@ -360,7 +360,8 @@ def check_and_send_alerts(bot_token, chat_id, data, dollar_prices, gold_price, y
                 status[key] = "normal"
                 changed = True
 
-    if changed:
+    # ✅ FIX: ذخیره وضعیت اگر حباب یا پول حقیقی هم تغییر کرده باشد
+    if changed or bubble_status_changed or pol_status_changed:
         save_alert_status(status)
 
 
