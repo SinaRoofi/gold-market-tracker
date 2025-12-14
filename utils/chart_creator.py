@@ -177,7 +177,7 @@ def create_market_charts():
             name='خرید حقیقی',
             line=dict(color=COLOR_POSITIVE, width=5),
             hovertemplate='خرید: <b>%{y:.2f}</b><extra></extra>',
-            yaxis='y7'  # ✅ تغییر از y6 به y7
+            yaxis='y7'
         ), row=7, col=1)
 
         fig.add_trace(go.Scatter(
@@ -202,7 +202,7 @@ def create_market_charts():
                 line=dict(color=colors_fill, width=4)
             ),
             hovertemplate='اختلاف: <b>%{y:.2f}</b><extra></extra>',
-            yaxis='y14'  # ✅ تغییر از y12 به y14
+            yaxis='y14'
         ), row=7, col=1)
 
         kharid_min = df['sarane_kharid_weighted'].min()
@@ -224,7 +224,7 @@ def create_market_charts():
         ekhtelaf_padding = max(10, (ekhtelaf_max - ekhtelaf_min) * 0.15)
 
         fig.update_layout(
-            yaxis14=dict(  # ✅ تغییر از y12 به y14
+            yaxis14=dict(
                 overlaying='y7',
                 side='right',
                 range=[ekhtelaf_min - ekhtelaf_padding, ekhtelaf_max + ekhtelaf_padding],
@@ -238,7 +238,7 @@ def create_market_charts():
         # تنظیمات کلی Layout
         # ═══════════════════════════════════════════════════════
         fig.update_layout(
-            height=CHART_HEIGHT + 300,  # ✅ افزایش ارتفاع برای نمودار جدید
+            height=CHART_HEIGHT + 300,
             paper_bgcolor=COLOR_BACKGROUND,
             plot_bgcolor=COLOR_BACKGROUND,
             font=dict(color='#C9D1D9', family=chart_font_family, size=25),
@@ -330,39 +330,52 @@ def create_market_charts():
             showarrow=False
         )
 
-        # ✅ نمودار 6: پول حقیقی
+        # ✅ نمودار 6: پول حقیقی (فرمت سه‌رقم جدا بدون ممیز)
         pol_color = COLOR_POSITIVE if last_pol >= 0 else COLOR_NEGATIVE
+        pol_formatted = f"{int(last_pol):+,}".replace(',', '٬')
         fig.add_annotation(
-            text=f'<b>{last_pol:+,.0f}</b>',
+            text=f'<b>{pol_formatted}</b>',
             x=1.01, y=last_pol, xref='paper', yref='y6',
             xanchor='left', yanchor='middle',
             font=dict(size=28, color=pol_color, family=chart_font_family),
             showarrow=False
         )
 
-        # نمودار 7: سرانه
+        # نمودار 7: سرانه - برچسب‌های سمت راست با فرمت مناسب
         ekhtelaf_color = COLOR_POSITIVE if last_ekhtelaf >= 0 else COLOR_NEGATIVE
 
+        # محاسبه موقعیت‌های y برای برچسب‌ها بر اساس محدوده واقعی داده‌ها
+        lines_range = lines_max - lines_min
+        
+        # خرید حقیقی (در بالا)
+        kharid_y = lines_max - (lines_range * 0.05)
+        
+        # فروش حقیقی (در پایین)
+        forosh_y = lines_min + (lines_range * 0.05)
+        
+        # اختلاف (در وسط)
+        ekhtelaf_y = (lines_max + lines_min) / 2
+
         fig.add_annotation(
-            text=f'<b>خ:{last_kharid:.0f}</b>',
-            x=1.01, y=0.07, xref='paper', yref='paper',
-            xanchor='left', yanchor='bottom',
+            text=f'<b>خ: {int(last_kharid):,}</b>'.replace(',', '٬'),
+            x=1.01, y=kharid_y, xref='paper', yref='y7',
+            xanchor='left', yanchor='middle',
             font=dict(size=28, color=COLOR_POSITIVE, family=chart_font_family),
             showarrow=False
         )
 
         fig.add_annotation(
-            text=f'<b>اخ:{last_ekhtelaf:+.0f}</b>',
-            x=1.01, y=0.045, xref='paper', yref='paper',
-            xanchor='left', yanchor='bottom',
+            text=f'<b>اخ: {int(last_ekhtelaf):+,}</b>'.replace(',', '٬'),
+            x=1.01, y=ekhtelaf_y, xref='paper', yref='y7',
+            xanchor='left', yanchor='middle',
             font=dict(size=28, color=ekhtelaf_color, family=chart_font_family),
             showarrow=False
         )
 
         fig.add_annotation(
-            text=f'<b>ف:{last_forosh:.0f}</b>',
-            x=1.01, y=0.02, xref='paper', yref='paper',
-            xanchor='left', yanchor='bottom',
+            text=f'<b>ف: {int(last_forosh):,}</b>'.replace(',', '٬'),
+            x=1.01, y=forosh_y, xref='paper', yref='y7',
+            xanchor='left', yanchor='middle',
             font=dict(size=28, color=COLOR_NEGATIVE, family=chart_font_family),
             showarrow=False
         )
@@ -387,7 +400,7 @@ def create_market_charts():
 
         logger.info(f"📊 labels: {len(tick_vals)} | interval: 30 min")
 
-        for i in range(1, 8): 
+        for i in range(1, 8):
             fig.update_xaxes(
                 type='date',
                 tickmode='array',
@@ -432,7 +445,7 @@ def create_market_charts():
         img_bytes = fig.to_image(
             format='png', 
             width=CHART_WIDTH, 
-            height=CHART_HEIGHT + 300,  # ✅ افزایش ارتفاع
+            height=CHART_HEIGHT + 300,
             scale=CHART_SCALE
         )
         img = Image.open(io.BytesIO(img_bytes)).convert('RGBA')
@@ -444,7 +457,7 @@ def create_market_charts():
             bbox = draw.textbbox((0, 0), text, font=font)
             w = bbox[2] - bbox[0]
             x = img.width - w - 25
-            y = int(img.height * 0.85)  # ✅ تنظیم موقعیت
+            y = int(img.height * 0.85)
             draw.text((x, y), text, fill=(201, 209, 217, 160), font=font)
         except Exception as e:
             logger.warning(f"⚠️ خطا در واترمارک: {e}")
