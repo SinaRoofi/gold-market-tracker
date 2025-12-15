@@ -199,7 +199,7 @@ def create_market_charts():
         fig.add_trace(go.Bar(
             x=df['timestamp'], y=df['ekhtelaf_sarane_weighted'],
             name='اختلاف سرانه',
-            width=0.9,
+            width=1,
             marker=dict(
                 color=colors_fill,
                 line=dict(color=colors_fill, width=4)
