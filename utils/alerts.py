@@ -642,7 +642,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 
 """
 
-            main_text = f"🟢 هشدار کراس مثبت سرانه\n\n{funds_text}".strip()
+            main_text = f"🟢 هشدار کراس مثبت سرانه\n{funds_text}".strip()
             footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
             caption = f"{main_text}\n{footer}"
             send_alert_message(bot_token, chat_id, caption)
@@ -668,7 +668,7 @@ def check_sarane_cross_alert(bot_token, chat_id, df_funds, tz, now):
 
 """
 
-            main_text = f"🔴 هشدار کراس منفی سرانه\n\n{funds_text}".strip()
+            main_text = f"🔴 هشدار کراس منفی سرانه\n{funds_text}".strip()
             footer = f"\n🕐 {now.strftime('%Y-%m-%d - %H:%M')}\n🔗 {ALERT_CHANNEL_HANDLE}"
             caption = f"{main_text}\n{footer}"
             send_alert_message(bot_token, chat_id, caption)
