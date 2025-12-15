@@ -335,7 +335,7 @@ def create_market_charts():
 
         # ✅ نمودار 6: پول حقیقی (فرمت سه‌رقم جدا بدون ممیز)
         pol_color = COLOR_POSITIVE if last_pol >= 0 else COLOR_NEGATIVE
-        pol_formatted = f"{int(last_pol):+,}".replace(',', '٬')
+        pol_formatted = f"{int(last_pol):+,}"
         fig.add_annotation(
             text=f'<b>{pol_formatted}</b>',
             x=1.01, y=last_pol, xref='paper', yref='y6',
