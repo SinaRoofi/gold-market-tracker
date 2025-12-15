@@ -117,8 +117,8 @@ def create_market_charts():
         # نمودار 1: قیمت طلا
         # ═══════════════════════════════════════════════════════
         gold_current = df['gold_price_usd'].iloc[-1]
-        gold_min = gold_current * 0.98
-        gold_max = gold_current * 1.02
+        gold_min = gold_current * 0.99
+        gold_max = gold_current * 1.01
 
         fig.add_trace(go.Scatter(
             x=df['timestamp'], y=df['gold_price_usd'],
