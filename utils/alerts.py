@@ -201,9 +201,9 @@ def cleanup_old_alerts(alerts_dict, max_days=7):
 def get_previous_state_from_sheet():
     """دریافت وضعیت قبلی با بررسی فاصله زمانی"""
     try:
-        rows = read_from_sheets(limit=7)  # ✅ حداقل 6 ردیف بخون
+        rows = read_from_sheets(limit=3)  # ✅ حداقل 6 ردیف بخون
 
-        if len(rows) < 6:
+        if len(rows) < 2:
             logger.warning("داده کافی برای مقایسه نیست")
             return {
                 "dollar_price": None,
@@ -215,7 +215,7 @@ def get_previous_state_from_sheet():
                 "pol_hagigi": None,
             }
 
-        prev_row = rows[-6]  # ✅ ردیف 5 دقیقه قبل (ردیف ششم از آخر)
+        prev_row = rows[-2] 
         last_row = rows[-1]
 
         try:
@@ -223,7 +223,7 @@ def get_previous_state_from_sheet():
             last_time = datetime.strptime(last_row[0][:19], "%Y-%m-%d %H:%M:%S")
             time_diff = (last_time - prev_time).total_seconds() / 60
 
-            if abs(time_diff - 5) > 2:  # ✅ انتظار داریم حدود 5 دقیقه باشه
+            if time_diff > 10: 
                 logger.warning(
                     f"⚠️ فاصله زمانی غیرعادی: {time_diff:.1f} دقیقه (انتظار: ~5 دقیقه)"
                 )
