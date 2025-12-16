@@ -5,7 +5,7 @@ import logging
 import requests
 from datetime import datetime, timedelta
 import pytz
-import jdatetime
+import jdatetime 
 from config import (
     DOLLAR_HIGH,
     DOLLAR_LOW,
@@ -201,9 +201,9 @@ def cleanup_old_alerts(alerts_dict, max_days=7):
 def get_previous_state_from_sheet():
     """دریافت وضعیت قبلی با بررسی فاصله زمانی"""
     try:
-        rows = read_from_sheets(limit=7)  # ✅ حداقل 6 ردیف بخون
+        rows = read_from_sheets(limit=3)
 
-        if len(rows) < 6:
+        if len(rows) < 2:
             logger.warning("داده کافی برای مقایسه نیست")
             return {
                 "dollar_price": None,
@@ -215,7 +215,7 @@ def get_previous_state_from_sheet():
                 "pol_hagigi": None,
             }
 
-        prev_row = rows[-6]  # ✅ ردیف 5 دقیقه قبل (ردیف ششم از آخر)
+        prev_row = rows[-2]
         last_row = rows[-1]
 
         try:
@@ -223,10 +223,8 @@ def get_previous_state_from_sheet():
             last_time = datetime.strptime(last_row[0][:19], "%Y-%m-%d %H:%M:%S")
             time_diff = (last_time - prev_time).total_seconds() / 60
 
-            if abs(time_diff - 5) > 2:  # ✅ انتظار داریم حدود 5 دقیقه باشه
-                logger.warning(
-                    f"⚠️ فاصله زمانی غیرعادی: {time_diff:.1f} دقیقه (انتظار: ~5 دقیقه)"
-                )
+            if time_diff > 10:
+                logger.warning(f"⚠️ فاصله زمانی غیرعادی: {time_diff:.1f} دقیقه")
             else:
                 logger.debug(f"✓ فاصله زمانی: {time_diff:.1f} دقیقه")
 
@@ -310,7 +308,7 @@ def check_and_send_alerts(
     tz = pytz.timezone(TIMEZONE)
     now = datetime.now(tz)
 
-    # نوسان 5 دقیقه‌ای
+    # نوسان 1 دقیقه‌ای
     if prev["dollar_price"] and prev["dollar_price"] > 0:
         change = (current_dollar - prev["dollar_price"]) / prev["dollar_price"] * 100
         if abs(change) >= ALERT_THRESHOLD_PERCENT:
@@ -482,7 +480,7 @@ def send_bubble_sharp_change_alert(
 
 
 def check_pol_alerts(bot_token, chat_id, current_pol, prev_pol, status, tz, now):
-    """بررسی و ارسال هشدارهای پول حقیقی - کراس صفر + تغییر شدید (1 دقیقه، فقط همون روز)"""
+    """بررسی و ارسال هشدارهای پول حقیقی - کراس صفر + تغییر شدید"""
     status_changed = False
 
     # هشدار کراس صفر
@@ -506,34 +504,13 @@ def check_pol_alerts(bot_token, chat_id, current_pol, prev_pol, status, tz, now)
             status_changed = True
             logger.info(f"⚪ پول حقیقی صفر است: {current_pol:,.0f} م.ت")
 
-    # ✅ هشدار تغییر شدید - 1 دقیقه قبل، فقط اگر همون روز باشه
+    # هشدار تغییر شدید
     if prev_pol is not None:
-        try:
-            rows = read_from_sheets(limit=3)  # ✅ فقط 2 ردیف آخر کافیه
-            if len(rows) >= 2:
-                prev_row = rows[-2]  # ✅ 1 دقیقه قبل
-                last_row = rows[-1]
-
-                prev_time = datetime.strptime(prev_row[0][:19], "%Y-%m-%d %H:%M:%S")
-                last_time = datetime.strptime(last_row[0][:19], "%Y-%m-%d %H:%M:%S")
-
-                # ✅ بررسی کن که همون روز باشن
-                if prev_time.date() == last_time.date():
-                    pol_change = current_pol - prev_pol
-                    if abs(pol_change) >= POL_SHARP_CHANGE_THRESHOLD:
-                        send_pol_sharp_change_alert(
-                            bot_token,
-                            chat_id,
-                            prev_pol,
-                            current_pol,
-                            pol_change,
-                            tz,
-                            now,
-                        )
-                else:
-                    logger.debug(f"پول حقیقی در روزهای مختلف - هشدار ارسال نمیشه")
-        except Exception as e:
-            logger.warning(f"خطا در بررسی تاریخ پول حقیقی: {e}")
+        pol_change = current_pol - prev_pol
+        if abs(pol_change) >= POL_SHARP_CHANGE_THRESHOLD:
+            send_pol_sharp_change_alert(
+                bot_token, chat_id, prev_pol, current_pol, pol_change, tz, now
+            )
 
     return status_changed
 
