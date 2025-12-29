@@ -2,6 +2,7 @@
 import re
 import logging
 import pytz
+import time
 from datetime import datetime, timedelta
 from telethon import TelegramClient
 import requests
@@ -134,22 +135,112 @@ async def fetch_dollar_prices(client: TelegramClient):
         return None
 
 
-async def fetch_market_data():
-    """دریافت داده‌های بازار"""
-    try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        url1 = "https://rahavard365.com/api/v2/gold/intrinsic-values"
-        resp1 = requests.get(url1, headers=headers, timeout=30)
-        data1 = resp1.json()
+async def fetch_market_data(max_retries=3, retry_delay=5):
+    """دریافت داده‌های بازار با قابلیت retry"""
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "application/json",
+                "Accept-Language": "en-US,en;q=0.9"
+            }
+            
+            # ═══════════════════════════════════════════════════
+            # درخواست اول: rahavard365
+            # ═══════════════════════════════════════════════════
+            url1 = "https://rahavard365.com/api/v2/gold/intrinsic-values"
+            logger.info(f"📡 تلاش {attempt}/{max_retries} - درخواست به rahavard365...")
+            
+            resp1 = requests.get(url1, headers=headers, timeout=30)
+            
+            if resp1.status_code != 200:
+                logger.error(f"❌ خطای HTTP {resp1.status_code} از rahavard365")
+                raise requests.exceptions.RequestException(f"HTTP {resp1.status_code}")
+            
+            try:
+                data1 = resp1.json()
+                logger.info("✅ rahavard365 پاسخ داد")
+            except requests.exceptions.JSONDecodeError as e:
+                logger.error(f"❌ پاسخ rahavard365 JSON نیست")
+                logger.debug(f"Response: {resp1.text[:500]}")
+                raise
 
-        url2 = "https://tradersarena.ir/data/industries-stocks-csv/gold-funds?_=1762346248071"
-        resp2 = requests.get(url2, headers=headers, timeout=30)
-        data2 = resp2.json()
+            # تأخیر بین درخواست‌ها
+            time.sleep(2)
 
-        return {'rahavard_data': data1, 'traders_data': data2}
-    except Exception as e:
-        logger.error(f"خطا در دریافت داده‌های بازار: {e}")
-        return None
+            # ═══════════════════════════════════════════════════
+            # درخواست دوم: tradersarena
+            # ═══════════════════════════════════════════════════
+            url2 = "https://tradersarena.ir/data/industries-stocks-csv/gold-funds"
+            logger.info(f"📡 تلاش {attempt}/{max_retries} - درخواست به tradersarena...")
+            
+            resp2 = requests.get(url2, headers=headers, timeout=30)
+            
+            if resp2.status_code != 200:
+                logger.error(f"❌ خطای HTTP {resp2.status_code} از tradersarena")
+                raise requests.exceptions.RequestException(f"HTTP {resp2.status_code}")
+            
+            try:
+                data2 = resp2.json()
+                logger.info("✅ tradersarena پاسخ داد")
+            except requests.exceptions.JSONDecodeError as e:
+                logger.error(f"❌ پاسخ tradersarena JSON نیست")
+                logger.debug(f"Response: {resp2.text[:500]}")
+                raise
+
+            # ═══════════════════════════════════════════════════
+            # موفقیت
+            # ═══════════════════════════════════════════════════
+            logger.info(f"✅ دریافت موفق در تلاش {attempt}")
+            return {'rahavard_data': data1, 'traders_data': data2}
+            
+        except requests.exceptions.Timeout:
+            logger.error(f"❌ تلاش {attempt}: Timeout")
+            if attempt < max_retries:
+                logger.info(f"⏳ صبر {retry_delay} ثانیه قبل از تلاش مجدد...")
+                time.sleep(retry_delay)
+            else:
+                logger.error("❌ همه تلاش‌ها به دلیل Timeout ناموفق بود")
+                return None
+                
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"❌ تلاش {attempt}: خطای اتصال - {e}")
+            if attempt < max_retries:
+                logger.info(f"⏳ صبر {retry_delay} ثانیه قبل از تلاش مجدد...")
+                time.sleep(retry_delay)
+            else:
+                logger.error("❌ همه تلاش‌ها به دلیل خطای اتصال ناموفق بود")
+                return None
+                
+        except requests.exceptions.JSONDecodeError as e:
+            logger.error(f"❌ تلاش {attempt}: پاسخ JSON معتبر نیست - {e}")
+            if attempt < max_retries:
+                logger.info(f"⏳ صبر {retry_delay} ثانیه قبل از تلاش مجدد...")
+                time.sleep(retry_delay)
+            else:
+                logger.error("❌ همه تلاش‌ها به دلیل پاسخ نامعتبر ناموفق بود")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ تلاش {attempt}: خطای درخواست - {e}")
+            if attempt < max_retries:
+                logger.info(f"⏳ صبر {retry_delay} ثانیه قبل از تلاش مجدد...")
+                time.sleep(retry_delay)
+            else:
+                logger.error("❌ همه تلاش‌ها ناموفق بود")
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ تلاش {attempt}: خطای غیرمنتظره - {e}")
+            if attempt < max_retries:
+                logger.info(f"⏳ صبر {retry_delay} ثانیه قبل از تلاش مجدد...")
+                time.sleep(retry_delay)
+            else:
+                logger.error("❌ همه تلاش‌ها به دلیل خطای غیرمنتظره ناموفق بود")
+                return None
+    
+    return None
 
 
 def fetch_dirham_price():
