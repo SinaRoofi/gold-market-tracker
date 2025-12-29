@@ -6,7 +6,7 @@ import numpy as np
 import logging
 from config import ASSET_ORDER
 
-pd.set_option('future.no_silent_downcasting', True)
+pd.set_option("future.no_silent_downcasting", True)
 logger = logging.getLogger(__name__)
 
 pd.options.display.float_format = "{:,.2f}".format
@@ -29,9 +29,15 @@ def process_market_data(
 
         assets_df.drop(
             [
-                "entity_id", "type", "asset_id", "short_name", 
-                "intrinsic_value", "price_bubble", "price_bubble_percent",
-                "calculated_usdirr", "name",
+                "entity_id",
+                "type",
+                "asset_id",
+                "short_name",
+                "intrinsic_value",
+                "price_bubble",
+                "price_bubble_percent",
+                "calculated_usdirr",
+                "name",
             ],
             axis=1,
             inplace=True,
@@ -41,10 +47,18 @@ def process_market_data(
 
         warehouse_df.drop(
             [
-                "entity_id", "type", "asset_id", "short_name",
-                "intrinsic_value", "price_bubble", "price_bubble_percent",
-                "calculated_usdirr", "trade_symbol", "name",
-                "value", "volume",
+                "entity_id",
+                "type",
+                "asset_id",
+                "short_name",
+                "intrinsic_value",
+                "price_bubble",
+                "price_bubble_percent",
+                "calculated_usdirr",
+                "trade_symbol",
+                "name",
+                "value",
+                "volume",
             ],
             axis=1,
             inplace=True,
@@ -54,11 +68,22 @@ def process_market_data(
 
         funds_df.drop(
             [
-                "entity_id", "type", "asset_id", "short_name",
-                "trade_symbol", "name", "other_weight", "bullion_weight",
-                "coin_weight", "real_bubble_percent", "real_bubble",
-                "intrinsic_bubble_percent", "intrinsic_bubble",
-                "nominal_bubble_percent", "sum_nav", "intrinsic_price",
+                "entity_id",
+                "type",
+                "asset_id",
+                "short_name",
+                "trade_symbol",
+                "name",
+                "other_weight",
+                "bullion_weight",
+                "coin_weight",
+                "real_bubble_percent",
+                "real_bubble",
+                "intrinsic_bubble_percent",
+                "intrinsic_bubble",
+                "nominal_bubble_percent",
+                "sum_nav",
+                "intrinsic_price",
             ],
             axis=1,
             inplace=True,
@@ -67,12 +92,17 @@ def process_market_data(
         funds_df.set_index("slug", inplace=True)
 
         funds_df.sort_values(by="value", ascending=False, inplace=True)
-        funds_df["close_price"] = pd.to_numeric(funds_df["close_price"], errors="coerce")
+        funds_df["close_price"] = pd.to_numeric(
+            funds_df["close_price"], errors="coerce"
+        )
         funds_df["nav"] = pd.to_numeric(funds_df["nav"], errors="coerce")
-        funds_df["value"] = pd.to_numeric(funds_df["value"], errors="coerce") / 10_000_000_000
+        funds_df["value"] = (
+            pd.to_numeric(funds_df["value"], errors="coerce") / 10_000_000_000
+        )
 
         funds_df["nominal_bubble"] = (
-            (funds_df["close_price"] - funds_df["nav"]) / funds_df["nav"].replace(0, pd.NA)
+            (funds_df["close_price"] - funds_df["nav"])
+            / funds_df["nav"].replace(0, pd.NA)
         ) * 100
 
         funds_df["last_trade_time"] = funds_df["last_trade_time"].str[11:19]
@@ -83,16 +113,20 @@ def process_market_data(
 
         funds_df = funds_df[
             [
-                "close_price", "nav", "nominal_bubble",
-                "close_price_change", "close_price_change_percent",
-                "value", "last_trade_time",
+                "close_price",
+                "nav",
+                "nominal_bubble",
+                "close_price_change",
+                "close_price_change_percent",
+                "value",
+                "last_trade_time",
             ]
         ]
 
         Fund_df = process_traders_data(traders_data)
 
         dfp = pd.concat([warehouse_df, assets_df])
-        dfp = dfp[~dfp.index.duplicated(keep='first')]
+        dfp = dfp[~dfp.index.duplicated(keep="first")]
 
         dfp["trade_date"] = dfp["last_trade_time"].str[:10]
         dfp["last_trade_time"] = dfp["last_trade_time"].str[11:19]
@@ -137,14 +171,14 @@ def flatten_entities(df, list_col="related_entities"):
 
 def process_traders_data(data):
     """پردازش داده‌های traders با mapping مستقیم index‌ها - بولت‌پروف"""
-    
+
     if not data or len(data) == 0:
         logger.warning("⚠️ داده traders_data خالی است")
         return pd.DataFrame()
-    
+
     actual_columns = len(data[0])
     logger.info(f"📊 تعداد ستون‌های دریافتی: {actual_columns}")
-    
+
     # ✅ Mapping مستقیم: index -> نام ستون مورد نیاز
     column_mapping = {
         0: "id",
@@ -190,7 +224,7 @@ def process_traders_data(data):
         49: "category",
         50: "isin",
     }
-    
+
     # ✅ ساخت DataFrame با استخراج ستون‌های مورد نیاز
     extracted_data = []
     for row in data:
@@ -202,15 +236,21 @@ def process_traders_data(data):
                 extracted_row[col_name] = None
                 logger.warning(f"⚠️ ستون {idx} ({col_name}) در دیتا وجود ندارد")
         extracted_data.append(extracted_row)
-    
+
     Fund_df = pd.DataFrame(extracted_data)
     Fund_df = Fund_df.set_index("symbol")
-    
+
     # ✅ پردازش عددی ستون‌ها
     Fund_df["value"] = pd.to_numeric(Fund_df["value"], errors="coerce") / 10_000_000_000
-    Fund_df["sarane_kharid"] = pd.to_numeric(Fund_df["sarane_kharid"], errors="coerce") / 10_000_000
-    Fund_df["sarane_forosh"] = pd.to_numeric(Fund_df["sarane_forosh"], errors="coerce") / 10_000_000
-    Fund_df["pol_hagigi"] = pd.to_numeric(Fund_df["pol_hagigi"], errors="coerce") / 10_000_000_000
+    Fund_df["sarane_kharid"] = (
+        pd.to_numeric(Fund_df["sarane_kharid"], errors="coerce") / 10_000_000
+    )
+    Fund_df["sarane_forosh"] = (
+        pd.to_numeric(Fund_df["sarane_forosh"], errors="coerce") / 10_000_000
+    )
+    Fund_df["pol_hagigi"] = (
+        pd.to_numeric(Fund_df["pol_hagigi"], errors="coerce") / 10_000_000_000
+    )
 
     Fund_df["avg_monthly_value"] = (
         Fund_df["avg_monthly_value"]
@@ -254,18 +294,32 @@ def process_traders_data(data):
 
     # ✅ انتخاب ستون‌های نهایی (فقط آنهایی که وجود دارند)
     final_columns = [
-        "close_price", "NAV", "nominal_bubble", "NAV_change_percent",
-        "close_price_change_percent", "final_price_change",
-        "weekly_return", "monthly_return", "3_month_return", "net_asset",
-        "sarane_kharid", "sarane_forosh", "ekhtelaf_sarane",
-        "pol_hagigi", "pol_to_value_ratio", "value",
-        "avg_monthly_value", "value_to_avg_ratio",
+        "close_price",
+        "NAV",
+        "nominal_bubble",
+        "NAV_change_percent",
+        "close_price_change_percent",
+        "final_price_change",
+        "weekly_return",
+        "monthly_return",
+        "3_month_return",
+        "net_asset",
+        "sarane_kharid",
+        "sarane_forosh",
+        "ekhtelaf_sarane",
+        "pol_hagigi",
+        "pol_to_value_ratio",
+        "value",
+        "avg_monthly_value",
+        "value_to_avg_ratio",
     ]
-    
+
     existing_columns = [col for col in final_columns if col in Fund_df.columns]
     Fund_df = Fund_df[existing_columns]
 
-    logger.info(f"✅ Fund_df پردازش شد - {len(Fund_df)} صندوق با {len(Fund_df.columns)} ستون")
+    logger.info(
+        f"✅ Fund_df پردازش شد - {len(Fund_df)} صندوق با {len(Fund_df.columns)} ستون"
+    )
 
     return Fund_df
 
@@ -274,15 +328,33 @@ def calculate_values(dfp, Gold, last_trade):
     dfp.loc[dfp.index[0], "Value"] = (((last_trade * Gold) / 31.1034768) * 0.75) * 10
     dfp.loc[dfp.index[1], "Value"] = ((((last_trade * Gold) / 31.1034768)) * 0.995) * 10
     dfp.loc[dfp.index[2], "Value"] = (((last_trade * Gold) / 31.1034768)) * 0.995
-    dfp.loc[dfp.index[3], "Value"] = ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 * 10
-    dfp.loc[dfp.index[4], "Value"] = ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 * 10
-    dfp.loc[dfp.index[5], "Value"] = ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 * 10
-    dfp.loc[dfp.index[6], "Value"] = ((0.705 * (last_trade * Gold)) / 31.1034768) * 4.6083 * 10
-    dfp.loc[dfp.index[7], "Value"] = ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 / 100
-    dfp.loc[dfp.index[8], "Value"] = ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 / 100
-    dfp.loc[dfp.index[9], "Value"] = ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 / 100
-    dfp.loc[dfp.index[10], "Value"] = ((0.9 * (last_trade * Gold)) / 31.1034768) * 4.0665 * 10
-    dfp.loc[dfp.index[11], "Value"] = ((0.9 * (last_trade * Gold)) / 31.1034768) * 2.03225 * 10
+    dfp.loc[dfp.index[3], "Value"] = (
+        ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 * 10
+    )
+    dfp.loc[dfp.index[4], "Value"] = (
+        ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 * 10
+    )
+    dfp.loc[dfp.index[5], "Value"] = (
+        ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 * 10
+    )
+    dfp.loc[dfp.index[6], "Value"] = (
+        ((0.705 * (last_trade * Gold)) / 31.1034768) * 4.6083 * 10
+    )
+    dfp.loc[dfp.index[7], "Value"] = (
+        ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 / 100
+    )
+    dfp.loc[dfp.index[8], "Value"] = (
+        ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 / 100
+    )
+    dfp.loc[dfp.index[9], "Value"] = (
+        ((0.9 * (last_trade * Gold)) / 31.1034768) * 8.133 / 100
+    )
+    dfp.loc[dfp.index[10], "Value"] = (
+        ((0.9 * (last_trade * Gold)) / 31.1034768) * 4.0665 * 10
+    )
+    dfp.loc[dfp.index[11], "Value"] = (
+        ((0.9 * (last_trade * Gold)) / 31.1034768) * 2.03225 * 10
+    )
     dfp.loc[dfp.index[12], "Value"] = (((0.9 * (last_trade * Gold)) / 31.1034768)) * 10
 
     dfp["Bubble"] = ((dfp["close_price"] - dfp["Value"]) / dfp["Value"]) * 100
@@ -292,12 +364,14 @@ def calculate_values(dfp, Gold, last_trade):
         multiplier = [10, 10, 1, 10, 10][i]
 
         dfp.loc[dfp.index[i], "pricing_dollar"] = (
-            (dfp.loc[dfp.index[i], "close_price"] * 31.1034768) / 
-            (Gold * factor) / multiplier
+            (dfp.loc[dfp.index[i], "close_price"] * 31.1034768)
+            / (Gold * factor)
+            / multiplier
         )
         dfp.loc[dfp.index[i], "pricing_Gold"] = (
-            ((dfp.loc[dfp.index[i], "close_price"] / factor) * 31.1034768) / 
-            last_trade / multiplier
+            ((dfp.loc[dfp.index[i], "close_price"] / factor) * 31.1034768)
+            / last_trade
+            / multiplier
         )
 
     cols = ["Value", "close_price", "pricing_dollar", "pricing_Gold"]
@@ -306,10 +380,14 @@ def calculate_values(dfp, Gold, last_trade):
 
     dfp = dfp[
         [
-            "close_price", "Value", "Bubble",
+            "close_price",
+            "Value",
+            "Bubble",
             "close_price_change_percent",
-            "pricing_dollar", "pricing_Gold",
-            "trade_date", "last_trade_time",
+            "pricing_dollar",
+            "pricing_Gold",
+            "trade_date",
+            "last_trade_time",
         ]
     ]
 
