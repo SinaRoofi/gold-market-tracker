@@ -27,7 +27,6 @@ def process_market_data(
         warehouse_df = flatten_entities(warehouse_df, "related_entities")
         funds_df = flatten_entities(funds_df, "related_entities")
 
-        # ✅ حذف امن ستون‌ها (اگر وجود نداشت، خطا نمی‌دهد)
         assets_df.drop(
             [
                 "entity_id", "type", "asset_id", "short_name", 
@@ -82,14 +81,13 @@ def process_market_data(
         ).round(2)
         funds_df["nominal_bubble"] = funds_df["nominal_bubble"].round(2)
 
-        # ✅ فقط ستون‌هایی که وجود دارند را انتخاب می‌کنیم
-        required_columns = [
-            "close_price", "nav", "nominal_bubble",
-            "close_price_change", "close_price_change_percent",
-            "value", "last_trade_time",
+        funds_df = funds_df[
+            [
+                "close_price", "nav", "nominal_bubble",
+                "close_price_change", "close_price_change_percent",
+                "value", "last_trade_time",
+            ]
         ]
-        available_columns = [col for col in required_columns if col in funds_df.columns]
-        funds_df = funds_df[available_columns]
 
         Fund_df = process_traders_data(traders_data)
 
@@ -138,133 +136,114 @@ def flatten_entities(df, list_col="related_entities"):
 
 
 def process_traders_data(data):
-    """پردازش داده‌های تریدرز آرنا با مدیریت انعطاف‌پذیر ستون‌ها"""
-    
-    try:
-        # ✅ ابتدا DataFrame بدون نام ستون می‌سازیم
-        Fund_df = pd.DataFrame(data)
-        
-        actual_column_count = len(Fund_df.columns)
-        logger.info(f"📊 تعداد ستون‌های واقعی traders_data: {actual_column_count}")
-        
-        # ✅ نام‌گذاری پویای ستون‌ها
-        column_names = []
-        column_names.extend(["id", "symbol", "volume", "value"])
-        column_names.extend([f"col{i}" for i in range(5, 14)])  # col5 تا col13
-        column_names.extend(["price1", "price1_change", "price2", "price2_change", "price3", "price3_change"])
-        
-        # ✅ ادامه ستون‌ها تا آخر
-        current_col = 20
-        while len(column_names) < actual_column_count - 1:  # -1 برای category
-            column_names.append(f"col{current_col}")
-            current_col += 1
-        
-        column_names.append("category")
-        
-        # ✅ اگر هنوز کم داریم، ستون‌های extra اضافه می‌کنیم
-        while len(column_names) < actual_column_count:
-            column_names.append(f"extra_col{len(column_names)}")
-        
-        # ✅ اگر زیاد داریم، کم می‌کنیم
-        column_names = column_names[:actual_column_count]
-        
-        Fund_df.columns = column_names
-        
-        logger.info(f"✅ نام‌گذاری {len(column_names)} ستون انجام شد")
-        
-        # ✅ نام‌گذاری ستون‌های اصلی
-        rename_map = {
+    columns = [
+        "id", "symbol", "volume", "value",
+        "col5", "col6", "col7", "col8",
+        "price1", "price1_change",
+        "price2", "price2_change",
+        "price3", "price3_change",
+        *[f"col{i}" for i in range(14, 49)],
+        "category",
+    ]
+
+    Fund_df = pd.DataFrame(data, columns=columns)
+
+    Fund_df = Fund_df.rename(
+        columns={
             "price2": "close_price",
             "price3_change": "final_price_change",
-            "price2_change": "close_price_change_percent",
-        }
-        
-        # ✅ mapping ستون‌های شناخته شده
-        column_mapping = {
-            "col16": "sarane_kharid",
-            "col17": "sarane_forosh",
-            "col19": "pol_hagigi",
             "col31": "avg_monthly_value",
             "col32": "value_to_avg_ratio",
+            "col40": "NAV",
+            "col41": "nominal_bubble",
+            "col42": "NAV_change_percent",
             "col35": "weekly_return",
             "col36": "monthly_return",
             "col37": "3_month_return",
             "col38": "net_asset",
-            "col40": "NAV",
-            "col41": "nominal_bubble",
-            "col42": "NAV_change_percent",
+            "price2_change": "close_price_change_percent",
+            "col16": "sarane_kharid",
+            "col17": "sarane_forosh",
+            "col19": "pol_hagigi",
         }
-        
-        # ✅ فقط ستون‌هایی که وجود دارند را rename می‌کنیم
-        for old_name, new_name in column_mapping.items():
-            if old_name in Fund_df.columns:
-                rename_map[old_name] = new_name
-        
-        Fund_df = Fund_df.rename(columns=rename_map)
-        Fund_df = Fund_df.set_index("symbol")
+    )
 
-        # ✅ پردازش ستون‌های اصلی
-        Fund_df["value"] = pd.to_numeric(Fund_df["value"], errors="coerce") / 10_000_000_000
-        
-        # ✅ تابع کمکی برای پردازش ستون‌ها
-        def safe_process_column(df, col_name, divisor=1, default_value=0):
-            if col_name in df.columns:
-                df[col_name] = (
-                    df[col_name]
-                    .replace("-", pd.NA)
-                    .pipe(pd.to_numeric, errors="coerce")
-                    / divisor
-                )
-            else:
-                df[col_name] = default_value
-            return df
-        
-        Fund_df = safe_process_column(Fund_df, "sarane_kharid", divisor=10_000_000)
-        Fund_df = safe_process_column(Fund_df, "sarane_forosh", divisor=10_000_000)
-        Fund_df = safe_process_column(Fund_df, "pol_hagigi", divisor=10_000_000_000)
-        Fund_df = safe_process_column(Fund_df, "avg_monthly_value", divisor=10_000_000_000, default_value=pd.NA)
-        Fund_df = safe_process_column(Fund_df, "net_asset", divisor=10_000_000_000)
-        
-        # ✅ پردازش ستون‌های درصدی
-        for col in ["NAV_change_percent", "weekly_return", "monthly_return", "3_month_return", "value_to_avg_ratio"]:
-            if col in Fund_df.columns:
-                Fund_df[col] = pd.to_numeric(Fund_df[col], errors="coerce").round(2)
-            else:
-                Fund_df[col] = 0
+    Fund_df = Fund_df.set_index("symbol")
 
-        # ✅ محاسبات مشتق شده
-        Fund_df["ekhtelaf_sarane"] = Fund_df["sarane_kharid"] - Fund_df["sarane_forosh"]
+    Fund_df["value"] = pd.to_numeric(Fund_df["value"], errors="coerce") / 10_000_000_000
+    Fund_df["sarane_kharid"] = pd.to_numeric(Fund_df["sarane_kharid"], errors="coerce") / 10_000_000
+    Fund_df["sarane_forosh"] = pd.to_numeric(Fund_df["sarane_forosh"], errors="coerce") / 10_000_000
+    Fund_df["pol_hagigi"] = pd.to_numeric(Fund_df["pol_hagigi"], errors="coerce") / 10_000_000_000
 
-        Fund_df["pol_to_value_ratio"] = (
-            (Fund_df["pol_hagigi"] / Fund_df["avg_monthly_value"].replace(0, pd.NA)) * 100
-        ).round(2)
+    # ✅ مقاوم‌سازی avg_monthly_value
+    Fund_df["avg_monthly_value"] = (
+        Fund_df["avg_monthly_value"]
+        .replace("-", pd.NA)
+        .pipe(pd.to_numeric, errors="coerce")
+        / 10_000_000_000
+    )
 
-        Fund_df["final_price_change"] = pd.to_numeric(
-            Fund_df["final_price_change"], errors="coerce"
-        ).round(2)
+    # ✅ تبدیل NAV_change_percent به عدد
+    Fund_df["NAV_change_percent"] = pd.to_numeric(
+        Fund_df["NAV_change_percent"], errors="coerce"
+    ).round(2)
 
-        Fund_df.sort_values(by="value", ascending=False, inplace=True)
+    # ✅ پردازش ستون‌های بازده
+    for col in ["weekly_return", "monthly_return", "3_month_return"]:
+        Fund_df[col] = pd.to_numeric(Fund_df[col], errors="coerce").round(2)
 
-        # ✅ انتخاب ستون‌های نهایی (فقط آنهایی که وجود دارند)
-        final_columns = [
-            "close_price", "NAV", "nominal_bubble", "NAV_change_percent",
-            "close_price_change_percent", "final_price_change",
-            "weekly_return", "monthly_return", "3_month_return", "net_asset",
-            "sarane_kharid", "sarane_forosh", "ekhtelaf_sarane",
-            "pol_hagigi", "pol_to_value_ratio",
-            "value", "avg_monthly_value", "value_to_avg_ratio",
+    # ✅ پردازش net_asset (با پرانتز بسته اصلاح‌شده)
+    Fund_df["net_asset"] = (
+        Fund_df["net_asset"]
+        .replace("-", pd.NA)
+        .pipe(pd.to_numeric, errors="coerce")
+        .fillna(0)
+        / 10_000_000_000
+    )
+
+    Fund_df["ekhtelaf_sarane"] = Fund_df["sarane_kharid"] - Fund_df["sarane_forosh"]
+
+    Fund_df["pol_to_value_ratio"] = (
+        (Fund_df["pol_hagigi"] / Fund_df["avg_monthly_value"].replace(0, pd.NA)) * 100
+    ).round(2)
+
+    Fund_df["final_price_change"] = pd.to_numeric(
+        Fund_df["final_price_change"], errors="coerce"
+    ).round(2)
+
+    Fund_df["value_to_avg_ratio"] = pd.to_numeric(
+        Fund_df["value_to_avg_ratio"], errors="coerce"
+    ).round(2)
+
+    Fund_df.sort_values(by="value", ascending=False, inplace=True)
+
+    # ✅ ستون‌های جدید اضافه شدند
+    Fund_df = Fund_df[
+        [
+            "close_price",
+            "NAV",
+            "nominal_bubble",
+            "NAV_change_percent",
+            "close_price_change_percent",
+            "final_price_change",
+            "weekly_return",
+            "monthly_return",
+            "3_month_return",
+            "net_asset",
+            "sarane_kharid",
+            "sarane_forosh",
+            "ekhtelaf_sarane",
+            "pol_hagigi",
+            "pol_to_value_ratio",
+            "value",
+            "avg_monthly_value",
+            "value_to_avg_ratio",
         ]
-        
-        available_final_columns = [col for col in final_columns if col in Fund_df.columns]
-        Fund_df = Fund_df[available_final_columns]
+    ]
 
-        logger.info(f"✅ Fund_df پردازش شد - {len(Fund_df)} صندوق با {len(Fund_df.columns)} ستون")
+    logger.info(f"✅ Fund_df پردازش شد - {len(Fund_df)} صندوق با {len(Fund_df.columns)} ستون")
 
-        return Fund_df
-        
-    except Exception as e:
-        logger.error(f"❌ خطا در پردازش داده‌های traders: {e}", exc_info=True)
-        return None
+    return Fund_df
 
 
 def calculate_values(dfp, Gold, last_trade):
@@ -301,14 +280,13 @@ def calculate_values(dfp, Gold, last_trade):
     dfp = dfp.copy()
     dfp[cols] = dfp[cols].fillna(0).astype(int)
 
-    # ✅ فقط ستون‌هایی که وجود دارند را انتخاب می‌کنیم
-    required_columns = [
-        "close_price", "Value", "Bubble",
-        "close_price_change_percent",
-        "pricing_dollar", "pricing_Gold",
-        "trade_date", "last_trade_time",
+    dfp = dfp[
+        [
+            "close_price", "Value", "Bubble",
+            "close_price_change_percent",
+            "pricing_dollar", "pricing_Gold",
+            "trade_date", "last_trade_time",
+        ]
     ]
-    available_columns = [col for col in required_columns if col in dfp.columns]
-    dfp = dfp[available_columns]
 
     return dfp
