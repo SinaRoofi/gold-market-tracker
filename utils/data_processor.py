@@ -142,7 +142,7 @@ def process_traders_data(data):
         "price1", "price1_change",
         "price2", "price2_change",
         "price3", "price3_change",
-        *[f"col{i}" for i in range(14, 51)],
+        *[f"col{i}" for i in range(14, 50)],
         "category",
     ]
 
