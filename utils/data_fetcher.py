@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 DOLLAR_CHANNEL = TELEGRAM_CHANNELS['dollar']
 GOLD_CHANNEL = TELEGRAM_CHANNELS['gold']
+
 # ==============================================================================
 # توابع کمکی استخراج قیمت‌ها
 # ==============================================================================
@@ -22,22 +23,24 @@ def extract_prices_new(text):
     """استخراج قیمت‌های دلار (معامله/خرید/فروش) از متن پیام بر اساس الگوی کاربر."""
     prices = {"معامله": None, "خرید": None, "فروش": None}
 
-    معامله_pattern = r"(\d{1,3}[,،]\d{3})\s*مـعامله\s*شد"
+    # ✅ الگوی بهبود یافته - پوشش نیم‌فاصله و فاصله‌های مختلف
+    معامله_pattern = r"(\d{1,3})[,،\u200c\u200b\s]*(\d{3})\s*مـعامله\s*شد"
+    خرید_pattern = r"(\d{1,3})[,،\u200c\u200b\s]*(\d{3})\s*خــرید"
+    فروش_pattern = r"(\d{1,3})[,،\u200c\u200b\s]*(\d{3})\s*فروش"
+
     معامله_match = re.search(معامله_pattern, text)
     if معامله_match:
-        price_str = معامله_match.group(1).replace("،", "").replace(",", "")
+        price_str = معامله_match.group(1) + معامله_match.group(2)
         prices["معامله"] = int(price_str)
 
-    خرید_pattern = r"(\d{1,3}[,،]\d{3})\s*خــرید"
     خرید_match = re.search(خرید_pattern, text)
     if خرید_match:
-        price_str = خرید_match.group(1).replace("،", "").replace(",", "")
+        price_str = خرید_match.group(1) + خرید_match.group(2)
         prices["خرید"] = int(price_str)
 
-    فروش_pattern = r"(\d{1,3}[,،]\d{3})\s*فروش"
     فروش_match = re.search(فروش_pattern, text)
     if فروش_match:
-        price_str = فروش_match.group(1).replace("،", "").replace(",", "")
+        price_str = فروش_match.group(1) + فروش_match.group(2)
         prices["فروش"] = int(price_str)
 
     return prices
@@ -137,7 +140,7 @@ async def fetch_dollar_prices(client: TelegramClient):
 
 async def fetch_market_data(max_retries=3, retry_delay=5):
     """دریافت داده‌های بازار با قابلیت retry"""
-    
+
     for attempt in range(1, max_retries + 1):
         try:
             headers = {
@@ -145,19 +148,19 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
                 "Accept": "application/json",
                 "Accept-Language": "en-US,en;q=0.9"
             }
-            
+
             # ═══════════════════════════════════════════════════
             # درخواست اول: rahavard365
             # ═══════════════════════════════════════════════════
             url1 = "https://rahavard365.com/api/v2/gold/intrinsic-values"
             logger.info(f"📡 تلاش {attempt}/{max_retries} - درخواست به rahavard365...")
-            
+
             resp1 = requests.get(url1, headers=headers, timeout=30)
-            
+
             if resp1.status_code != 200:
                 logger.error(f"❌ خطای HTTP {resp1.status_code} از rahavard365")
                 raise requests.exceptions.RequestException(f"HTTP {resp1.status_code}")
-            
+
             try:
                 data1 = resp1.json()
                 logger.info("✅ rahavard365 پاسخ داد")
@@ -174,13 +177,13 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
             # ═══════════════════════════════════════════════════
             url2 = "https://tradersarena.ir/data/industries-stocks-csv/gold-funds"
             logger.info(f"📡 تلاش {attempt}/{max_retries} - درخواست به tradersarena...")
-            
+
             resp2 = requests.get(url2, headers=headers, timeout=30)
-            
+
             if resp2.status_code != 200:
                 logger.error(f"❌ خطای HTTP {resp2.status_code} از tradersarena")
                 raise requests.exceptions.RequestException(f"HTTP {resp2.status_code}")
-            
+
             try:
                 data2 = resp2.json()
                 logger.info("✅ tradersarena پاسخ داد")
@@ -194,7 +197,7 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
             # ═══════════════════════════════════════════════════
             logger.info(f"✅ دریافت موفق در تلاش {attempt}")
             return {'rahavard_data': data1, 'traders_data': data2}
-            
+
         except requests.exceptions.Timeout:
             logger.error(f"❌ تلاش {attempt}: Timeout")
             if attempt < max_retries:
@@ -203,7 +206,7 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
             else:
                 logger.error("❌ همه تلاش‌ها به دلیل Timeout ناموفق بود")
                 return None
-                
+
         except requests.exceptions.ConnectionError as e:
             logger.error(f"❌ تلاش {attempt}: خطای اتصال - {e}")
             if attempt < max_retries:
@@ -212,7 +215,7 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
             else:
                 logger.error("❌ همه تلاش‌ها به دلیل خطای اتصال ناموفق بود")
                 return None
-                
+
         except requests.exceptions.JSONDecodeError as e:
             logger.error(f"❌ تلاش {attempt}: پاسخ JSON معتبر نیست - {e}")
             if attempt < max_retries:
@@ -221,7 +224,7 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
             else:
                 logger.error("❌ همه تلاش‌ها به دلیل پاسخ نامعتبر ناموفق بود")
                 return None
-                
+
         except requests.exceptions.RequestException as e:
             logger.error(f"❌ تلاش {attempt}: خطای درخواست - {e}")
             if attempt < max_retries:
@@ -230,7 +233,7 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
             else:
                 logger.error("❌ همه تلاش‌ها ناموفق بود")
                 return None
-                
+
         except Exception as e:
             logger.error(f"❌ تلاش {attempt}: خطای غیرمنتظره - {e}")
             if attempt < max_retries:
@@ -239,7 +242,7 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
             else:
                 logger.error("❌ همه تلاش‌ها به دلیل خطای غیرمنتظره ناموفق بود")
                 return None
-    
+
     return None
 
 
@@ -256,18 +259,18 @@ def fetch_dirham_price():
         url = "https://alanchand.com/currencies-price"
         headers = {"User-Agent": "Mozilla/5.0"}
         resp = requests.get(url, headers=headers, timeout=30)
-        
+
         soup = BeautifulSoup(resp.text, "html.parser")
-        
+
         table = soup.find("table")
-        
+
         price_sale_dirham = None
         for row in table.find_all("tr")[1:]:
             cols = row.find_all("td")
             if cols and cols[0].text.strip() == "درهم":
                 price_sale_dirham = cols[2].text.strip()  # ستون قیمت فروش
                 break
-        
+
         if price_sale_dirham:
             # تبدیل ارقام فارسی به انگلیسی و حذف کاما
             price_sale_dirham = persian_to_english_number(price_sale_dirham).replace(",", "")
@@ -277,7 +280,7 @@ def fetch_dirham_price():
         else:
             logger.warning("⚠️ قیمت فروش درهم پیدا نشد")
             return None
-            
+
     except Exception as e:
         logger.error(f"❌ خطا در دریافت قیمت درهم: {e}")
         return None
