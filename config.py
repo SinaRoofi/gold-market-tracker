@@ -18,7 +18,7 @@ EKHTELAF_THRESHOLD = 10         # اختلاف سرانه (میلیون توما
 
 # 🎯 مقادیر پیش‌فرض (Fallback)
 DEFAULT_GOLD_PRICE = 4490      
-DEFAULT_DOLLAR_PRICE = 135_000 
+DEFAULT_DOLLAR_PRICE = 147_000 
 
 # 🎈 آستانه‌های هشدار حباب
 BUBBLE_SHARP_CHANGE_THRESHOLD = 0.5  # درصد
@@ -32,9 +32,9 @@ ALERT_CHANNEL_HANDLE = "@ALERT_GOLD"
 
 # ارزش روزانه دلار
 VALUE_DIFF = 70_000
-LOW_VALUE = 30.13
-VALUE = 87.67
-HIGH_VALUE = 186.30
+LOW_VALUE = 46.58
+VALUE = 106.85
+HIGH_VALUE = 213.7
 
 # ════════════════════════════════════════════════════════════════
 # 🔐 متغیرهای محیطی (Environment Variables)
