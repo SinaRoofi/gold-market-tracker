@@ -158,7 +158,7 @@ FONT_REGULAR_PATH = "assets/fonts/Vazirmatn-Regular.ttf"
 
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # ثانیه
-REQUEST_TIMEOUT = 30  # ثانیه
+REQUEST_TIMEOUT = 90  # ثانیه
 
 # Headers برای درخواست‌های HTTP
 HTTP_HEADERS = {
