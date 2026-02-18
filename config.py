@@ -17,8 +17,8 @@ ALERT_THRESHOLD_PERCENT = 0.5  # درصد تغییر سریع
 EKHTELAF_THRESHOLD = 10         # اختلاف سرانه (میلیون تومان)
 
 # 🎯 مقادیر پیش‌فرض (Fallback)
-DEFAULT_GOLD_PRICE = 4883     
-DEFAULT_DOLLAR_PRICE = 165_000 
+DEFAULT_GOLD_PRICE = 4900    
+DEFAULT_DOLLAR_PRICE = 163_000 
 
 # 🎈 آستانه‌های هشدار حباب
 BUBBLE_SHARP_CHANGE_THRESHOLD = 0.5  # درصد
@@ -30,11 +30,11 @@ POL_SHARP_CHANGE_THRESHOLD = 100
 CHANNEL_HANDLE = "@Gold_Iran_Market"
 ALERT_CHANNEL_HANDLE = "@ALERT_GOLD"
 
-# ارزش روزانه دلار
-VALUE_DIFF = 70_000
-LOW_VALUE = 46.58
-VALUE = 106.85
-HIGH_VALUE = 213.7
+# ارزش روزانه دلار تومان
+VALUE_DIFF = 70_000 # دلار پارسال
+LOW_VALUE = 63.01
+VALUE = 128.77
+HIGH_VALUE = 241.1
 
 # ════════════════════════════════════════════════════════════════
 # 🔐 متغیرهای محیطی (Environment Variables)
