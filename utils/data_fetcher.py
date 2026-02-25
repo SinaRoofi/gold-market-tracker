@@ -178,7 +178,7 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
             url2 = "https://tradersarena.ir/data/industries-stocks-csv/gold-funds"
             logger.info(f"📡 تلاش {attempt}/{max_retries} - درخواست به tradersarena...")
 
-            resp2 = requests.get(url2, headers=headers, timeout=30)
+            resp2 = requests.get(url2, headers=headers, timeout=(10, 20))
 
             if resp2.status_code != 200:
                 logger.error(f"❌ خطای HTTP {resp2.status_code} از tradersarena")
