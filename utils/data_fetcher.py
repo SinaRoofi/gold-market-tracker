@@ -144,12 +144,10 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
     for attempt in range(1, max_retries + 1):
         try:
             headers = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "fa-IR,fa;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Referer": "https://tradersarena.ir/",
-    "Origin": "https://tradersarena.ir",
-}
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "application/json",
+                "Accept-Language": "en-US,en;q=0.9"
+            }
 
             # ═══════════════════════════════════════════════════
             # درخواست اول: rahavard365
@@ -157,7 +155,7 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
             url1 = "https://rahavard365.com/api/v2/gold/intrinsic-values"
             logger.info(f"📡 تلاش {attempt}/{max_retries} - درخواست به rahavard365...")
 
-            resp1 = requests.get(url1, headers=headers, timeout=30)
+            resp1 = requests.get(url1, headers=headers, timeout=10)
 
             if resp1.status_code != 200:
                 logger.error(f"❌ خطای HTTP {resp1.status_code} از rahavard365")
@@ -180,7 +178,7 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
             url2 = "https://tradersarena.ir/data/industries-stocks-csv/gold-funds"
             logger.info(f"📡 تلاش {attempt}/{max_retries} - درخواست به tradersarena...")
 
-            resp2 = requests.get(url2, headers=headers, timeout=(10, 20))
+            resp2 = requests.get(url2, headers=headers, timeout=10)
 
             if resp2.status_code != 200:
                 logger.error(f"❌ خطای HTTP {resp2.status_code} از tradersarena")
