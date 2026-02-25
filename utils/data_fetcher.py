@@ -144,10 +144,12 @@ async def fetch_market_data(max_retries=3, retry_delay=5):
     for attempt in range(1, max_retries + 1):
         try:
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "application/json",
-                "Accept-Language": "en-US,en;q=0.9"
-            }
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "fa-IR,fa;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Referer": "https://tradersarena.ir/",
+    "Origin": "https://tradersarena.ir",
+}
 
             # ═══════════════════════════════════════════════════
             # درخواست اول: rahavard365
