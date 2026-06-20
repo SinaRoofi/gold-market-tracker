@@ -7,18 +7,18 @@ import os
 DOLLAR_HIGH = 170_000      # آستانه بالای دلار
 DOLLAR_LOW = 160_000       # آستانه پایین دلار
 
-SHAMS_HIGH = 26_000_000    # آستانه بالای شمش طلا 
-SHAMS_LOW = 25_000_000     # آستانه پایین شمش طلا 
+SHAMS_HIGH = 22_000_000    # آستانه بالای شمش طلا 
+SHAMS_LOW = 21_000_000     # آستانه پایین شمش طلا 
 
-GOLD_HIGH = 4800       # آستانه بالای اونس طلا
-GOLD_LOW = 4400      # آستانه پایین اونس طلا
+GOLD_HIGH = 4200       # آستانه بالای اونس طلا
+GOLD_LOW = 4000      # آستانه پایین اونس طلا
 
 ALERT_THRESHOLD_PERCENT = 0.5  # درصد تغییر سریع 
 EKHTELAF_THRESHOLD = 10         # اختلاف سرانه (میلیون تومان)
 
 # 🎯 مقادیر پیش‌فرض (Fallback)
-DEFAULT_GOLD_PRICE = 4700    
-DEFAULT_DOLLAR_PRICE = 166000 
+DEFAULT_GOLD_PRICE = 4150    
+DEFAULT_DOLLAR_PRICE = 160000 
 
 # 🎈 آستانه‌های هشدار حباب
 BUBBLE_SHARP_CHANGE_THRESHOLD = 0.5  # درصد
@@ -84,7 +84,7 @@ TIMEZONE = 'Asia/Tehran'
 
 TRADING_HOURS = {
     'start': 12,  # ساعت شروع معاملات
-    'end': 18,    # ساعت پایان معاملات
+    'end': 17,    # ساعت پایان معاملات
 }
 
 # روزهای معاملاتی (شنبه=5, یکشنبه=6, دوشنبه=0, سه‌شنبه=1, چهارشنبه=2)
