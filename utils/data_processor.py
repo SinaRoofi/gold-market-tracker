@@ -221,6 +221,7 @@ def process_traders_data(data):
         40: "NAV",
         41: "nominal_bubble",
         42: "NAV_change_percent",
+        43: "avg_monthly_bubble",
         49: "category",
         50: "isin",
     }
@@ -290,6 +291,10 @@ def process_traders_data(data):
         Fund_df["value_to_avg_ratio"], errors="coerce"
     ).round(2)
 
+    Fund_df["avg_monthly_bubble"] = pd.to_numeric(
+    Fund_df["avg_monthly_bubble"], errors="coerce"
+    ).round(2)
+
     Fund_df.sort_values(by="value", ascending=False, inplace=True)
 
     # ✅ انتخاب ستون‌های نهایی (فقط آنهایی که وجود دارند)
@@ -297,6 +302,7 @@ def process_traders_data(data):
         "close_price",
         "NAV",
         "nominal_bubble",
+        "avg_monthly_bubble",
         "NAV_change_percent",
         "close_price_change_percent",
         "final_price_change",
