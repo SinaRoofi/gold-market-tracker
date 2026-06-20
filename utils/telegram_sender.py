@@ -65,7 +65,7 @@ def get_today_date():
 
 # ────────────────── ارسال اصلی به تلگرام ──────────────────
 
-def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price, 
+def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
                      gold_yesterday, gold_time, yesterday_close, dirham_price=None):
     """
     ارسال داده‌ها به کانال تلگرام
@@ -77,11 +77,11 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
     try:
         logger.info("🎨 در حال ساخت تصویر Treemap...")
         img1_bytes = create_combined_image(
-            data["Fund_df"], 
-            dollar_prices["last_trade"], 
-            gold_price, 
-            gold_yesterday, 
-            data["dfp"], 
+            data["Fund_df"],
+            dollar_prices["last_trade"],
+            gold_price,
+            gold_yesterday,
+            data["dfp"],
             yesterday_close
         )
 
@@ -90,11 +90,11 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
 
         logger.info("📝 در حال ساخت کپشن...")
         caption = create_simple_caption(
-            data, 
-            dollar_prices, 
-            gold_price, 
-            gold_yesterday, 
-            yesterday_close, 
+            data,
+            dollar_prices,
+            gold_price,
+            gold_yesterday,
+            yesterday_close,
             gold_time,
             dirham_price
         )
@@ -110,7 +110,7 @@ def send_to_telegram(bot_token, chat_id, data, dollar_prices, gold_price,
 
         if saved_message_id:
             logger.info(f"🔄 در حال آپدیت پیام پین‌شده (ID: {saved_message_id})...")
-            if update_media_group_correctly(bot_token, chat_id, saved_message_id, 
+            if update_media_group_correctly(bot_token, chat_id, saved_message_id,
                                            img1_bytes, img2_bytes, caption):
                 logger.info("✅ پیام پین‌شده آپدیت شد")
                 return True
@@ -144,20 +144,20 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
         }
         media = [
             {
-                "type": "photo", 
-                "media": "attach://photo1", 
-                "caption": caption, 
+                "type": "photo",
+                "media": "attach://photo1",
+                "caption": caption,
                 "parse_mode": "HTML"
             },
             {
-                "type": "photo", 
+                "type": "photo",
                 "media": "attach://photo2"
             },
         ]
         response = requests.post(
-            url, 
-            files=files, 
-            data={"chat_id": chat_id, "media": json.dumps(media)}, 
+            url,
+            files=files,
+            data={"chat_id": chat_id, "media": json.dumps(media)},
             timeout=60
         )
         if response.status_code == 200:
@@ -170,39 +170,39 @@ def send_media_group(bot_token, chat_id, img1_bytes, img2_bytes, caption):
     return None
 
 
-def update_media_group_correctly(bot_token, chat_id, first_message_id, 
+def update_media_group_correctly(bot_token, chat_id, first_message_id,
                                  img1_bytes, img2_bytes, caption):
     try:
         url = f"https://api.telegram.org/bot{bot_token}/editMessageMedia"
 
         media1 = {
-            "type": "photo", 
-            "media": "attach://photo1", 
-            "caption": caption, 
+            "type": "photo",
+            "media": "attach://photo1",
+            "caption": caption,
             "parse_mode": "HTML"
         }
         files1 = {"photo1": ("treemap.png", io.BytesIO(img1_bytes), "image/png")}
         r1 = requests.post(
-            url, 
+            url,
             data={
                 "chat_id": chat_id,
                 "message_id": first_message_id,
                 "media": json.dumps(media1)
-            }, 
-            files=files1, 
+            },
+            files=files1,
             timeout=REQUEST_TIMEOUT
         )
 
         media2 = {"type": "photo", "media": "attach://photo2"}
         files2 = {"photo2": ("charts.png", io.BytesIO(img2_bytes), "image/png")}
         r2 = requests.post(
-            url, 
+            url,
             data={
                 "chat_id": chat_id,
                 "message_id": first_message_id + 1,
                 "media": json.dumps(media2)
-            }, 
-            files=files2, 
+            },
+            files=files2,
             timeout=REQUEST_TIMEOUT
         )
 
@@ -223,10 +223,10 @@ def pin_message(bot_token, chat_id, message_id):
         response = requests.post(
             f"https://api.telegram.org/bot{bot_token}/pinChatMessage",
             data={
-                "chat_id": chat_id, 
-                "message_id": message_id, 
+                "chat_id": chat_id,
+                "message_id": message_id,
                 "disable_notification": True
-            }, 
+            },
             timeout=REQUEST_TIMEOUT
         )
         if response.status_code == 200:
@@ -237,43 +237,28 @@ def pin_message(bot_token, chat_id, message_id):
         logger.error(f"خطا در پین: {e}")
 
 
-# ────────────────── رنگ‌بندی گرادیانت (اصلاح شده) ──────────────────
+# ────────────────── رنگ‌بندی گرادیانت ──────────────────
 
 def get_gradient_color(value, vmin=-10, vmax=10):
-    """
-    تبدیل مقدار عددی به رنگ گرادیانت متقارن
-    صفر: خاکستری تیره
-    نزدیک صفر: رنگ تیره (قرمز/سبز تیره)
-    دور از صفر: رنگ روشن (قرمز/سبز روشن)
-    """
     if vmax == vmin:
         return "#404040"
 
-    # نرمال‌سازی به بازه [0, 1]
     normalized = (value - vmin) / (vmax - vmin)
     normalized = max(0, min(1, normalized))
-
-    # فاصله از مرکز (0.5)
-    distance_from_center = abs(normalized - 0.5) * 2  # 0 تا 1
+    distance_from_center = abs(normalized - 0.5) * 2
 
     if normalized < 0.5:
-        # منفی: از خاکستری به قرمز
         if distance_from_center < 0.2:
-            # خیلی نزدیک صفر: خاکستری
             r, g, b = 64, 64, 64
         else:
-            # قرمز تیره (#8B0000) → قرمز روشن (#FF6B6B)
             progress = (distance_from_center - 0.2) / 0.8
             r = int(139 + (255 - 139) * progress)
             g = int(0 + (107 - 0) * progress)
             b = int(0 + (107 - 0) * progress)
     else:
-        # مثبت: از خاکستری به سبز
         if distance_from_center < 0.2:
-            # خیلی نزدیک صفر: خاکستری
             r, g, b = 64, 64, 64
         else:
-            # سبز تیره (#006400) → سبز روشن (#66BB6A)
             progress = (distance_from_center - 0.2) / 0.8
             r = int(0 + (102 - 0) * progress)
             g = int(100 + (187 - 100) * progress)
@@ -283,16 +268,12 @@ def get_gradient_color(value, vmin=-10, vmax=10):
 
 
 def get_positive_gradient_color(value, vmin, vmax):
-    """
-    رنگ‌بندی برای مقادیر مثبت (سبز تیره → سبز روشن)
-    """
     if vmax == vmin or vmax <= 0:
         return "#4CAF50"
 
     normalized = (value - vmin) / (vmax - vmin)
     normalized = max(0, min(1, normalized))
 
-    # سبز تیره (#2E7D32) → سبز روشن (#66BB6A)
     r = int(46 + (102 - 46) * normalized)
     g = int(125 + (187 - 125) * normalized)
     b = int(50 + (106 - 50) * normalized)
@@ -301,9 +282,6 @@ def get_positive_gradient_color(value, vmin, vmax):
 
 
 def get_symmetric_vrange(values):
-    """
-    محاسبه طیف متقارن (vmin, vmax) حول صفر برای ستون‌های صفر-محور
-    """
     numeric_values = []
     for v in values:
         try:
@@ -316,13 +294,10 @@ def get_symmetric_vrange(values):
         return 0, 0
 
     abs_max = max(abs(v) for v in numeric_values)
-    vmax = abs_max
-    vmin = -abs_max
-    return vmin, vmax
+    return -abs_max, abs_max
 
 
 def apply_gradient_colors(values, vmin=None, vmax=None, force_positive=False):
-    """اعمال رنگ گرادیانت به لیست مقادیر"""
     numeric_values = []
     for v in values:
         try:
@@ -338,8 +313,7 @@ def apply_gradient_colors(values, vmin=None, vmax=None, force_positive=False):
 
     if force_positive or (vmin >= 0 and vmax >= 0):
         if vmax == vmin and vmax == 0:
-             return [get_positive_gradient_color(v, 0, 1) for v in numeric_values]
-
+            return [get_positive_gradient_color(v, 0, 1) for v in numeric_values]
         return [get_positive_gradient_color(v, vmin, vmax) for v in numeric_values]
 
     return [get_gradient_color(v, vmin, vmax) for v in numeric_values]
@@ -392,62 +366,56 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
         row=1, col=1,
     )
 
-    # ═══════════════════════════════════════════════════════
-    # جدول با ترتیب ستون‌های سفارشی‌شده توسط کاربر
-    # ═══════════════════════════════════════════════════════
     top_10 = df_sorted.head(10)
 
-   table_header = [
-    "نماد",
-    "آخرین",
-    "NAV",
-    "آخرین %",
-    "حباب %",
-    "میانگین حباب ماه",
-    "سرانه خرید",
-    "اختلاف سرانه",
-    "پول حقیقی",
-    "ارزش",
-    "بازده هفتگی"
-]
+    table_header = [
+        "نماد",
+        "آخرین",
+        "NAV",
+        "آخرین %",
+        "حباب %",
+        "میانگین حباب ماه",
+        "سرانه خرید",
+        "اختلاف سرانه",
+        "پول حقیقی",
+        "ارزش",
+        "بازده هفتگی"
+    ]
 
-    # لیست‌های داده‌ها (Cell values)
-   table_cells = [
-    top_10.index.tolist(),                                           # 0: نماد
-    [f"{x:,.0f}" for x in top_10["close_price"]],                   # 1: آخرین
-    [f"{x:,.0f}" for x in top_10["NAV"]],                           # 2: NAV
-    [f"{x:+.2f}%" for x in top_10["close_price_change_percent"]],   # 3: آخرین %
-    [f"{x:+.2f}%" for x in top_10["nominal_bubble"]],               # 4: حباب %
-    [f"{x:+.2f}%" for x in top_10["avg_monthly_bubble"]],           # 5: میانگین حباب ماه
-    [f"{x:+.2f}" for x in top_10["sarane_kharid"]],                 # 6: سرانه خرید
-    [f"{x:+.2f}" for x in top_10["ekhtelaf_sarane"]],               # 7: اختلاف سرانه
-    [f"{x:+,.0f}" for x in top_10["pol_hagigi"]],                   # 8: پول حقیقی
-    [f"{x:,.0f}" for x in top_10["value"]],                         # 9: ارزش
-    [f"{x:+.2f}%" for x in top_10["weekly_return"]],                # 10: بازده هفتگی
-]
+    table_cells = [
+        top_10.index.tolist(),                                           # 0: نماد
+        [f"{x:,.0f}" for x in top_10["close_price"]],                   # 1: آخرین
+        [f"{x:,.0f}" for x in top_10["NAV"]],                           # 2: NAV
+        [f"{x:+.2f}%" for x in top_10["close_price_change_percent"]],   # 3: آخرین %
+        [f"{x:+.2f}%" for x in top_10["nominal_bubble"]],               # 4: حباب %
+        [f"{x:+.2f}%" for x in top_10["avg_monthly_bubble"]],           # 5: میانگین حباب ماه
+        [f"{x:+.2f}" for x in top_10["sarane_kharid"]],                 # 6: سرانه خرید
+        [f"{x:+.2f}" for x in top_10["ekhtelaf_sarane"]],               # 7: اختلاف سرانه
+        [f"{x:+,.0f}" for x in top_10["pol_hagigi"]],                   # 8: پول حقیقی
+        [f"{x:,.0f}" for x in top_10["value"]],                         # 9: ارزش
+        [f"{x:+.2f}%" for x in top_10["weekly_return"]],                # 10: بازده هفتگی
+    ]
 
-    # محاسبه طیف متقارن برای ستون‌های صفر-محور (بر اساس اندیس‌های جدید)
-   vmin_3, vmax_3 = get_symmetric_vrange(table_cells[3])   # آخرین %
-   vmin_4, vmax_4 = get_symmetric_vrange(table_cells[4])   # حباب %
-   vmin_5, vmax_5 = get_symmetric_vrange(table_cells[5])   # میانگین حباب ماه
-   vmin_7, vmax_7 = get_symmetric_vrange(table_cells[7])   # اختلاف سرانه
-   vmin_8, vmax_8 = get_symmetric_vrange(table_cells[8])   # پول حقیقی
-   vmin_10, vmax_10 = get_symmetric_vrange(table_cells[10]) # بازده هفتگیبازده هفتگی
+    vmin_3, vmax_3 = get_symmetric_vrange(table_cells[3])   # آخرین %
+    vmin_4, vmax_4 = get_symmetric_vrange(table_cells[4])   # حباب %
+    vmin_5, vmax_5 = get_symmetric_vrange(table_cells[5])   # میانگین حباب ماه
+    vmin_7, vmax_7 = get_symmetric_vrange(table_cells[7])   # اختلاف سرانه
+    vmin_8, vmax_8 = get_symmetric_vrange(table_cells[8])   # پول حقیقی
+    vmin_10, vmax_10 = get_symmetric_vrange(table_cells[10]) # بازده هفتگی
 
-    # رنگ‌بندی سلول‌ها
     cell_colors = [
-    ["#1C2733"] * 10,                                                        # 0: نماد
-    ["#1C2733"] * 10,                                                        # 1: آخرین
-    ["#1C2733"] * 10,                                                        # 2: NAV
-    apply_gradient_colors(table_cells[3], vmin=vmin_3, vmax=vmax_3),        # 3: آخرین %
-    apply_gradient_colors(table_cells[4], vmin=vmin_4, vmax=vmax_4),        # 4: حباب %
-    apply_gradient_colors(table_cells[5], vmin=vmin_5, vmax=vmax_5),        # 5: میانگین حباب ماه
-    apply_gradient_colors(table_cells[6], force_positive=True),             # 6: سرانه خرید
-    apply_gradient_colors(table_cells[7], vmin=vmin_7, vmax=vmax_7),        # 7: اختلاف سرانه
-    apply_gradient_colors(table_cells[8], vmin=vmin_8, vmax=vmax_8),        # 8: پول حقیقی
-    ["#1C2733"] * 10,                                                        # 9: ارزش
-    apply_gradient_colors(table_cells[10], vmin=vmin_10, vmax=vmax_10),     # 10: بازده هفتگی
-]
+        ["#1C2733"] * 10,                                                        # 0: نماد
+        ["#1C2733"] * 10,                                                        # 1: آخرین
+        ["#1C2733"] * 10,                                                        # 2: NAV
+        apply_gradient_colors(table_cells[3], vmin=vmin_3, vmax=vmax_3),        # 3: آخرین %
+        apply_gradient_colors(table_cells[4], vmin=vmin_4, vmax=vmax_4),        # 4: حباب %
+        apply_gradient_colors(table_cells[5], vmin=vmin_5, vmax=vmax_5),        # 5: میانگین حباب ماه
+        apply_gradient_colors(table_cells[6], force_positive=True),             # 6: سرانه خرید
+        apply_gradient_colors(table_cells[7], vmin=vmin_7, vmax=vmax_7),        # 7: اختلاف سرانه
+        apply_gradient_colors(table_cells[8], vmin=vmin_8, vmax=vmax_8),        # 8: پول حقیقی
+        ["#1C2733"] * 10,                                                        # 9: ارزش
+        apply_gradient_colors(table_cells[10], vmin=vmin_10, vmax=vmax_10),     # 10: بازده هفتگی
+    ]
 
     fig.add_trace(
         go.Table(
@@ -486,9 +454,9 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     )
 
     img_bytes = fig.to_image(
-        format="png", 
-        width=TREEMAP_WIDTH, 
-        height=TREEMAP_HEIGHT, 
+        format="png",
+        width=TREEMAP_WIDTH,
+        height=TREEMAP_HEIGHT,
         scale=TREEMAP_SCALE
     )
     img = Image.open(io.BytesIO(img_bytes)).convert("RGBA")
@@ -504,7 +472,6 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
     draw.text((60, 95), "اندازه: ارزش معاملات", font=font_desc, fill="#FFFFFF")
     draw.text((60, 145), "رنگ‌بندی: درصد آخرین قیمت", font=font_desc, fill="#FFFFFF")
 
-    # واترمارک افقی در گوشه پایین چپ
     try:
         wfont = ImageFont.truetype(FONT_REGULAR_PATH, 50)
     except:
@@ -529,8 +496,8 @@ def create_combined_image(Fund_df, last_trade, Gold, Gold_yesterday, dfp, yester
 
 # ────────────────── کپشن ──────────────────
 
-def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday, 
-                         yesterday_close, gold_time, dirham_price=None):
+def create_simple_caption(data, dollar_prices, gold_price, gold_yesterday,
+                          yesterday_close, gold_time, dirham_price=None):
     from config import LOW_VALUE, VALUE, HIGH_VALUE, VALUE_DIFF
     from persiantools.jdatetime import JalaliDateTime
     import pytz
