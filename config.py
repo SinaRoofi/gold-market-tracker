@@ -4,21 +4,21 @@
 import os
 
 # 🚨 آستانه‌های هشدار قیمتی
-DOLLAR_HIGH = 160_000      # آستانه بالای دلار
-DOLLAR_LOW = 155_000       # آستانه پایین دلار
+DOLLAR_HIGH = 170_000      # آستانه بالای دلار
+DOLLAR_LOW = 165_000       # آستانه پایین دلار
 
 SHAMS_HIGH = 21_500_000    # آستانه بالای شمش طلا 
 SHAMS_LOW = 20_500_000     # آستانه پایین شمش طلا 
 
-GOLD_HIGH = 4200       # آستانه بالای اونس طلا
-GOLD_LOW = 4100      # آستانه پایین اونس طلا
+GOLD_HIGH = 4100       # آستانه بالای اونس طلا
+GOLD_LOW = 4000      # آستانه پایین اونس طلا
 
 ALERT_THRESHOLD_PERCENT = 0.5  # درصد تغییر سریع 
 EKHTELAF_THRESHOLD = 10         # اختلاف سرانه (میلیون تومان)
 
 # 🎯 مقادیر پیش‌فرض (Fallback)
-DEFAULT_GOLD_PRICE = 4150    
-DEFAULT_DOLLAR_PRICE = 160000 
+DEFAULT_GOLD_PRICE = 4050    
+DEFAULT_DOLLAR_PRICE = 166000 
 
 # 🎈 آستانه‌های هشدار حباب
 BUBBLE_SHARP_CHANGE_THRESHOLD = 0.5  # درصد
@@ -32,9 +32,9 @@ ALERT_CHANNEL_HANDLE = "@ALERT_GOLD"
 
 # ارزش روزانه دلار تومان
 VALUE_DIFF = 111_000 # دلار پارسال
-LOW_VALUE = 214
-VALUE = 348
-HIGH_VALUE = 611
+LOW_VALUE = 186
+VALUE = 315
+HIGH_VALUE = 564
 
 # ════════════════════════════════════════════════════════════════
 # 🔐 متغیرهای محیطی (Environment Variables)
